@@ -27,7 +27,7 @@ class NoraAgent(BaseAgent):
             "send_back_to ('bella' | 'lila' | null). JSON only."
         )
         raw = self._call_claude(system, user, max_tokens=512)
-        result = QAResult(**json.loads(raw))
+        result = QAResult(**self._parse_json(raw))
         if not result.passed:
             job.nora_retry_count += 1
         job.qa_result = result

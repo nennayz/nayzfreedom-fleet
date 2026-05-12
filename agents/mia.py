@@ -1,4 +1,5 @@
 from __future__ import annotations
+from datetime import datetime
 import json
 import requests
 from agents.base_agent import BaseAgent
@@ -22,7 +23,7 @@ class MiaAgent(BaseAgent):
         return job
 
     def run_live(self, job: ContentJob, **kwargs) -> ContentJob:
-        query = f"{job.brief} trend {' '.join(job.platforms)} 2025"
+        query = f"{job.brief} trend {' '.join(job.platforms)} {datetime.now().year}"
         resp = requests.get(
             _BRAVE_SEARCH_URL,
             headers={"Accept": "application/json", "X-Subscription-Token": self.config.brave_search_api_key},
@@ -46,6 +47,6 @@ class MiaAgent(BaseAgent):
             "trending_sounds (list of str), formats (list of str). JSON only."
         )
         raw = self._call_claude(system, user)
-        job.trend_data = json.loads(raw)
+        job.trend_data = self._parse_json(raw)
         job.stage = "mia_done"
         return job

@@ -46,7 +46,7 @@ class BellaAgent(BaseAgent):
             "hook (str), body (str), cta (str), duration_seconds (int). JSON only."
         )
         raw = self._call_claude(system, user, max_tokens=1024)
-        job.script = Script(**json.loads(raw))
+        job.script = Script(**self._parse_json(raw))
         job.stage = "bella_done"
         _write_script_file(job)
         return job

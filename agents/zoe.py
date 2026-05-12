@@ -41,7 +41,7 @@ class ZoeAgent(BaseAgent):
             "number (int), title (str), hook (str, max 10 words), angle (str). JSON only."
         )
         raw = self._call_claude(system, user, max_tokens=1024)
-        job.ideas = [Idea(**i) for i in json.loads(raw)]
+        job.ideas = [Idea(**i) for i in self._parse_json(raw)]
         job.stage = "zoe_done"
         _write_ideas_file(job)
         return job

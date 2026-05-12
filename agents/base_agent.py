@@ -36,3 +36,10 @@ class BaseAgent(ABC):
             if isinstance(block, TextBlock):
                 return block.text
         raise ValueError("No text block in Claude response")
+
+    def _parse_json(self, raw: str) -> dict | list:
+        import json
+        try:
+            return json.loads(raw)
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Agent received invalid JSON from Claude: {e}\nRaw: {raw[:200]}")

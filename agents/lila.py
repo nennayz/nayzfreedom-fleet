@@ -1,7 +1,6 @@
 from __future__ import annotations
 from pathlib import Path
 from agents.base_agent import BaseAgent
-from config import Config
 from models.content_job import ContentJob
 
 _DRY_RUN_PROMPT = (

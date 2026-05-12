@@ -43,7 +43,7 @@ class RoxyAgent(BaseAgent):
             "best_post_time_utc (str HH:MM), best_post_time_thai (str HH:MM). JSON only."
         )
         raw = self._call_claude(system, user, max_tokens=512)
-        job.growth_strategy = GrowthStrategy(**json.loads(raw))
+        job.growth_strategy = GrowthStrategy(**self._parse_json(raw))
         job.stage = "roxy_done"
         _write_growth_file(job)
         return job
