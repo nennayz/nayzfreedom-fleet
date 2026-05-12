@@ -52,4 +52,4 @@ def test_load_recent_performance_respects_limit(tmp_path, monkeypatch):
         (out_dir / "job.json").write_text(job.model_dump_json())
     result = load_recent_performance("Test", limit=3)
     # Should contain at most 3 jobs worth of data
-    assert result.count("instagram") <= 3
+    assert result.count("instagram") == 3
