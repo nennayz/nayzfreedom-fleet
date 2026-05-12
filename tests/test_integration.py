@@ -1,0 +1,90 @@
+from unittest.mock import MagicMock, patch
+from pathlib import Path
+import shutil
+from orchestrator import Orchestrator
+from project_loader import load_project
+from models.content_job import ContentJob, JobStatus
+from config import Config
+from tests.test_mia import make_config
+
+
+def _tool_block(name, tool_id, input_data=None):
+    b = MagicMock()
+    b.type = "tool_use"
+    b.name = name
+    b.id = tool_id
+    b.input = input_data or {}
+    return b
+
+
+def test_full_dry_run_pipeline(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "output").mkdir()
+
+    # Copy projects/ into tmp_path so project_loader can find it
+    shutil.copytree(Path(__file__).parent.parent / "projects", tmp_path / "projects")
+
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test")
+    monkeypatch.setenv("BRAVE_SEARCH_API_KEY", "brave")
+    monkeypatch.setenv("OPENAI_API_KEY", "oai")
+
+    sequence = [
+        [_tool_block("run_mia", "t1")],
+        [_tool_block("run_zoe", "t2")],
+        [_tool_block("request_checkpoint", "t3", {"stage": "idea_selection",
+            "summary": "Ideas:\n1. Lip Hack\n2. Morning Routine", "options": ["1", "2", "3", "4", "5"]})],
+        [_tool_block("run_bella", "t4")],
+        [_tool_block("run_lila", "t5")],
+        [_tool_block("request_checkpoint", "t6", {"stage": "content_review",
+            "summary": "Script and visual ready for review."})],
+        [_tool_block("run_nora", "t7")],
+        [_tool_block("request_checkpoint", "t8", {"stage": "qa_review",
+            "summary": "Nora says: PASSED ✓"})],
+        [_tool_block("run_roxy", "t9")],
+        [_tool_block("run_emma", "t10")],
+        [_tool_block("request_checkpoint", "t11", {"stage": "final_approval",
+            "summary": "Everything ready. Post to Instagram + Facebook?"})],
+    ]
+
+    call_count = [0]
+    def mock_create(**kwargs):
+        i = call_count[0]
+        call_count[0] += 1
+        if i < len(sequence):
+            resp = MagicMock()
+            resp.stop_reason = "tool_use"
+            resp.content = sequence[i]
+            return resp
+        resp = MagicMock()
+        resp.stop_reason = "end_turn"
+        resp.content = [MagicMock(type="text", text="Job complete!")]
+        return resp
+
+    with patch("orchestrator.anthropic.Anthropic") as mock_anthropic, \
+         patch("builtins.input", return_value="1"):
+        mock_anthropic.return_value.messages.create.side_effect = mock_create
+
+        pm = load_project("slay_hack")
+        job = ContentJob(
+            project="slay_hack", pm=pm,
+            brief="lipstick that lasts all day",
+            platforms=["instagram", "facebook"],
+            dry_run=True,
+        )
+        orch = Orchestrator(make_config())
+        result = orch.run(job)
+
+    assert result.status == JobStatus.COMPLETED
+    assert result.trend_data is not None
+    assert result.ideas is not None and len(result.ideas) >= 3
+    assert result.script is not None
+    assert result.qa_result is not None and result.qa_result.passed
+    assert result.growth_strategy is not None
+    assert result.community_faq_path is not None
+    assert len(result.checkpoint_log) == 4
+
+    job_file = tmp_path / "output" / "Slay Hack Agency" / result.id / "job.json"
+    assert job_file.exists()
+
+    faq_file = Path(result.community_faq_path)
+    assert faq_file.exists()
