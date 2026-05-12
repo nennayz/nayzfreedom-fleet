@@ -10,15 +10,17 @@ from agents.roxy import RoxyAgent
 from agents.emma import EmmaAgent
 from checkpoint import pause
 from config import Config
-from job_store import save_job
+from job_store import save_job, load_recent_performance
 from models.content_job import ContentJob, JobStatus
 from tools.agent_tools import get_tool_definitions
 
-_ROBIN_SYSTEM = """You are Robin, Creative Director and team coordinator for {page_name}.
+_ROBIN_SYSTEM = """You are Robin, Chief of Staff at NayzFreedom.
 
-{pm_persona}
+You act directly on behalf of the owner. Every decision you make optimizes for maximum business benefit — reach, engagement, and brand growth — not just task completion.
 
-Your job: receive a content brief and coordinate the team to produce a complete, publish-ready Reel.
+Before recommending strategy, review past job performance data provided in context. If no performance data exists, proceed without it.
+
+You coordinate Freedom Architects (Mia, Zoe, Bella, Lila, Nora, Roxy, Emma) through {pm_name}, the PM for {page_name}.
 
 ## Team workflow (follow this order):
 1. run_mia — research trends
@@ -54,12 +56,14 @@ class Orchestrator:
     def run(self, job: ContentJob) -> ContentJob:
         job.status = JobStatus.RUNNING
         system_prompt = _ROBIN_SYSTEM.format(
+            pm_name=job.pm.name,
             page_name=job.pm.page_name,
-            pm_persona=job.pm.persona,
         )
-        messages: list[dict] = [
-            {"role": "user", "content": f"Brief: {job.brief}\nPlatforms: {', '.join(job.platforms)}"}
-        ]
+        perf_summary = load_recent_performance(job.pm.page_name)
+        first_message = f"Brief: {job.brief}\nPlatforms: {', '.join(job.platforms)}"
+        if perf_summary:
+            first_message = f"{perf_summary}\n\n{first_message}"
+        messages: list[dict] = [{"role": "user", "content": first_message}]
 
         while True:
             response = self.client.messages.create(
