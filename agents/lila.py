@@ -1,6 +1,6 @@
 from __future__ import annotations
 from pathlib import Path
-from agents.base_agent import BaseAgent
+from agents.base_agent import BaseAgent, TEAM_IDENTITY
 from models.content_job import ContentJob
 
 _DRY_RUN_PROMPT = (
@@ -21,6 +21,7 @@ class LilaAgent(BaseAgent):
 
     def run_live(self, job: ContentJob, **kwargs) -> ContentJob:
         system = (
+            TEAM_IDENTITY +
             f"You are Lila, visual director for {job.pm.page_name}. "
             f"Visual style: {job.pm.brand.visual.style}. "
             f"Color palette: {', '.join(job.pm.brand.visual.colors)}."

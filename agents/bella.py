@@ -1,7 +1,7 @@
 from __future__ import annotations
 import json
 from pathlib import Path
-from agents.base_agent import BaseAgent
+from agents.base_agent import BaseAgent, TEAM_IDENTITY
 from models.content_job import ContentJob, Script
 
 _DRY_RUN_SCRIPT = Script(
@@ -33,6 +33,7 @@ class BellaAgent(BaseAgent):
     def run_live(self, job: ContentJob, **kwargs) -> ContentJob:
         idea = job.selected_idea
         system = (
+            TEAM_IDENTITY +
             f"You are Bella, a script writer for {job.pm.page_name}. "
             f"Script style: {job.pm.brand.script_style}. "
             f"Tone: {job.pm.brand.tone}. "

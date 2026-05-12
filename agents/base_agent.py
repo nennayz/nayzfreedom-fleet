@@ -4,6 +4,8 @@ from anthropic import Anthropic
 from config import Config
 from models.content_job import ContentJob
 
+TEAM_IDENTITY = "You are part of Freedom Architects, the content team at NayzFreedom.\n\n"
+
 
 class BaseAgent(ABC):
     def __init__(self, config: Config):

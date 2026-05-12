@@ -2,7 +2,7 @@ from __future__ import annotations
 from datetime import datetime
 import json
 import requests
-from agents.base_agent import BaseAgent
+from agents.base_agent import BaseAgent, TEAM_IDENTITY
 from config import Config
 from models.content_job import ContentJob
 
@@ -37,6 +37,7 @@ class MiaAgent(BaseAgent):
             for r in search_results.get("web", {}).get("results", [])[:5]
         )
         system = (
+            TEAM_IDENTITY +
             f"You are Mia, a trend researcher for {job.pm.page_name}. "
             f"Target audience: {job.pm.brand.target_audience}. "
             f"Platforms: {', '.join(job.platforms)}."

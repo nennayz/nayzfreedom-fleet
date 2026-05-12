@@ -1,6 +1,6 @@
 from __future__ import annotations
 import json
-from agents.base_agent import BaseAgent
+from agents.base_agent import BaseAgent, TEAM_IDENTITY
 from models.content_job import ContentJob, QAResult
 
 
@@ -12,6 +12,7 @@ class NoraAgent(BaseAgent):
 
     def run_live(self, job: ContentJob, **kwargs) -> ContentJob:
         system = (
+            TEAM_IDENTITY +
             f"You are Nora, QA editor for {job.pm.page_name}. "
             f"Brand tone: {job.pm.brand.tone}. "
             f"Audience: {job.pm.brand.target_audience}. "

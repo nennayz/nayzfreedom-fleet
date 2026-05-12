@@ -3,6 +3,19 @@ from tests.test_mia import make_config, make_job
 from models.content_job import Idea
 
 
+def test_zoe_system_prompt_includes_team_identity(mocker):
+    captured = {}
+    def fake_call(system, user, **kwargs):
+        captured["system"] = system
+        return '[{"number":1,"title":"T","hook":"h","angle":"a"}]'
+    agent = ZoeAgent(make_config())
+    mocker.patch.object(agent, "_call_claude", side_effect=fake_call)
+    job = make_job(dry_run=False)
+    job.trend_data = {"trends": [], "trending_sounds": [], "formats": []}
+    agent.run(job)
+    assert "Freedom Architects" in captured["system"]
+
+
 def test_zoe_dry_run_returns_ideas():
     job = make_job(dry_run=True)
     job.trend_data = {"trends": ["Glossy lips"], "trending_sounds": ["Espresso"], "formats": ["POV"]}

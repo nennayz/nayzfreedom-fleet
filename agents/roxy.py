@@ -1,7 +1,7 @@
 from __future__ import annotations
 import json
 from pathlib import Path
-from agents.base_agent import BaseAgent
+from agents.base_agent import BaseAgent, TEAM_IDENTITY
 from models.content_job import ContentJob, GrowthStrategy
 
 _DRY_RUN_STRATEGY = GrowthStrategy(
@@ -32,6 +32,7 @@ class RoxyAgent(BaseAgent):
 
     def run_live(self, job: ContentJob, **kwargs) -> ContentJob:
         system = (
+            TEAM_IDENTITY +
             f"You are Roxy, growth strategist for {job.pm.page_name}. "
             f"Target audience: {job.pm.brand.target_audience}. "
             f"Platforms: {', '.join(job.platforms)}."

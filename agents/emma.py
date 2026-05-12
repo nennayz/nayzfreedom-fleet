@@ -1,6 +1,6 @@
 from __future__ import annotations
 from pathlib import Path
-from agents.base_agent import BaseAgent
+from agents.base_agent import BaseAgent, TEAM_IDENTITY
 from models.content_job import ContentJob
 
 _DRY_RUN_FAQ = """# FAQ — Community Responses
@@ -25,6 +25,7 @@ class EmmaAgent(BaseAgent):
 
     def run_live(self, job: ContentJob, **kwargs) -> ContentJob:
         system = (
+            TEAM_IDENTITY +
             f"You are Emma, community manager for {job.pm.page_name}. "
             "Write warm, friendly, conversational responses. "
             f"Tone: {job.pm.brand.tone}."
