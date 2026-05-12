@@ -29,7 +29,7 @@ def load_recent_performance(page_name: str, limit: int = 5) -> str:
     page_dir = Path("output") / page_name
     if not page_dir.exists():
         return ""
-    job_files = sorted(page_dir.rglob("job.json"), key=lambda p: p.parent.name, reverse=True)[:limit]
+    job_files = sorted(page_dir.glob("*/job.json"), key=lambda p: p.parent.name, reverse=True)[:limit]
     lines = []
     for path in job_files:
         try:
@@ -39,7 +39,7 @@ def load_recent_performance(page_name: str, limit: int = 5) -> str:
                     f"Job {job.id} ({p.platform}): "
                     f"likes={p.likes}, reach={p.reach}, saves={p.saves}, shares={p.shares}"
                 )
-        except Exception:
+        except (json.JSONDecodeError, ValueError, OSError):
             continue
     if not lines:
         return ""
