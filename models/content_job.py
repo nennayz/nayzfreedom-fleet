@@ -1,7 +1,7 @@
 from __future__ import annotations
 from datetime import datetime
 from enum import Enum
-from typing import Optional
+from typing import Literal, Optional
 from pydantic import BaseModel, Field
 
 
@@ -52,7 +52,7 @@ class QAResult(BaseModel):
     passed: bool
     script_feedback: Optional[str] = None
     visual_feedback: Optional[str] = None
-    send_back_to: Optional[str] = None  # "bella" | "lila" | None
+    send_back_to: Optional[Literal["bella", "lila"]] = None
 
 
 class GrowthStrategy(BaseModel):
