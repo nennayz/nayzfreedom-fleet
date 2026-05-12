@@ -1,0 +1,51 @@
+from __future__ import annotations
+import json
+import requests
+from agents.base_agent import BaseAgent
+from config import Config
+from models.content_job import ContentJob
+
+_DRY_RUN_DATA = {
+    "trends": ["Glossy lips that don't budge", "Quiet luxury skincare", "5-minute GRWM"],
+    "trending_sounds": ["Espresso - Sabrina Carpenter", "Apple - Charli xcx"],
+    "formats": ["POV", "Get ready with me", "Before & after"],
+    "source": "dry-run mock",
+}
+
+_BRAVE_SEARCH_URL = "https://api.search.brave.com/res/v1/web/search"
+
+
+class MiaAgent(BaseAgent):
+    def run_dry(self, job: ContentJob, **kwargs) -> ContentJob:
+        job.trend_data = _DRY_RUN_DATA
+        job.stage = "mia_done"
+        return job
+
+    def run_live(self, job: ContentJob, **kwargs) -> ContentJob:
+        query = f"{job.brief} trend {' '.join(job.platforms)} 2025"
+        resp = requests.get(
+            _BRAVE_SEARCH_URL,
+            headers={"Accept": "application/json", "X-Subscription-Token": self.config.brave_search_api_key},
+            params={"q": query, "count": 10},
+        )
+        resp.raise_for_status()
+        search_results = resp.json()
+
+        snippets = "\n".join(
+            f"- {r['title']}: {r.get('description', '')}"
+            for r in search_results.get("web", {}).get("results", [])[:5]
+        )
+        system = (
+            f"You are Mia, a trend researcher for {job.pm.page_name}. "
+            f"Target audience: {job.pm.brand.target_audience}. "
+            f"Platforms: {', '.join(job.platforms)}."
+        )
+        user = (
+            f"Brief: {job.brief}\n\nSearch results:\n{snippets}\n\n"
+            "Return a JSON object with keys: trends (list of str), "
+            "trending_sounds (list of str), formats (list of str). JSON only."
+        )
+        raw = self._call_claude(system, user)
+        job.trend_data = json.loads(raw)
+        job.stage = "mia_done"
+        return job
