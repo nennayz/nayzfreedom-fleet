@@ -1,4 +1,5 @@
 from agents.zoe import ZoeAgent
+from agents.base_agent import TEAM_IDENTITY
 from tests.test_mia import make_config, make_job
 from models.content_job import Idea
 
@@ -13,7 +14,7 @@ def test_zoe_system_prompt_includes_team_identity(mocker):
     job = make_job(dry_run=False)
     job.trend_data = {"trends": [], "trending_sounds": [], "formats": []}
     agent.run(job)
-    assert "Freedom Architects" in captured["system"]
+    assert captured["system"].startswith(TEAM_IDENTITY)
 
 
 def test_zoe_dry_run_returns_ideas():
