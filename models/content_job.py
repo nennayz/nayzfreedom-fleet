@@ -29,6 +29,7 @@ class BrandProfile(BaseModel):
 
 
 class PMProfile(BaseModel):
+    name: str
     page_name: str
     persona: str
     brand: BrandProfile

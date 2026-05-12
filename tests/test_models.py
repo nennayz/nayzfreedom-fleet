@@ -16,7 +16,7 @@ def make_brand():
     )
 
 def make_pm():
-    return PMProfile(page_name="Test Page", persona="You are a test PM.", brand=make_brand())
+    return PMProfile(name="Test", page_name="Test Page", persona="You are a test PM.", brand=make_brand())
 
 def test_content_job_defaults():
     job = ContentJob(project="test", pm=make_pm(), brief="test brief", platforms=["instagram"])
@@ -39,3 +39,7 @@ def test_qa_result_defaults():
     qa = QAResult(passed=True)
     assert qa.send_back_to is None
     assert qa.script_feedback is None
+
+def test_pm_profile_has_name():
+    pm = PMProfile(name="Slay", page_name="Slay Hack", persona="test", brand=make_brand())
+    assert pm.name == "Slay"

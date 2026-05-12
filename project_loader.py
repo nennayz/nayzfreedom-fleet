@@ -31,6 +31,7 @@ def load_project(project_slug: str) -> PMProfile:
         nora_max_retries=brand_data.get("nora_max_retries", 2),
     )
     return PMProfile(
+        name=pm_data["name"],
         page_name=pm_data["page_name"],
         persona=pm_data["persona"].strip(),
         brand=brand,

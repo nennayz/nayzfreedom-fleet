@@ -8,7 +8,7 @@ def make_job():
         mission="m", visual=VisualIdentity(colors=[], style=""), platforms=[],
         tone="", target_audience="", script_style="", nora_max_retries=2,
     )
-    pm = PMProfile(page_name="Test Page", persona="", brand=brand)
+    pm = PMProfile(name="Test", page_name="Test Page", persona="", brand=brand)
     return ContentJob(project="test", pm=pm, brief="b", platforms=[])
 
 
