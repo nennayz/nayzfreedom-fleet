@@ -13,8 +13,13 @@ def load_project(project_slug: str) -> PMProfile:
     if not base.exists():
         raise ProjectNotFoundError(f"Project '{project_slug}' not found in projects/")
 
-    pm_data = yaml.safe_load((base / "pm_profile.yaml").read_text())
-    brand_data = yaml.safe_load((base / "brand.yaml").read_text())
+    try:
+        pm_data = yaml.safe_load((base / "pm_profile.yaml").read_text())
+        brand_data = yaml.safe_load((base / "brand.yaml").read_text())
+    except FileNotFoundError as e:
+        raise ProjectNotFoundError(f"Missing required file in '{project_slug}': {e.filename}")
+    except yaml.YAMLError as e:
+        raise ProjectNotFoundError(f"Invalid YAML in '{project_slug}': {e}")
 
     brand = BrandProfile(
         mission=brand_data["mission"],

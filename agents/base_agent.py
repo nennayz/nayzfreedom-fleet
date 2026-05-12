@@ -25,10 +25,14 @@ class BaseAgent(ABC):
         pass
 
     def _call_claude(self, system: str, user: str, max_tokens: int = 2048) -> str:
+        from anthropic.types import TextBlock
         response = self.client.messages.create(
             model=self.model,
             max_tokens=max_tokens,
             system=[{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}],
             messages=[{"role": "user", "content": user}],
         )
-        return response.content[0].text
+        for block in response.content:
+            if isinstance(block, TextBlock):
+                return block.text
+        raise ValueError("No text block in Claude response")
