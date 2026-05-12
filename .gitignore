@@ -6,3 +6,9 @@ output/
 .mypy_cache/
 .ruff_cache/
 .superpowers/
+.pytest_cache/
+.DS_Store
+.coverage
+htmlcov/
+.env.local
+.env.*.local
