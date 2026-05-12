@@ -1,0 +1,11 @@
+mission: "Quiet Luxury content for Gen Z & Millennial women in USA"
+visual:
+  colors: ["#FFFFFF", "#F5F0E8", "#D4AF37", "#1A3A5C"]
+  style: "minimalist high-end, soft studio lighting"
+platforms:
+  - instagram
+  - facebook
+tone: "sassy, confident"
+target_audience: "Gen Z & Millennial women, USA"
+script_style: "lowercase Gen Z slang"
+nora_max_retries: 2
