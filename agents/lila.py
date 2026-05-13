@@ -1,5 +1,7 @@
 from __future__ import annotations
+import base64
 from pathlib import Path
+import openai
 from agents.base_agent import BaseAgent, TEAM_IDENTITY
 from models.content_job import ContentJob, ContentType, Script, ImageCaption, InfographicContent
 
@@ -23,6 +25,8 @@ _DRY_RUN_IMAGE = "assets/placeholder.png"
 
 class LilaAgent(BaseAgent):
     def run_dry(self, job: ContentJob, **kwargs) -> ContentJob:
+        if job.content_type is None:
+            raise ValueError(f"LilaAgent requires content_type to be set on job {job.id}")
         if job.content_type == ContentType.ARTICLE:
             job.stage = "lila_done"
             return job
@@ -36,6 +40,8 @@ class LilaAgent(BaseAgent):
         return job
 
     def run_live(self, job: ContentJob, **kwargs) -> ContentJob:
+        if job.content_type is None:
+            raise ValueError(f"LilaAgent requires content_type to be set on job {job.id}")
         if job.content_type == ContentType.ARTICLE:
             job.stage = "lila_done"
             return job
@@ -88,5 +94,25 @@ class LilaAgent(BaseAgent):
         (out_dir / "visual_prompt.txt").write_text(job.visual_prompt)
 
     def _generate_image(self, job: ContentJob) -> str:
-        # Phase 2: wire GPT Image 2 here
-        raise NotImplementedError("Image generation wired in Phase 2")
+        if not job.visual_prompt:
+            raise ValueError(f"visual_prompt must be set before image generation for job {job.id}")
+        client = openai.OpenAI(api_key=self.config.openai_api_key)
+        try:
+            response = client.images.generate(
+                model="gpt-image-1",
+                prompt=job.visual_prompt,
+                n=1,
+                size="1024x1024",
+                response_format="b64_json",
+            )
+        except openai.OpenAIError as e:
+            raise RuntimeError(
+                f"Image generation failed for job {job.id} "
+                f"({job.content_type}): {e}"
+            ) from e
+        image_bytes = base64.b64decode(response.data[0].b64_json)
+        out_dir = Path("output") / job.pm.page_name / job.id
+        out_dir.mkdir(parents=True, exist_ok=True)
+        image_path = out_dir / "image.png"
+        image_path.write_bytes(image_bytes)
+        return str(image_path)
