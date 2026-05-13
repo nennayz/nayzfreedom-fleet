@@ -1,7 +1,7 @@
 from __future__ import annotations
 from datetime import datetime
 from enum import Enum
-from typing import Annotated, Literal, Optional
+from typing import Annotated, Literal, Optional, Union
 from pydantic import BaseModel, Field
 
 
@@ -57,10 +57,37 @@ class Idea(BaseModel):
 
 
 class Script(BaseModel):
+    type: Literal["script"] = "script"
     hook: str
     body: str
     cta: str
     duration_seconds: int
+
+
+class Article(BaseModel):
+    type: Literal["article"] = "article"
+    heading: str
+    body: str
+    cta: str
+
+
+class ImageCaption(BaseModel):
+    type: Literal["image"] = "image"
+    caption: str
+    alt_text: str
+
+
+class InfographicContent(BaseModel):
+    type: Literal["infographic"] = "infographic"
+    title: str
+    points: list[str]
+    cta: str
+
+
+BellaOutput = Annotated[
+    Union[Script, Article, ImageCaption, InfographicContent],
+    Field(discriminator="type")
+]
 
 
 class QAResult(BaseModel):

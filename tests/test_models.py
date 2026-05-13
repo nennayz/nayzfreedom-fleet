@@ -3,7 +3,8 @@ from pydantic import ValidationError
 from models.content_job import (
     ContentJob, PMProfile, BrandProfile, VisualIdentity,
     Idea, Script, QAResult, GrowthStrategy, CheckpointDecision,
-    PostPerformance, JobStatus, ContentType
+    PostPerformance, JobStatus, ContentType,
+    Article, ImageCaption, InfographicContent, BellaOutput,
 )
 
 def make_brand():
@@ -72,3 +73,59 @@ def test_brand_profile_allowed_content_types_custom():
         allowed_content_types=[ContentType.VIDEO, ContentType.IMAGE],
     )
     assert brand.allowed_content_types == [ContentType.VIDEO, ContentType.IMAGE]
+
+
+def test_script_has_type_discriminator():
+    s = Script(hook="h", body="b", cta="c", duration_seconds=30)
+    assert s.type == "script"
+
+def test_article_model():
+    a = Article(heading="The Look", body="Step 1...", cta="Shop now")
+    assert a.type == "article"
+    assert a.heading == "The Look"
+
+def test_image_caption_model():
+    img = ImageCaption(caption="Soft glam vibes", alt_text="Woman in gold tones")
+    assert img.type == "image"
+    assert img.alt_text == "Woman in gold tones"
+
+def test_infographic_content_model():
+    inf = InfographicContent(title="5 Tips", points=["tip 1", "tip 2"], cta="Save this")
+    assert inf.type == "infographic"
+    assert len(inf.points) == 2
+
+def test_bella_output_json_roundtrip_script():
+    from pydantic import TypeAdapter
+    ta = TypeAdapter(BellaOutput)
+    original = Script(hook="h", body="b", cta="c", duration_seconds=45)
+    json_str = original.model_dump_json()
+    restored = ta.validate_json(json_str)
+    assert isinstance(restored, Script)
+    assert restored.hook == "h"
+
+def test_bella_output_json_roundtrip_article():
+    from pydantic import TypeAdapter
+    ta = TypeAdapter(BellaOutput)
+    original = Article(heading="Heading", body="Body text", cta="Click here")
+    json_str = original.model_dump_json()
+    restored = ta.validate_json(json_str)
+    assert isinstance(restored, Article)
+    assert restored.heading == "Heading"
+
+def test_bella_output_json_roundtrip_image():
+    from pydantic import TypeAdapter
+    ta = TypeAdapter(BellaOutput)
+    original = ImageCaption(caption="Glow up", alt_text="Woman posing")
+    json_str = original.model_dump_json()
+    restored = ta.validate_json(json_str)
+    assert isinstance(restored, ImageCaption)
+    assert restored.caption == "Glow up"
+
+def test_bella_output_json_roundtrip_infographic():
+    from pydantic import TypeAdapter
+    ta = TypeAdapter(BellaOutput)
+    original = InfographicContent(title="Tips", points=["a", "b"], cta="Save")
+    json_str = original.model_dump_json()
+    restored = ta.validate_json(json_str)
+    assert isinstance(restored, InfographicContent)
+    assert restored.title == "Tips"
