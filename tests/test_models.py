@@ -1,4 +1,3 @@
-import json
 import pytest
 from pydantic import TypeAdapter, ValidationError
 from models.content_job import (
@@ -147,3 +146,17 @@ def test_content_job_bella_output_article_roundtrip():
     restored = ContentJob.model_validate_json(json_str)
     assert isinstance(restored.bella_output, Article)
     assert restored.bella_output.heading == "Title"
+
+def test_content_job_content_type_roundtrip():
+    job = ContentJob(project="test", pm=make_pm(), brief="b", platforms=["instagram"])
+    job.content_type = ContentType.VIDEO
+    restored = ContentJob.model_validate_json(job.model_dump_json())
+    assert restored.content_type == ContentType.VIDEO
+
+def test_content_job_content_type_and_bella_output_roundtrip():
+    job = ContentJob(project="test", pm=make_pm(), brief="b", platforms=["instagram"])
+    job.content_type = ContentType.ARTICLE
+    job.bella_output = Article(heading="Title", body="Body text", cta="CTA")
+    restored = ContentJob.model_validate_json(job.model_dump_json())
+    assert restored.content_type == ContentType.ARTICLE
+    assert isinstance(restored.bella_output, Article)
