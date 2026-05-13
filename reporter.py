@@ -96,3 +96,97 @@ def collect_week_data(root: Path, today: date) -> dict[str, dict[str, PlatformSt
                 stats.top_job_reach = reach
 
     return result
+
+
+def _format_markdown(
+    page_name: str,
+    data: dict[str, PlatformStats],
+    start_date: date,
+    end_date: date,
+) -> str:
+    lines = [
+        f"# Weekly Report — {page_name} ({start_date} → {end_date})",
+        "",
+    ]
+    if not data:
+        lines.append("No performance data found for this period.")
+    else:
+        for platform, stats in sorted(data.items()):
+            lines += [
+                f"## {platform}",
+                f"- Jobs tracked: {stats.job_count}",
+                f"- Total reach: {stats.total_reach:,}",
+                f"- Total likes: {stats.total_likes:,}",
+                f"- Total saves: {stats.total_saves:,}",
+                f"- Total shares: {stats.total_shares:,}",
+            ]
+            if stats.top_job_id:
+                lines.append(
+                    f'- Top post: {stats.top_job_id} — "{stats.top_job_brief}"'
+                    f" (reach: {stats.top_job_reach:,})"
+                )
+            lines.append("")
+    lines += ["---", f"Generated: {end_date}"]
+    return "\n".join(lines)
+
+
+def _format_slack(
+    page_name: str,
+    data: dict[str, PlatformStats],
+    start_date: date,
+    end_date: date,
+) -> list[str]:
+    lines = [f":bar_chart: Weekly Report — {page_name} ({start_date} → {end_date})", ""]
+    if not data:
+        lines.append("No performance data found for this period.")
+    else:
+        for platform, stats in sorted(data.items()):
+            lines.append(f"{platform} — {stats.job_count} jobs")
+            lines.append(
+                f"  reach: {stats.total_reach:,} | likes: {stats.total_likes:,}"
+                f" | saves: {stats.total_saves:,} | shares: {stats.total_shares:,}"
+            )
+            if stats.top_job_id:
+                lines.append(
+                    f'  Top: {stats.top_job_id} — "{stats.top_job_brief}"'
+                    f" (reach {stats.top_job_reach:,})"
+                )
+            lines.append("")
+    return lines
+
+
+def run_reporter(dry_run: bool = False, root: Path | None = None) -> int:
+    _root = root if root is not None else _ROOT
+    today = date.today()
+    start_date = today - timedelta(days=6)
+
+    all_data = collect_week_data(_root, today)
+
+    if not all_data:
+        logger.warning("No performance data found for any page in the last 7 days.")
+        send_weekly_report(
+            [f":bar_chart: Weekly Report — no performance data found for {start_date} → {today}."],
+            dry_run=dry_run,
+        )
+        return 0
+
+    for page_name, page_data in sorted(all_data.items()):
+        md = _format_markdown(page_name, page_data, start_date, today)
+        out_path = _root / "output" / page_name / f"weekly_report_{today}.md"
+        try:
+            out_path.write_text(md)
+            logger.info("Report written to %s", out_path)
+        except OSError as exc:
+            logger.error("Failed to write report for %s: %s", page_name, exc)
+
+        slack_lines = _format_slack(page_name, page_data, start_date, today)
+        send_weekly_report(slack_lines, dry_run=dry_run)
+
+    return 0
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="NayzFreedom weekly performance reporter")
+    parser.add_argument("--dry-run", action="store_true", help="Print Slack message to stdout instead of posting")
+    args = parser.parse_args()
+    sys.exit(run_reporter(dry_run=args.dry_run))

@@ -220,3 +220,49 @@ def test_reporter_none_recorded_at_snapshot_not_preferred_over_dated(tmp_path):
     data = collect_week_data(tmp_path, TODAY)
 
     assert data["Slay Hack Agency"]["facebook"].total_reach == 800
+
+
+def test_reporter_writes_markdown_file(tmp_path):
+    job = _make_job("20260511_060000", brief="quiet luxury brands", performance=[
+        PostPerformance(platform="facebook", reach=3200, likes=80, saves=15, shares=7),
+    ])
+    _write_job(tmp_path, job)
+
+    with patch("reporter.send_weekly_report"):
+        from reporter import run_reporter
+        run_reporter(dry_run=True, root=tmp_path)
+
+    report_path = tmp_path / "output" / "Slay Hack Agency" / f"weekly_report_{date.today()}.md"
+    assert report_path.exists()
+    content = report_path.read_text()
+    assert "Weekly Report" in content
+    assert "3,200" in content
+    assert "quiet luxury brands" in content
+
+
+def test_reporter_no_data_sends_no_data_message(tmp_path):
+    (tmp_path / "output").mkdir(parents=True)
+
+    with patch("reporter.send_weekly_report") as mock_alert:
+        from reporter import run_reporter
+        run_reporter(dry_run=True, root=tmp_path)
+
+    mock_alert.assert_called_once()
+    lines = mock_alert.call_args.args[0]
+    assert any("no performance data" in line.lower() for line in lines)
+
+
+def test_reporter_calls_send_weekly_report_with_bar_chart(tmp_path):
+    today_id = date.today().strftime("%Y%m%d") + "_060000"
+    job = _make_job(today_id, brief="test", performance=[
+        PostPerformance(platform="facebook", reach=1000, likes=30, saves=5, shares=2),
+    ])
+    _write_job(tmp_path, job)
+
+    with patch("reporter.send_weekly_report") as mock_send:
+        from reporter import run_reporter
+        run_reporter(dry_run=False, root=tmp_path)
+
+    mock_send.assert_called()
+    lines = mock_send.call_args.args[0]
+    assert any(":bar_chart:" in line for line in lines)
