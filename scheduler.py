@@ -2,6 +2,7 @@ from __future__ import annotations
 import logging
 import subprocess
 import sys
+from datetime import datetime
 from pathlib import Path
 import yaml
 
@@ -27,7 +28,6 @@ _BRIEF_KEYS = list(_KEY_TO_CONTENT_TYPE.keys())
 
 
 def _today_name() -> str:
-    from datetime import datetime
     return datetime.now().strftime("%A").lower()
 
 
@@ -70,7 +70,12 @@ def run_scheduler(dry_run: bool = False, root: Path | None = None) -> int:
                 cmd.append("--dry-run")
 
             logger.info("Running: project=%s key=%s content_type=%s", project_slug, key, content_type)
-            result = subprocess.run(cmd)
+            try:
+                result = subprocess.run(cmd, cwd=_root, timeout=1800)
+            except subprocess.TimeoutExpired:
+                logger.error("TIMEOUT: project=%s key=%s", project_slug, key)
+                any_failed = True
+                continue
             if result.returncode != 0:
                 logger.error("FAILED: project=%s key=%s brief=%r", project_slug, key, brief)
                 any_failed = True
