@@ -58,7 +58,8 @@ class Orchestrator:
             "publish": PublishAgent(config),
         }
 
-    def run(self, job: ContentJob) -> ContentJob:
+    def run(self, job: ContentJob, unattended: bool = False) -> ContentJob:
+        self._unattended = unattended
         job.status = JobStatus.RUNNING
         system_prompt = _ROBIN_SYSTEM.format(
             pm_name=job.pm.name,
@@ -106,6 +107,7 @@ class Orchestrator:
                 summary=tool_input.get("summary"),
                 options=tool_input.get("options", []),
                 job=job,
+                unattended=self._unattended,
             )
             if tool_input.get("stage") == "idea_selection" and job.ideas is not None:
                 try:

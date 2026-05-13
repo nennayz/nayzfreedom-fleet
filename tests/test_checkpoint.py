@@ -1,6 +1,8 @@
+import sys
+import main as main_module
 from unittest.mock import patch
 from checkpoint import pause, CheckpointResult
-from models.content_job import ContentJob, PMProfile, BrandProfile, VisualIdentity
+from models.content_job import ContentJob, PMProfile, BrandProfile, VisualIdentity, ContentType
 
 
 def make_job():
@@ -58,3 +60,37 @@ def test_pause_unattended_does_not_call_input(monkeypatch):
     job = make_job()
     pause("qa_review", "summary", [], job, unattended=True)
     assert called == []
+
+
+def test_main_content_type_flag_sets_job_content_type(mocker, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    returned_job = make_job()
+    returned_job.status = __import__('models.content_job', fromlist=['JobStatus']).JobStatus.COMPLETED
+    mock_orch = mocker.patch.object(main_module.Orchestrator, "run", return_value=returned_job)
+    mocker.patch.object(main_module.Config, "from_env", return_value=mocker.MagicMock())
+    mocker.patch("main.load_project", return_value=make_job().pm)
+    sys.argv = ["main.py", "--project", "slay_hack", "--brief", "test brief", "--content-type", "article"]
+    try:
+        main_module.main()
+    except SystemExit:
+        pass
+    assert mock_orch.called
+    job_arg = mock_orch.call_args[0][0]
+    assert job_arg.content_type == ContentType.ARTICLE
+
+
+def test_main_unattended_flag_passed_to_orchestrator(mocker, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    returned_job = make_job()
+    returned_job.status = __import__('models.content_job', fromlist=['JobStatus']).JobStatus.COMPLETED
+    mock_run = mocker.patch.object(main_module.Orchestrator, "run", return_value=returned_job)
+    mocker.patch.object(main_module.Config, "from_env", return_value=mocker.MagicMock())
+    mocker.patch("main.load_project", return_value=make_job().pm)
+    sys.argv = ["main.py", "--project", "slay_hack", "--brief", "test brief", "--unattended"]
+    try:
+        main_module.main()
+    except SystemExit:
+        pass
+    assert mock_run.called
+    _, kwargs = mock_run.call_args
+    assert kwargs.get("unattended") is True

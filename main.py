@@ -26,6 +26,17 @@ def main() -> None:
     parser.add_argument("--dry-run", action="store_true", help="Run with mock data, no API calls")
     parser.add_argument("--schedule", action="store_true",
                         help="Schedule post at Roxy's recommended time instead of immediately")
+    parser.add_argument(
+        "--content-type",
+        choices=["video", "article", "image", "infographic"],
+        dest="content_type",
+        help="Pre-set content type (used by scheduler to skip AI inference)",
+    )
+    parser.add_argument(
+        "--unattended",
+        action="store_true",
+        help="Auto-approve all checkpoints — required when running from cron",
+    )
     args = parser.parse_args()
 
     try:
@@ -103,12 +114,15 @@ def main() -> None:
             dry_run=args.dry_run,
         )
         save_job(job)
+        if args.content_type:
+            from models.content_job import ContentType as CT
+            job.content_type = CT(args.content_type)
         print(f"Starting job {job.id} for {pm.page_name}")
         if args.dry_run:
             print("[DRY-RUN MODE] No real API calls will be made.\n")
 
     orchestrator = Orchestrator(config)
-    result = orchestrator.run(job)
+    result = orchestrator.run(job, unattended=args.unattended)
 
     if result.status == JobStatus.COMPLETED:
         out_dir = f"output/{result.pm.page_name}/{result.id}"
