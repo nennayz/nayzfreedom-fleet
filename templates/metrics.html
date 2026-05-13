@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Performance (Last 7 Days)</h1>
+{% if data %}
+{% for page_name, platforms in data.items() %}
+<h2>{{ page_name }}</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Platform</th><th>Jobs</th><th>Reach</th>
+      <th>Likes</th><th>Saves</th><th>Shares</th><th>Top Post</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for platform, stats in platforms.items() %}
+    <tr>
+      <td>{{ platform }}</td>
+      <td>{{ stats.job_count }}</td>
+      <td>{{ "{:,}".format(stats.total_reach) }}</td>
+      <td>{{ "{:,}".format(stats.total_likes) }}</td>
+      <td>{{ "{:,}".format(stats.total_saves) }}</td>
+      <td>{{ "{:,}".format(stats.total_shares) }}</td>
+      <td>
+        {% if stats.top_job_id %}
+        <a href="/jobs/{{ stats.top_job_id }}">{{ stats.top_job_brief[:40] }}</a>
+        {% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endfor %}
+{% else %}
+<p>No performance data for the last 7 days.</p>
+{% endif %}
+{% endblock %}

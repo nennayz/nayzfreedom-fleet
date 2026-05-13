@@ -1,0 +1,13 @@
+{% set has_running = jobs | selectattr("status", "equalto", "running") | list %}
+<tbody{% if has_running %} hx-get="/jobs/partial" hx-trigger="every 10s" hx-swap="outerHTML"{% endif %}>
+{% for job in jobs %}
+<tr>
+  <td>{{ job.id[:8] }}</td>
+  <td><a href="/jobs/{{ job.id }}">{{ job.project }}</a></td>
+  <td>{{ job.brief[:60] }}{% if job.brief | length > 60 %}…{% endif %}</td>
+  <td>{{ job.content_type or "" }}</td>
+  <td><span class="badge badge-{{ job.status }}">{{ job.status }}</span></td>
+  <td>{{ job.stage }}</td>
+</tr>
+{% endfor %}
+</tbody>

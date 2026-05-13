@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Job: {{ job.id }}</h1>
+<p><strong>Project:</strong> {{ job.project }}</p>
+<p><strong>Brief:</strong> {{ job.brief }}</p>
+<p><strong>Platforms:</strong> {{ job.platforms | join(", ") }}</p>
+<p><strong>Content Type:</strong> {{ job.content_type or "—" }}</p>
+<p><strong>Status:</strong> <span class="badge badge-{{ job.status }}">{{ job.status }}</span></p>
+<p><strong>Stage:</strong> {{ job.stage }}</p>
+
+{% if job.bella_output %}
+<details>
+  <summary>Script</summary>
+  {% if job.bella_output.type == "script" %}
+  <p><strong>Hook:</strong> {{ job.bella_output.hook }}</p>
+  <p><strong>Body:</strong> {{ job.bella_output.body }}</p>
+  <p><strong>CTA:</strong> {{ job.bella_output.cta }}</p>
+  {% elif job.bella_output.type == "article" %}
+  <p><strong>Heading:</strong> {{ job.bella_output.heading }}</p>
+  <p><strong>Body:</strong> {{ job.bella_output.body }}</p>
+  <p><strong>CTA:</strong> {{ job.bella_output.cta }}</p>
+  {% elif job.bella_output.type == "image" %}
+  <p><strong>Caption:</strong> {{ job.bella_output.caption }}</p>
+  {% elif job.bella_output.type == "infographic" %}
+  <p><strong>Title:</strong> {{ job.bella_output.title }}</p>
+  {% endif %}
+</details>
+{% endif %}
+
+{% if job.growth_strategy %}
+<details>
+  <summary>Caption + Hashtags</summary>
+  <p>{{ job.growth_strategy.caption }}</p>
+  <p>{{ job.growth_strategy.hashtags | join(" ") }}</p>
+</details>
+{% endif %}
+
+{% if faq_content %}
+<details>
+  <summary>FAQ</summary>
+  <pre>{{ faq_content }}</pre>
+</details>
+{% endif %}
+
+{% if job.visual_prompt %}
+<details>
+  <summary>Visual Prompt</summary>
+  <p>{{ job.visual_prompt }}</p>
+</details>
+{% endif %}
+
+{% if job.checkpoint_log %}
+<details>
+  <summary>Checkpoint Log</summary>
+  <ul>
+  {% for c in job.checkpoint_log %}
+    <li>{{ c.stage }}: {{ c.decision }} ({{ c.timestamp }})</li>
+  {% endfor %}
+  </ul>
+</details>
+{% endif %}
+
+{% if job.publish_result %}
+<details>
+  <summary>Publish Result</summary>
+  <pre>{{ job.publish_result }}</pre>
+</details>
+{% endif %}
+{% endblock %}

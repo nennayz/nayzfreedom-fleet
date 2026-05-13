@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Jobs</h1>
+{% if jobs %}
+<table>
+  <thead>
+    <tr>
+      <th>Date</th>
+      <th>Project</th>
+      <th>Brief</th>
+      <th>Content Type</th>
+      <th>Status</th>
+      <th>Stage</th>
+    </tr>
+  </thead>
+  {% include "_jobs_partial.html" %}
+</table>
+{% else %}
+<p>No jobs yet.</p>
+{% endif %}
+{% endblock %}
