@@ -38,6 +38,7 @@ templates/
   trigger.html
 static/
   style.css
+  htmx.min.js
 tests/
   test_dashboard.py
 ```
@@ -157,6 +158,8 @@ Numbers formatted with comma separators. If no data: "No performance data for th
 
 Renders `trigger.html`. Project dropdown populated from `sorted(root.glob("projects/*/pm_profile.yaml"))` — shows available project slugs. Content type dropdown: `video`, `article`, `image`, `infographic`. Brief textarea. Dry Run checkbox (checked by default in development).
 
+Form has `onsubmit="return confirm('Start this pipeline run?')"` — browser confirmation dialog before submit. Prevents accidental runs.
+
 ### `POST /trigger` — Spawn pipeline
 
 Form fields: `project`, `brief`, `content_type`, `dry_run` (optional checkbox).
@@ -185,7 +188,7 @@ Redirect: `RedirectResponse("/", status_code=303)`.
 
 ### `base.html`
 
-Shared layout. Nav links: Jobs, Metrics, New Run. Loads HTMX from CDN (`unpkg.com/htmx.org`). Links `static/style.css`.
+Shared layout. Nav links: Jobs, Metrics, New Run. Loads HTMX from `static/htmx.min.js` (vendored — no CDN dependency). Links `static/style.css`.
 
 ### `jobs.html`, `job_detail.html`, `metrics.html`, `trigger.html`
 
