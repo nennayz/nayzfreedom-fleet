@@ -1,5 +1,4 @@
 import sys
-import main as main_module
 from unittest.mock import patch
 from checkpoint import pause, CheckpointResult
 from models.content_job import ContentJob, PMProfile, BrandProfile, VisualIdentity, ContentType
@@ -63,6 +62,7 @@ def test_pause_unattended_does_not_call_input(monkeypatch):
 
 
 def test_main_content_type_flag_sets_job_content_type(mocker, tmp_path, monkeypatch):
+    import main as main_module
     monkeypatch.chdir(tmp_path)
     returned_job = make_job()
     returned_job.status = __import__('models.content_job', fromlist=['JobStatus']).JobStatus.COMPLETED
@@ -80,6 +80,7 @@ def test_main_content_type_flag_sets_job_content_type(mocker, tmp_path, monkeypa
 
 
 def test_main_unattended_flag_passed_to_orchestrator(mocker, tmp_path, monkeypatch):
+    import main as main_module
     monkeypatch.chdir(tmp_path)
     returned_job = make_job()
     returned_job.status = __import__('models.content_job', fromlist=['JobStatus']).JobStatus.COMPLETED

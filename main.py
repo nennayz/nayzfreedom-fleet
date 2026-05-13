@@ -113,10 +113,10 @@ def main() -> None:
             platforms=platforms,
             dry_run=args.dry_run,
         )
-        save_job(job)
         if args.content_type:
             from models.content_job import ContentType as CT
             job.content_type = CT(args.content_type)
+        save_job(job)
         print(f"Starting job {job.id} for {pm.page_name}")
         if args.dry_run:
             print("[DRY-RUN MODE] No real API calls will be made.\n")
