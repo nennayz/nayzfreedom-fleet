@@ -97,7 +97,7 @@ def _fetch_tiktok(result: dict, job: ContentJob, config: Config) -> PostPerforma
             json={"filters": {"video_ids": [video_id]}},
         )
         query_resp.raise_for_status()
-        videos = query_resp.json().get("data", {}).get("videos", [])
+        videos = (query_resp.json().get("data") or {}).get("videos") or []
         matched = videos[0] if videos else None
         if not matched:
             return None
@@ -109,7 +109,7 @@ def _fetch_tiktok(result: dict, job: ContentJob, config: Config) -> PostPerforma
             json={"max_count": 10},
         )
         list_resp.raise_for_status()
-        videos = list_resp.json().get("data", {}).get("videos", [])
+        videos = (list_resp.json().get("data") or {}).get("videos") or []
         job_ts = _job_publish_time(job)
         matched = next(
             (v for v in videos if abs(v.get("create_time", 0) - job_ts) <= _TIKTOK_MATCH_WINDOW),

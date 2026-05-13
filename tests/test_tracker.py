@@ -139,6 +139,7 @@ def test_track_tiktok_resolves_video_id_and_fetches_metrics(mocker):
     assert p.reach == 8400
     assert p.shares == 47
     assert result.publish_result["tiktok"]["video_id"] == "vid-1"
+    mock_post.assert_called_once()
     call_url = mock_post.call_args[0][0]
     assert "video/list" in call_url
 
@@ -161,3 +162,13 @@ def test_track_tiktok_uses_cached_video_id(mocker):
     assert result.performance[0].likes == 300
     call_url = mock_post.call_args[0][0]
     assert "video/query" in call_url
+
+
+def test_track_tiktok_no_match_skips_gracefully(mocker):
+    mock_post = mocker.patch("tracker.requests.post")
+    mock_post.return_value.raise_for_status = mocker.MagicMock()
+    mock_post.return_value.json.return_value = {"data": {"videos": []}}
+    job = _make_published_job({"tiktok": {"status": "published", "publish_id": "pub-99"}})
+    job.id = "20260513_120000"
+    result = track_job(job, _make_config())
+    assert result.performance == []
