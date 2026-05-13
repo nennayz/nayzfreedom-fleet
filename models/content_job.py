@@ -53,6 +53,7 @@ class Idea(BaseModel):
     title: str
     hook: str
     angle: str
+    content_type: ContentType
 
 
 class Script(BaseModel):

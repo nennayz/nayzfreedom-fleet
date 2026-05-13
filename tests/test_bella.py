@@ -1,11 +1,12 @@
 from agents.bella import BellaAgent
 from tests.test_mia import make_config, make_job
-from models.content_job import Idea, Script
+from models.content_job import Idea, Script, ContentType
 
 
 def make_job_with_idea(dry_run=True):
     job = make_job(dry_run=dry_run)
-    job.selected_idea = Idea(number=1, title="Lip Hack", hook="pov your lips last all day", angle="Tutorial")
+    job.selected_idea = Idea(number=1, title="Lip Hack", hook="pov your lips last all day", angle="Tutorial",
+                             content_type=ContentType.VIDEO)
     return job
 
 

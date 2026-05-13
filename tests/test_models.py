@@ -32,8 +32,16 @@ def test_content_job_id_is_timestamp_format():
     assert len(job.id) == 15  # YYYYMMDD_HHMMSS
 
 def test_idea_model():
-    idea = Idea(number=1, title="Test Idea", hook="Test hook", angle="Tutorial")
+    idea = Idea(number=1, title="Test Idea", hook="Test hook", angle="Tutorial",
+                content_type=ContentType.VIDEO)
     assert idea.number == 1
+    assert idea.content_type == ContentType.VIDEO
+
+
+def test_idea_content_type_required():
+    import pytest
+    with pytest.raises(Exception):
+        Idea(number=1, title="Test", hook="h", angle="a")  # missing content_type
 
 def test_qa_result_defaults():
     qa = QAResult(passed=True)
