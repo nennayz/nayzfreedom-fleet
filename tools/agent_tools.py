@@ -39,6 +39,24 @@ def get_tool_definitions() -> list[dict]:
             "input_schema": {"type": "object", "properties": {}, "required": []},
         },
         {
+            "name": "run_publish",
+            "description": (
+                "Publish the approved content to Facebook and Instagram via Meta Graph API. "
+                "Call this as the final step after final_approval checkpoint. "
+                "Pass schedule=true to post at Roxy's recommended time instead of immediately."
+            ),
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "schedule": {
+                        "type": "boolean",
+                        "description": "If true, schedule post at best_post_time_utc. Default false.",
+                    }
+                },
+                "required": [],
+            },
+        },
+        {
             "name": "request_checkpoint",
             "description": (
                 "Pause pipeline and ask the user for input or approval. "

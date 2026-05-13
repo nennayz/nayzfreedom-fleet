@@ -200,6 +200,20 @@ def test_publish_missing_media_file_raises_value_error(tmp_path, monkeypatch):
         agent.run(job)
 
 
+def test_publish_tool_registered_in_agent_tools():
+    from tools.agent_tools import get_tool_definitions
+    names = [t["name"] for t in get_tool_definitions()]
+    assert "run_publish" in names
+
+
+def test_publish_agent_registered_in_orchestrator():
+    from orchestrator import Orchestrator
+    from config import Config
+    cfg = Config(anthropic_api_key="k", brave_search_api_key="b", openai_api_key="o")
+    orch = Orchestrator(cfg)
+    assert "publish" in orch.agents
+
+
 def test_publish_live_ig_reels_uses_resumable_upload(mocker, tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     vid_file = tmp_path / "video.mp4"

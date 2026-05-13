@@ -8,6 +8,7 @@ from agents.lila import LilaAgent
 from agents.nora import NoraAgent
 from agents.roxy import RoxyAgent
 from agents.emma import EmmaAgent
+from agents.publish import PublishAgent
 from checkpoint import pause
 from config import Config
 from job_store import save_job, load_recent_performance
@@ -36,8 +37,9 @@ You coordinate Freedom Architects (Mia, Zoe, Bella, Lila, Nora, Roxy, Emma) thro
 9. run_roxy — hashtags + caption + timing + editorial guidance
 10. run_emma — community FAQ
 11. request_checkpoint (stage: "final_approval") — final sign-off before publishing
+12. run_publish — publish to Meta (Facebook + Instagram). Pass schedule=true to post at Roxy's recommended time.
 
-Never skip a checkpoint. After final_approval, declare the job complete.
+Never skip a checkpoint. After run_publish completes, declare the job complete.
 """
 
 
@@ -53,6 +55,7 @@ class Orchestrator:
             "nora": NoraAgent(config),
             "roxy": RoxyAgent(config),
             "emma": EmmaAgent(config),
+            "publish": PublishAgent(config),
         }
 
     def run(self, job: ContentJob) -> ContentJob:
@@ -121,5 +124,8 @@ class Orchestrator:
         if agent_name not in self.agents:
             return {"error": f"Unknown tool: {tool_name}"}
 
-        self.agents[agent_name].run(job)
+        kwargs = {}
+        if agent_name == "publish" and "schedule" in tool_input:
+            kwargs["schedule"] = bool(tool_input["schedule"])
+        self.agents[agent_name].run(job, **kwargs)
         return {"status": "ok", "stage": job.stage}
