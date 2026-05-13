@@ -19,5 +19,7 @@ def test_load_missing_project_raises():
 
 def test_load_slay_hack_allowed_content_types():
     pm = load_project("slay_hack")
-    assert ContentType.VIDEO in pm.brand.allowed_content_types
-    assert ContentType.ARTICLE in pm.brand.allowed_content_types
+    assert set(pm.brand.allowed_content_types) == {
+        ContentType.VIDEO, ContentType.ARTICLE,
+        ContentType.IMAGE, ContentType.INFOGRAPHIC,
+    }
