@@ -20,6 +20,8 @@ Run the NayzFreedom pipeline unattended on a VPS, publishing 7 content pieces pe
 - Add `scheduler.py` — new entry-point script
 - Add `projects/slay_hack/weekly_calendar.yaml` — example weekly calendar (template for all brands)
 - Add `--content-type` flag to `main.py` — pre-sets `job.content_type` before Zoe runs (required so scheduler doesn't depend on AI inferring type from brief text)
+- Add `--unattended` flag to `main.py` — auto-approves all checkpoints so the pipeline runs without stdin
+- Modify `checkpoint.py` — respect `unattended` mode: auto-select first idea matching content type at `idea_selection`; log and continue at all other checkpoints
 - Add `tests/test_scheduler.py`
 - No changes to any agent, orchestrator, or model
 
@@ -37,6 +39,7 @@ cron (6 AM daily)
                                            --brief "<brief>"
                                            --content-type <type>
                                            --schedule
+                                           --unattended
                                            [--dry-run]
               log result (success / failure)
 ```
@@ -81,6 +84,19 @@ Brief keys map to content types:
 
 New argument `--content-type` (choices: `video`, `article`, `image`, `infographic`). When provided, sets `job.content_type` immediately after job creation, before the orchestrator runs. Zoe still generates ideas, but with the type pre-constrained via the system prompt context Robin passes.
 
+## Unattended Flag (`main.py` + `checkpoint.py`)
+
+New boolean argument `--unattended` on `main.py`. When set, passed into `checkpoint.pause()` via a parameter. Checkpoint behaviour in unattended mode:
+
+| Stage | Unattended behaviour |
+|---|---|
+| `idea_selection` | Auto-select the first idea whose `content_type` matches `job.content_type`. If none match, select the first idea overall. Log the auto-selected idea title. |
+| `content_review` | Log summary and continue — no user input |
+| `qa_review` | Log summary and continue — no user input |
+| `final_approval` | Log summary and continue — no user input |
+
+`checkpoint.pause()` signature gains an `unattended: bool = False` parameter. All existing callers pass the default, so interactive mode is unchanged.
+
 ## Error Handling
 
 | Scenario | Behaviour |
@@ -104,6 +120,9 @@ All tests in `tests/test_scheduler.py`. `subprocess.run` is mocked in all tests 
 | `test_scheduler_dry_run_passes_flag` | `--dry-run` forwarded to every `main.py` call |
 | `test_scheduler_exit_code_on_failure` | Any failed job → `scheduler.py` exits with code 1 |
 | `test_main_content_type_flag` | `--content-type video` sets `job.content_type = ContentType.VIDEO` before orchestrator runs |
+| `test_main_unattended_flag` | `--unattended` passed to orchestrator; `checkpoint.pause()` returns auto-decision without calling `input()` |
+| `test_checkpoint_unattended_idea_selection` | Auto-selects first idea matching content_type; falls back to first idea if no match |
+| `test_checkpoint_unattended_other_stages` | `content_review`, `qa_review`, `final_approval` return auto-approve decision without calling `input()` |
 
 ## Files
 
@@ -111,5 +130,6 @@ All tests in `tests/test_scheduler.py`. `subprocess.run` is mocked in all tests 
 |---|---|
 | Create | `scheduler.py` |
 | Create | `projects/slay_hack/weekly_calendar.yaml` |
-| Modify | `main.py` (add `--content-type` argument) |
+| Modify | `main.py` (add `--content-type` and `--unattended` arguments) |
+| Modify | `checkpoint.py` (add `unattended` parameter to `pause()`) |
 | Create | `tests/test_scheduler.py` |
