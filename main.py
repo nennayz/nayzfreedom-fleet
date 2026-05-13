@@ -54,7 +54,7 @@ def main() -> None:
     if args.track:
         try:
             job = find_job(args.track)
-        except FileNotFoundError as e:
+        except Exception as e:
             print(f"Error: {e}")
             sys.exit(1)
         if job.stage != "publish_done":
@@ -67,7 +67,7 @@ def main() -> None:
             print("No metrics available.")
         else:
             latest: dict = {}
-            for p in job.performance:
+            for p in sorted(job.performance, key=lambda x: x.recorded_at):
                 latest[p.platform] = p
             for platform, p in latest.items():
                 print(

@@ -1,5 +1,6 @@
 from __future__ import annotations
 from datetime import datetime, timezone
+import main as main_module
 from tracker import track_job
 from config import Config
 
@@ -178,18 +179,18 @@ def test_main_track_flag_dispatches_tracker(mocker, tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     from tests.test_publish import make_image_job, make_publish_config
     from job_store import save_job
+    import sys
 
     job = make_image_job(dry_run=False)
     job.stage = "publish_done"
     job.publish_result = {"facebook": {"status": "published", "id": "post-1"}}
     save_job(job)
 
-    mock_track = mocker.patch("main.track_job", return_value=job)
-    mocker.patch("main.Config.from_env", return_value=make_publish_config())
+    cfg = make_publish_config()
+    mock_track = mocker.patch.object(main_module, "track_job", return_value=job)
+    mocker.patch.object(main_module.Config, "from_env", return_value=cfg)
 
-    import sys
     sys.argv = ["main.py", "--track", job.id]
-    from main import main
-    main()
+    main_module.main()
 
-    mock_track.assert_called_once()
+    mock_track.assert_called_once_with(job, cfg)
