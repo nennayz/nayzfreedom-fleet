@@ -99,17 +99,22 @@ class Orchestrator:
     def _dispatch(self, tool_name: str, tool_input: dict, job: ContentJob) -> dict:
         if tool_name == "request_checkpoint":
             result = pause(
-                stage=tool_input["stage"],
-                summary=tool_input["summary"],
+                stage=tool_input.get("stage"),
+                summary=tool_input.get("summary"),
                 options=tool_input.get("options", []),
                 job=job,
             )
-            if tool_input["stage"] == "idea_selection" and job.ideas:
-                decision_num = int(result.decision)
-                job.selected_idea = next(
-                    i for i in job.ideas if i.number == decision_num
-                )
-                job.content_type = job.selected_idea.content_type
+            if tool_input.get("stage") == "idea_selection" and job.ideas is not None:
+                try:
+                    decision_num = int(result.decision)
+                    matched = next(
+                        (i for i in job.ideas if i.number == decision_num), None
+                    )
+                    if matched is not None:
+                        job.selected_idea = matched
+                        job.content_type = matched.content_type
+                except ValueError:
+                    pass  # non-numeric input — leave selected_idea and content_type as-is
             return {"decision": result.decision}
 
         agent_name = tool_name.replace("run_", "")

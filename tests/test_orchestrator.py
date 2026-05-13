@@ -73,8 +73,6 @@ def test_orchestrator_sets_content_type_at_idea_selection(mocker, tmp_path, monk
     monkeypatch.chdir(tmp_path)
     (tmp_path / "output").mkdir()
 
-    from unittest.mock import MagicMock
-
     orch = Orchestrator(make_config())
     job = make_job(dry_run=True)
     job.ideas = [
