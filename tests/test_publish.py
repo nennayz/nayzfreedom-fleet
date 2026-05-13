@@ -292,3 +292,84 @@ def test_publish_tiktok_article_excluded_from_platforms(mocker):
     assert job.publish_result["facebook"]["status"] == "published"
     assert mock_post.call_count == 1
     assert "page-123/feed" in mock_post.call_args[0][0]
+
+
+def test_publish_tiktok_video_init_upload_publish(mocker, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    vid_file = tmp_path / "video.mp4"
+    vid_file.write_bytes(b"MP4DATA")
+    mock_post = mocker.patch("agents.publish.requests.post")
+    mock_put = mocker.patch("agents.publish.requests.put")
+    init_resp = mocker.MagicMock()
+    init_resp.raise_for_status = mocker.MagicMock()
+    init_resp.json.return_value = {
+        "data": {"publish_id": "pub-1", "upload_url": "https://upload.tiktok.com/v1/upload"}
+    }
+    status_resp = mocker.MagicMock()
+    status_resp.raise_for_status = mocker.MagicMock()
+    status_resp.json.return_value = {"data": {"status": "PUBLISH_COMPLETE"}}
+    mock_post.side_effect = [init_resp, status_resp]
+    mock_put.return_value.raise_for_status = mocker.MagicMock()
+    agent = PublishAgent(make_publish_config())
+    job = make_video_job(dry_run=False, video_path=str(vid_file))
+    job.platforms = ["tiktok"]
+    job = agent.run(job)
+    assert mock_post.call_count == 2
+    init_url = mock_post.call_args_list[0][0][0]
+    assert "video/init" in init_url
+    assert mock_put.called
+    assert job.publish_result["tiktok"]["status"] == "published"
+    assert job.publish_result["tiktok"]["publish_id"] == "pub-1"
+
+
+def test_publish_tiktok_video_poll_timeout(mocker, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    vid_file = tmp_path / "video.mp4"
+    vid_file.write_bytes(b"MP4DATA")
+    mock_post = mocker.patch("agents.publish.requests.post")
+    mock_put = mocker.patch("agents.publish.requests.put")
+    mocker.patch("agents.publish.time.sleep")
+    init_resp = mocker.MagicMock()
+    init_resp.raise_for_status = mocker.MagicMock()
+    init_resp.json.return_value = {
+        "data": {"publish_id": "pub-2", "upload_url": "https://upload.tiktok.com/v1/upload"}
+    }
+    status_resp = mocker.MagicMock()
+    status_resp.raise_for_status = mocker.MagicMock()
+    status_resp.json.return_value = {"data": {"status": "PROCESSING"}}
+    mock_post.side_effect = [init_resp] + [status_resp] * 60
+    mock_put.return_value.raise_for_status = mocker.MagicMock()
+    agent = PublishAgent(make_publish_config())
+    job = make_video_job(dry_run=False, video_path=str(vid_file))
+    job.platforms = ["tiktok"]
+    job = agent.run(job)
+    assert job.publish_result["tiktok"]["status"] == "failed"
+    assert "timed out" in job.publish_result["tiktok"]["error"]
+
+
+def test_publish_tiktok_failure_does_not_affect_meta(mocker, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    vid_file = tmp_path / "video.mp4"
+    vid_file.write_bytes(b"MP4DATA")
+    mock_post = mocker.patch("agents.publish.requests.post")
+    mock_put = mocker.patch("agents.publish.requests.put")
+    fb_resp = mocker.MagicMock()
+    fb_resp.raise_for_status = mocker.MagicMock()
+    fb_resp.json.return_value = {"id": "fb-vid-1"}
+    init_resp = mocker.MagicMock()
+    init_resp.raise_for_status = mocker.MagicMock()
+    init_resp.json.return_value = {
+        "data": {"publish_id": "pub-3", "upload_url": "https://upload.tiktok.com/v1/upload"}
+    }
+    status_resp = mocker.MagicMock()
+    status_resp.raise_for_status = mocker.MagicMock()
+    status_resp.json.return_value = {"data": {"status": "FAILED", "fail_reason": "QUOTA_EXCEEDED"}}
+    mock_post.side_effect = [fb_resp, init_resp, status_resp]
+    mock_put.return_value.raise_for_status = mocker.MagicMock()
+    agent = PublishAgent(make_publish_config())
+    job = make_video_job(dry_run=False, video_path=str(vid_file))
+    job.platforms = ["facebook", "tiktok"]
+    job = agent.run(job)
+    assert job.publish_result["facebook"]["status"] == "published"
+    assert job.publish_result["tiktok"]["status"] == "failed"
+    assert "QUOTA_EXCEEDED" in job.publish_result["tiktok"]["error"]

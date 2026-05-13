@@ -1,5 +1,6 @@
 from __future__ import annotations
 import logging
+import time
 import requests
 from pathlib import Path
 from agents.base_agent import BaseAgent
@@ -97,7 +98,68 @@ class PublishAgent(BaseAgent):
         return self._post_tiktok_video(job, caption, token)
 
     def _post_tiktok_video(self, job: ContentJob, caption: str, token: str) -> dict:
-        raise NotImplementedError("_post_tiktok_video not yet implemented")
+        if not job.video_path:
+            raise ValueError(f"PublishAgent: video_path is None for job {job.id}")
+        headers = self._auth_headers(token)
+        file_size = Path(job.video_path).stat().st_size
+        total_chunk_count = (file_size + _TIKTOK_CHUNK_SIZE - 1) // _TIKTOK_CHUNK_SIZE
+        init_resp = requests.post(
+            f"{_TIKTOK_BASE}/post/publish/video/init/",
+            headers={**headers, "Content-Type": "application/json; charset=UTF-8"},
+            json={
+                "post_info": {
+                    "title": caption,
+                    "privacy_level": "PUBLIC_TO_EVERYONE",
+                    "disable_duet": False,
+                    "disable_comment": False,
+                    "disable_stitch": False,
+                },
+                "source_info": {
+                    "source": "FILE_UPLOAD",
+                    "video_size": file_size,
+                    "chunk_size": _TIKTOK_CHUNK_SIZE,
+                    "total_chunk_count": total_chunk_count,
+                },
+            },
+        )
+        init_resp.raise_for_status()
+        init_data = init_resp.json()["data"]
+        publish_id = init_data["publish_id"]
+        upload_url = init_data["upload_url"]
+        with open(job.video_path, "rb") as f:
+            for chunk_index in range(total_chunk_count):
+                chunk = f.read(_TIKTOK_CHUNK_SIZE)
+                start = chunk_index * _TIKTOK_CHUNK_SIZE
+                end = start + len(chunk) - 1
+                requests.put(
+                    upload_url,
+                    headers={
+                        **headers,
+                        "Content-Range": f"bytes {start}-{end}/{file_size}",
+                        "Content-Type": "video/mp4",
+                    },
+                    data=chunk,
+                ).raise_for_status()
+        elapsed = 0
+        while elapsed < _TIKTOK_POLL_TIMEOUT:
+            status_resp = requests.post(
+                f"{_TIKTOK_BASE}/post/publish/status/fetch/",
+                headers={**headers, "Content-Type": "application/json; charset=UTF-8"},
+                json={"publish_id": publish_id},
+            )
+            status_resp.raise_for_status()
+            status_data = status_resp.json().get("data", {})
+            status = status_data.get("status")
+            if status == "PUBLISH_COMPLETE":
+                return {"publish_id": publish_id, "status_code": "PUBLISH_COMPLETE"}
+            if status == "FAILED":
+                fail_reason = status_data.get("fail_reason", "unknown")
+                raise RuntimeError(f"TikTok publish failed: {fail_reason}")
+            time.sleep(_TIKTOK_POLL_INTERVAL)
+            elapsed += _TIKTOK_POLL_INTERVAL
+        raise TimeoutError(
+            f"timed out waiting for TikTok processing after {_TIKTOK_POLL_TIMEOUT}s"
+        )
 
     def _post_facebook(self, job: ContentJob, caption: str, scheduled_time: int | None) -> dict:
         token = self.config.meta_access_token
