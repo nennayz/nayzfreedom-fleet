@@ -1,11 +1,15 @@
+import json
 import pytest
-from pydantic import ValidationError
+from pydantic import TypeAdapter, ValidationError
 from models.content_job import (
     ContentJob, PMProfile, BrandProfile, VisualIdentity,
     Idea, Script, QAResult, GrowthStrategy, CheckpointDecision,
     PostPerformance, JobStatus, ContentType,
     Article, ImageCaption, InfographicContent, BellaOutput,
 )
+
+_BELLA_OUTPUT_ADAPTER = TypeAdapter(BellaOutput)
+
 
 def make_brand():
     return BrandProfile(
@@ -95,37 +99,51 @@ def test_infographic_content_model():
     assert len(inf.points) == 2
 
 def test_bella_output_json_roundtrip_script():
-    from pydantic import TypeAdapter
-    ta = TypeAdapter(BellaOutput)
     original = Script(hook="h", body="b", cta="c", duration_seconds=45)
     json_str = original.model_dump_json()
-    restored = ta.validate_json(json_str)
+    restored = _BELLA_OUTPUT_ADAPTER.validate_json(json_str)
     assert isinstance(restored, Script)
     assert restored.hook == "h"
 
 def test_bella_output_json_roundtrip_article():
-    from pydantic import TypeAdapter
-    ta = TypeAdapter(BellaOutput)
     original = Article(heading="Heading", body="Body text", cta="Click here")
     json_str = original.model_dump_json()
-    restored = ta.validate_json(json_str)
+    restored = _BELLA_OUTPUT_ADAPTER.validate_json(json_str)
     assert isinstance(restored, Article)
     assert restored.heading == "Heading"
 
 def test_bella_output_json_roundtrip_image():
-    from pydantic import TypeAdapter
-    ta = TypeAdapter(BellaOutput)
     original = ImageCaption(caption="Glow up", alt_text="Woman posing")
     json_str = original.model_dump_json()
-    restored = ta.validate_json(json_str)
+    restored = _BELLA_OUTPUT_ADAPTER.validate_json(json_str)
     assert isinstance(restored, ImageCaption)
     assert restored.caption == "Glow up"
 
 def test_bella_output_json_roundtrip_infographic():
-    from pydantic import TypeAdapter
-    ta = TypeAdapter(BellaOutput)
     original = InfographicContent(title="Tips", points=["a", "b"], cta="Save")
     json_str = original.model_dump_json()
-    restored = ta.validate_json(json_str)
+    restored = _BELLA_OUTPUT_ADAPTER.validate_json(json_str)
     assert isinstance(restored, InfographicContent)
     assert restored.title == "Tips"
+
+
+def test_content_job_has_content_type_and_bella_output():
+    job = ContentJob(project="test", pm=make_pm(), brief="b", platforms=["instagram"])
+    assert job.content_type is None
+    assert job.bella_output is None
+
+def test_content_job_bella_output_set_and_roundtrip():
+    job = ContentJob(project="test", pm=make_pm(), brief="b", platforms=["instagram"])
+    job.bella_output = Script(hook="h", body="b", cta="c", duration_seconds=30)
+    json_str = job.model_dump_json()
+    restored = ContentJob.model_validate_json(json_str)
+    assert isinstance(restored.bella_output, Script)
+    assert restored.bella_output.hook == "h"
+
+def test_content_job_bella_output_article_roundtrip():
+    job = ContentJob(project="test", pm=make_pm(), brief="b", platforms=["instagram"])
+    job.bella_output = Article(heading="Title", body="Body text", cta="CTA")
+    json_str = job.model_dump_json()
+    restored = ContentJob.model_validate_json(json_str)
+    assert isinstance(restored.bella_output, Article)
+    assert restored.bella_output.heading == "Title"
