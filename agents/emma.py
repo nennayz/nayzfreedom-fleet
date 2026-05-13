@@ -30,8 +30,14 @@ class EmmaAgent(BaseAgent):
             "Write warm, friendly, conversational responses. "
             f"Tone: {job.pm.brand.tone}."
         )
+        from models.content_job import Script
+        b = job.bella_output
+        if isinstance(b, Script):
+            content_context = f"{b.hook} — {b.body}"
+        else:
+            content_context = str(b)
         user = (
-            f"Brief: {job.brief}\nScript: {job.script.hook} — {job.script.body}\n\n"
+            f"Brief: {job.brief}\nScript: {content_context}\n\n"
             "Write a FAQ markdown with 3-5 likely comments and ideal responses. "
             "Use the brand's tone. Markdown only."
         )

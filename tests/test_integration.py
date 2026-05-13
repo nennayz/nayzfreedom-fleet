@@ -77,7 +77,7 @@ def test_full_dry_run_pipeline(tmp_path, monkeypatch):
     assert result.status == JobStatus.COMPLETED
     assert result.trend_data is not None
     assert result.ideas is not None and len(result.ideas) >= 3
-    assert result.script is not None
+    assert result.bella_output is not None
     assert result.qa_result is not None and result.qa_result.passed
     assert result.growth_strategy is not None
     assert result.community_faq_path is not None

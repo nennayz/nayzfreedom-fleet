@@ -65,7 +65,7 @@ def test_orchestrator_dry_run_completes(mocker, tmp_path, monkeypatch):
     assert result.status == JobStatus.COMPLETED
     assert result.trend_data is not None
     assert result.ideas is not None
-    assert result.script is not None
+    assert result.bella_output is not None
     assert len(result.checkpoint_log) == 4
 
 

@@ -134,7 +134,6 @@ class ContentJob(BaseModel):
     selected_idea: Optional[Idea] = None
     content_type: Optional[ContentType] = None
     bella_output: Optional[BellaOutput] = None
-    script: Optional[Script] = None   # kept for 2B-i, removed in 2B-ii
     visual_prompt: Optional[str] = None
     image_path: Optional[str] = None
     video_path: Optional[str] = None

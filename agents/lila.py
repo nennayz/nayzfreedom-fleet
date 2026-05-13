@@ -26,8 +26,10 @@ class LilaAgent(BaseAgent):
             f"Visual style: {job.pm.brand.visual.style}. "
             f"Color palette: {', '.join(job.pm.brand.visual.colors)}."
         )
+        from models.content_job import Script
+        hook_text = job.bella_output.hook if isinstance(job.bella_output, Script) else str(job.selected_idea.hook if job.selected_idea else job.brief)
         user = (
-            f"Script hook: {job.script.hook}\nBrief: {job.brief}\n"
+            f"Script hook: {hook_text}\nBrief: {job.brief}\n"
             "Write a single cinematic image generation prompt for this Reel's key visual. "
             "Be specific about lighting, composition, and mood. Plain text only."
         )

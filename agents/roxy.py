@@ -43,8 +43,10 @@ class RoxyAgent(BaseAgent):
             f"Target audience: {job.pm.brand.target_audience}. "
             f"Platforms: {', '.join(job.platforms)}."
         )
+        from models.content_job import Script
+        hook_text = job.bella_output.hook if isinstance(job.bella_output, Script) else str(job.selected_idea.hook if job.selected_idea else job.brief)
         user = (
-            f"Brief: {job.brief}\nScript hook: {job.script.hook}\n"
+            f"Brief: {job.brief}\nScript hook: {hook_text}\n"
             "Provide 5-10 hashtags, a short caption, and optimal post times for USA audience. "
             "Return JSON with keys: hashtags (list of str), caption (str), "
             "best_post_time_utc (str HH:MM), best_post_time_thai (str HH:MM). JSON only."

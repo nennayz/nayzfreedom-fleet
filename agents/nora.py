@@ -18,10 +18,14 @@ class NoraAgent(BaseAgent):
             f"Audience: {job.pm.brand.target_audience}. "
             "Be strict. Reject weak hooks, off-brand visuals, and anything that feels generic."
         )
+        from models.content_job import Script
+        b = job.bella_output
+        if isinstance(b, Script):
+            content_summary = f"Script hook: {b.hook}\nScript body: {b.body}\nCTA: {b.cta}"
+        else:
+            content_summary = f"Content: {b}"
         user = (
-            f"Script hook: {job.script.hook}\n"
-            f"Script body: {job.script.body}\n"
-            f"CTA: {job.script.cta}\n"
+            f"{content_summary}\n"
             f"Visual prompt: {job.visual_prompt}\n\n"
             "Review this content. Return JSON with keys: passed (bool), "
             "script_feedback (str or null), visual_feedback (str or null), "
