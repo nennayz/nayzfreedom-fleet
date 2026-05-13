@@ -154,11 +154,13 @@ def test_scheduler_calls_notifier_on_failure(tmp_path, monkeypatch):
         sched_module.run_scheduler(dry_run=False, root=tmp_path)
     mock_alert.assert_called_once()
     failures = mock_alert.call_args.args[0]
+    total = mock_alert.call_args.args[2]
     assert len(failures) == 1
     assert failures[0]["project"] == "slay_hack"
     assert failures[0]["brief"] == "short_video_1"
     assert failures[0]["content_type"] == "video"
     assert failures[0]["exit_code"] == 1
+    assert total == 7
 
 
 def test_scheduler_does_not_call_notifier_on_success(tmp_path, monkeypatch):
