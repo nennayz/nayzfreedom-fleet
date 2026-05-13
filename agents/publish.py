@@ -221,17 +221,23 @@ class PublishAgent(BaseAgent):
         init_resp.raise_for_status()
         upload_uri = init_resp.headers["Location"]
         with open(job.video_path, "rb") as f:
-            upload_resp = requests.put(
-                upload_uri,
-                headers={
-                    "Content-Type": "video/*",
-                    "Content-Length": str(file_size),
-                },
-                data=f,
-            )
+            video_bytes = f.read()
+        upload_resp = requests.put(
+            upload_uri,
+            headers={
+                "Content-Type": "video/*",
+                "Content-Length": str(file_size),
+            },
+            data=video_bytes,
+        )
         upload_resp.raise_for_status()
-        video_id = upload_resp.json()["id"]
-        return {"id": video_id, "status_code": "uploaded"}
+        resp_data = upload_resp.json()
+        if "id" not in resp_data:
+            raise RuntimeError(
+                f"YouTube upload did not return a video id "
+                f"(status {upload_resp.status_code}): {resp_data}"
+            )
+        return {"id": resp_data["id"], "status_code": "uploaded"}
 
     def _youtube_scheduled_iso(self, scheduled_time: int) -> str:
         # used by _post_youtube_video (Task 2)
