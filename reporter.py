@@ -174,6 +174,7 @@ def run_reporter(dry_run: bool = False, root: Path | None = None) -> int:
         md = _format_markdown(page_name, page_data, start_date, today)
         out_path = _root / "output" / page_name / f"weekly_report_{today}.md"
         try:
+            out_path.parent.mkdir(parents=True, exist_ok=True)
             out_path.write_text(md)
             logger.info("Report written to %s", out_path)
         except OSError as exc:

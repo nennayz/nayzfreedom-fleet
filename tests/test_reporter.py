@@ -223,7 +223,8 @@ def test_reporter_none_recorded_at_snapshot_not_preferred_over_dated(tmp_path):
 
 
 def test_reporter_writes_markdown_file(tmp_path):
-    job = _make_job("20260511_060000", brief="quiet luxury brands", performance=[
+    today_id = date.today().strftime("%Y%m%d") + "_060000"
+    job = _make_job(today_id, brief="quiet luxury brands", performance=[
         PostPerformance(platform="facebook", reach=3200, likes=80, saves=15, shares=7),
     ])
     _write_job(tmp_path, job)
