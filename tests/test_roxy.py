@@ -23,6 +23,7 @@ def test_roxy_live_calls_claude(mocker):
     agent = RoxyAgent(make_config())
     job = agent.run(make_job_post_qa(dry_run=False))
     assert job.growth_strategy.hashtags == ["#LipHack", "#GlossyLips"]
+    assert job.growth_strategy.editorial_guidance == {}
 
 def test_roxy_dry_run_strategy_has_editorial_guidance():
     agent = RoxyAgent(make_config())
