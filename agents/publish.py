@@ -1,11 +1,16 @@
 from __future__ import annotations
 import logging
+import time
 import requests
 from pathlib import Path
 from agents.base_agent import BaseAgent
 from models.content_job import ContentJob, ContentType
 
 _META_GRAPH_BASE = "https://graph.facebook.com/v19.0"
+_TIKTOK_BASE = "https://open.tiktokapis.com/v2"
+_TIKTOK_CHUNK_SIZE = 10 * 1024 * 1024  # 10 MB
+_TIKTOK_POLL_INTERVAL = 5
+_TIKTOK_POLL_TIMEOUT = 300
 logger = logging.getLogger(__name__)
 
 
@@ -19,7 +24,7 @@ class PublishAgent(BaseAgent):
         schedule: bool = kwargs.get("schedule", False)
         effective_platforms = [
             p for p in job.platforms
-            if not (job.content_type == ContentType.ARTICLE and p == "instagram")
+            if not (job.content_type == ContentType.ARTICLE and p in ("instagram", "tiktok"))
         ]
         if job.content_type != ContentType.ARTICLE:
             media_path = job.video_path if job.content_type == ContentType.VIDEO else job.image_path
@@ -41,6 +46,11 @@ class PublishAgent(BaseAgent):
                     post_result = self._post_facebook(job, caption, scheduled_time)
                 elif platform == "instagram":
                     post_result = self._post_instagram(job, caption, scheduled_time)
+                elif platform == "tiktok":
+                    post_result = self._post_tiktok(job, caption)
+                    if post_result.get("status") == "skipped":
+                        result[platform] = post_result
+                        continue
                 else:
                     result[platform] = {"status": "skipped", "error": f"unsupported platform: {platform}"}
                     continue
@@ -80,6 +90,15 @@ class PublishAgent(BaseAgent):
 
     def _auth_headers(self, token: str) -> dict:
         return {"Authorization": f"Bearer {token}"}
+
+    def _post_tiktok(self, job: ContentJob, caption: str) -> dict:
+        if job.content_type != ContentType.VIDEO:
+            return {"status": "skipped", "reason": "image carousel requires public URL hosting"}
+        token = self.config.tiktok_access_token
+        return self._post_tiktok_video(job, caption, token)
+
+    def _post_tiktok_video(self, job: ContentJob, caption: str, token: str) -> dict:
+        raise NotImplementedError("_post_tiktok_video not yet implemented")
 
     def _post_facebook(self, job: ContentJob, caption: str, scheduled_time: int | None) -> dict:
         token = self.config.meta_access_token

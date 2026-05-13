@@ -11,6 +11,7 @@ def make_publish_config():
         meta_access_token="meta-token",
         meta_page_id="page-123",
         meta_ig_user_id="ig-456",
+        tiktok_access_token="tiktok-token",
     )
 
 
@@ -264,3 +265,28 @@ def test_publish_live_ig_reels_uses_resumable_upload(mocker, tmp_path, monkeypat
     assert "rupload.facebook.com" in upload_url
     assert "ig-456/media_publish" in publish_url
     assert job.publish_result["instagram"]["status"] == "published"
+
+
+def test_publish_tiktok_image_skips_with_reason(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    img_file = tmp_path / "image.png"
+    img_file.write_bytes(b"PNG")
+    agent = PublishAgent(make_publish_config())
+    job = make_image_job(dry_run=False)
+    job.image_path = str(img_file)
+    job.platforms = ["tiktok"]
+    job = agent.run(job)
+    assert job.publish_result["tiktok"]["status"] == "skipped"
+    assert "public URL" in job.publish_result["tiktok"]["reason"]
+
+
+def test_publish_tiktok_article_excluded_from_platforms(mocker):
+    mock_post = mocker.patch("agents.publish.requests.post")
+    mock_post.return_value.raise_for_status = mocker.MagicMock()
+    mock_post.return_value.json.return_value = {"id": "fb-1"}
+    agent = PublishAgent(make_publish_config())
+    job = make_article_job(dry_run=False)
+    job.platforms = ["facebook", "tiktok"]
+    job = agent.run(job)
+    assert "tiktok" not in job.publish_result
+    assert job.publish_result["facebook"]["status"] == "published"
