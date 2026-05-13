@@ -27,7 +27,7 @@ def _write_ideas_file(job: ContentJob) -> None:
     out_dir = Path("output") / job.pm.page_name / job.id
     out_dir.mkdir(parents=True, exist_ok=True)
     lines = [
-        f"{i.number}. **{i.title}** ({i.content_type})\n"
+        f"{i.number}. **{i.title}** ({i.content_type.value})\n"
         f"   Hook: {i.hook}\n   Angle: {i.angle}"
         for i in job.ideas
     ]

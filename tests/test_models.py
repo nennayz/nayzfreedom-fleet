@@ -1,3 +1,5 @@
+import pytest
+from pydantic import ValidationError
 from models.content_job import (
     ContentJob, PMProfile, BrandProfile, VisualIdentity,
     Idea, Script, QAResult, GrowthStrategy, CheckpointDecision,
@@ -39,8 +41,7 @@ def test_idea_model():
 
 
 def test_idea_content_type_required():
-    import pytest
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         Idea(number=1, title="Test", hook="h", angle="a")  # missing content_type
 
 def test_qa_result_defaults():

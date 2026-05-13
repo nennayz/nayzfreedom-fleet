@@ -41,7 +41,6 @@ def test_zoe_live_calls_claude(mocker):
 
 
 def test_zoe_dry_run_ideas_have_content_type():
-    from models.content_job import ContentType
     job = make_job(dry_run=True)
     job.trend_data = {"trends": [], "trending_sounds": [], "formats": []}
     agent = ZoeAgent(make_config())
