@@ -9,6 +9,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from job_store import find_job
 
 DASHBOARD_USER = os.environ.get("DASHBOARD_USER")
 DASHBOARD_PASSWORD = os.environ.get("DASHBOARD_PASSWORD")
@@ -49,6 +50,20 @@ def jobs_partial(request: Request, _: str = Depends(verify_auth)):
     from dashboard_store import list_all_jobs
     jobs = list_all_jobs(_root(request))
     return templates.TemplateResponse(request, "_jobs_partial.html", {"jobs": jobs})
+
+
+@app.get("/jobs/{job_id}", response_class=HTMLResponse)
+def job_detail(job_id: str, request: Request, _: str = Depends(verify_auth)):
+    try:
+        job = find_job(job_id)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Job {job_id!r} not found")
+    root = _root(request)
+    faq_path = root / "output" / job.pm.page_name / job_id / "faq.md"
+    faq_content = faq_path.read_text() if faq_path.exists() else None
+    return templates.TemplateResponse(
+        request, "job_detail.html", {"job": job, "faq_content": faq_content}
+    )
 
 
 if __name__ == "__main__":

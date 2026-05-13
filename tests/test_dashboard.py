@@ -95,3 +95,21 @@ def test_dashboard_refuses_start_without_env():
             os.environ["DASHBOARD_PASSWORD"] = saved_pass
         sys.modules.pop("dashboard", None)
         import dashboard  # noqa: F401  # re-import cleanly for subsequent tests
+
+
+def test_job_detail_404(client):
+    with patch.object(_dm, "find_job", side_effect=FileNotFoundError("not found")):
+        resp = client.get("/jobs/nonexistent_id", headers=_auth())
+    assert resp.status_code == 404
+
+
+def test_job_detail_shows_brief(tmp_path, client):
+    _write_job(tmp_path, "20260512_060000", brief="luxury brands are amazing")
+    from models.content_job import ContentJob
+    job = ContentJob.model_validate_json(
+        (tmp_path / "output" / "Slay Hack Agency" / "20260512_060000" / "job.json").read_text()
+    )
+    with patch.object(_dm, "find_job", return_value=job):
+        resp = client.get("/jobs/20260512_060000", headers=_auth())
+    assert resp.status_code == 200
+    assert "luxury brands are amazing" in resp.text
