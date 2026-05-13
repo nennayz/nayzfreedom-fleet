@@ -113,3 +113,23 @@ def test_job_detail_shows_brief(tmp_path, client):
         resp = client.get("/jobs/20260512_060000", headers=_auth())
     assert resp.status_code == 200
     assert "luxury brands are amazing" in resp.text
+
+
+def test_metrics_no_data(client):
+    resp = client.get("/metrics", headers=_auth())
+    assert resp.status_code == 200
+    assert "No performance data" in resp.text
+
+
+def test_metrics_shows_data(client):
+    from reporter import PlatformStats
+    fake_data = {
+        "Slay Hack Agency": {
+            "facebook": PlatformStats(job_count=3, total_reach=5000, total_likes=120),
+        }
+    }
+    with patch.object(_dm, "load_performance_all", return_value=fake_data):
+        resp = client.get("/metrics", headers=_auth())
+    assert resp.status_code == 200
+    assert "Slay Hack Agency" in resp.text
+    assert "5,000" in resp.text

@@ -9,6 +9,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from dashboard_store import list_all_jobs, load_performance_all
 from job_store import find_job
 
 DASHBOARD_USER = os.environ.get("DASHBOARD_USER")
@@ -40,14 +41,12 @@ def _root(request: Request) -> Path:
 
 @app.get("/", response_class=HTMLResponse)
 def jobs_list(request: Request, _: str = Depends(verify_auth)):
-    from dashboard_store import list_all_jobs
     jobs = list_all_jobs(_root(request))
     return templates.TemplateResponse(request, "jobs.html", {"jobs": jobs})
 
 
 @app.get("/jobs/partial", response_class=HTMLResponse)
 def jobs_partial(request: Request, _: str = Depends(verify_auth)):
-    from dashboard_store import list_all_jobs
     jobs = list_all_jobs(_root(request))
     return templates.TemplateResponse(request, "_jobs_partial.html", {"jobs": jobs})
 
@@ -64,6 +63,12 @@ def job_detail(job_id: str, request: Request, _: str = Depends(verify_auth)):
     return templates.TemplateResponse(
         request, "job_detail.html", {"job": job, "faq_content": faq_content}
     )
+
+
+@app.get("/metrics", response_class=HTMLResponse)
+def metrics(request: Request, _: str = Depends(verify_auth)):
+    data = load_performance_all(_root(request))
+    return templates.TemplateResponse(request, "metrics.html", {"data": data})
 
 
 if __name__ == "__main__":
