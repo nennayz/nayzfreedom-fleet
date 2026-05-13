@@ -1,10 +1,12 @@
 from __future__ import annotations
+import logging
 import requests
 from pathlib import Path
 from agents.base_agent import BaseAgent
 from models.content_job import ContentJob, ContentType
 
 _META_GRAPH_BASE = "https://graph.facebook.com/v19.0"
+logger = logging.getLogger(__name__)
 
 
 class PublishAgent(BaseAgent):
@@ -68,34 +70,45 @@ class PublishAgent(BaseAgent):
                 scheduled += timedelta(days=1)
             return int(scheduled.timestamp())
         except Exception:
+            logger.warning(
+                "PublishAgent: could not parse best_post_time_utc=%r for job %s — "
+                "falling back to immediate publish",
+                job.growth_strategy.best_post_time_utc,
+                job.id,
+            )
             return None
+
+    def _auth_headers(self, token: str) -> dict:
+        return {"Authorization": f"Bearer {token}"}
 
     def _post_facebook(self, job: ContentJob, caption: str, scheduled_time: int | None) -> dict:
         token = self.config.meta_access_token
         page_id = self.config.meta_page_id
+        headers = self._auth_headers(token)
         if job.content_type == ContentType.ARTICLE:
             url = f"{_META_GRAPH_BASE}/{page_id}/feed"
-            data: dict = {"message": caption, "access_token": token}
+            data: dict = {"message": caption}
             if scheduled_time:
                 data["scheduled_publish_time"] = str(scheduled_time)
                 data["published"] = "false"
-            resp = requests.post(url, data=data)
+            resp = requests.post(url, data=data, headers=headers)
             resp.raise_for_status()
             return resp.json()
         media_path = job.image_path if job.content_type != ContentType.VIDEO else job.video_path
-        assert media_path is not None
+        if not media_path:
+            raise ValueError(f"PublishAgent: media_path is None for job {job.id}")
         if job.content_type == ContentType.VIDEO:
             url = f"{_META_GRAPH_BASE}/{page_id}/videos"
             caption_key = "description"
         else:
             url = f"{_META_GRAPH_BASE}/{page_id}/photos"
             caption_key = "caption"
-        data = {caption_key: caption, "access_token": token}
+        data = {caption_key: caption}
         if scheduled_time:
             data["scheduled_publish_time"] = str(scheduled_time)
             data["published"] = "false"
         with open(media_path, "rb") as f:
-            resp = requests.post(url, data=data, files={"source": f})
+            resp = requests.post(url, data=data, files={"source": f}, headers=headers)
         resp.raise_for_status()
         return resp.json()
 
@@ -114,17 +127,22 @@ class PublishAgent(BaseAgent):
         token: str,
         ig_user_id: str,
     ) -> dict:
-        assert job.image_path is not None
+        if not job.image_path:
+            raise ValueError(f"PublishAgent: image_path is None for job {job.id}")
+        headers = self._auth_headers(token)
         url = f"{_META_GRAPH_BASE}/{ig_user_id}/media"
-        data: dict = {"caption": caption, "access_token": token}
+        # Note: Meta IG Content Publishing API v19+ supports `source` (multipart) for direct
+        # file upload to container creation. If this fails at runtime, switch to `image_url`
+        # pointing to a publicly hosted URL.
+        data: dict = {"caption": caption}
         if scheduled_time:
             data["scheduled_publish_time"] = str(scheduled_time)
         with open(job.image_path, "rb") as f:
-            resp = requests.post(url, data=data, files={"source": f})
+            resp = requests.post(url, data=data, files={"source": f}, headers=headers)
         resp.raise_for_status()
         container_id = resp.json()["id"]
         pub_url = f"{_META_GRAPH_BASE}/{ig_user_id}/media_publish"
-        pub_resp = requests.post(pub_url, data={"creation_id": container_id, "access_token": token})
+        pub_resp = requests.post(pub_url, data={"creation_id": container_id}, headers=headers)
         pub_resp.raise_for_status()
         return pub_resp.json()
 
@@ -136,21 +154,22 @@ class PublishAgent(BaseAgent):
         token: str,
         ig_user_id: str,
     ) -> dict:
-        assert job.video_path is not None
+        if not job.video_path:
+            raise ValueError(f"PublishAgent: video_path is None for job {job.id}")
+        headers = self._auth_headers(token)
         file_size = Path(job.video_path).stat().st_size
         url = f"{_META_GRAPH_BASE}/{ig_user_id}/media"
         init_data: dict = {
             "media_type": "REELS",
             "upload_type": "resumable",
             "caption": caption,
-            "access_token": token,
         }
         if scheduled_time:
             init_data["scheduled_publish_time"] = str(scheduled_time)
         init_resp = requests.post(
             url,
             data=init_data,
-            headers={"file_size": str(file_size), "file_type": "video/mp4"},
+            headers={**headers, "file_size": str(file_size), "file_type": "video/mp4"},
         )
         init_resp.raise_for_status()
         init_json = init_resp.json()
@@ -171,6 +190,6 @@ class PublishAgent(BaseAgent):
             )
         upload_resp.raise_for_status()
         pub_url = f"{_META_GRAPH_BASE}/{ig_user_id}/media_publish"
-        pub_resp = requests.post(pub_url, data={"creation_id": container_id, "access_token": token})
+        pub_resp = requests.post(pub_url, data={"creation_id": container_id}, headers=headers)
         pub_resp.raise_for_status()
         return pub_resp.json()

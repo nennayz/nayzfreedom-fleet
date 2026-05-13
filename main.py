@@ -36,11 +36,16 @@ def main() -> None:
         except FileNotFoundError as e:
             print(f"Error: {e}")
             sys.exit(1)
+        if job.stage != "emma_done":
+            print(f"Error: job {job.id} is at stage '{job.stage}', expected 'emma_done'. "
+                  "Run the full pipeline first.")
+            sys.exit(1)
         print(f"Publishing job {job.id} for {job.pm.page_name} (schedule={args.schedule})")
         agent = PublishAgent(config)
         result = agent.run(job, schedule=args.schedule)
         save_job(result)
-        print(f"Publish complete: {result.publish_result}")
+        statuses = {p: v.get("status") for p, v in (result.publish_result or {}).items()}
+        print(f"Publish complete: {statuses}")
         return
 
     if args.resume:
