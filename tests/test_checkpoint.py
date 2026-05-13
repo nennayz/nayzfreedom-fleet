@@ -26,3 +26,29 @@ def test_pause_records_to_checkpoint_log():
     assert len(job.checkpoint_log) == 1
     assert job.checkpoint_log[0].stage == "ideation"
     assert job.checkpoint_log[0].decision == "skip"
+
+
+def test_pause_unattended_idea_selection_returns_1():
+    job = make_job()
+    result = pause("idea_selection", "Pick an idea.", ["Idea A", "Idea B"], job, unattended=True)
+    assert result.decision == "1"
+    assert result.stage == "idea_selection"
+    assert len(job.checkpoint_log) == 1
+    assert job.checkpoint_log[0].decision == "1"
+
+
+def test_pause_unattended_other_stages_returns_approved():
+    job = make_job()
+    for stage in ("content_review", "qa_review", "final_approval"):
+        job.checkpoint_log.clear()
+        result = pause(stage, "summary", [], job, unattended=True)
+        assert result.decision == "approved"
+        assert result.stage == stage
+
+
+def test_pause_unattended_does_not_call_input(monkeypatch):
+    called = []
+    monkeypatch.setattr("builtins.input", lambda _: called.append(1) or "x")
+    job = make_job()
+    pause("qa_review", "summary", [], job, unattended=True)
+    assert called == []

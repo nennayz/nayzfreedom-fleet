@@ -10,16 +10,27 @@ class CheckpointResult:
     decision: str
 
 
-def pause(stage: str, summary: str, options: list[str], job: ContentJob) -> CheckpointResult:
+def pause(
+    stage: str,
+    summary: str,
+    options: list[str],
+    job: ContentJob,
+    unattended: bool = False,
+) -> CheckpointResult:
     print(f"\n{'='*60}")
     print(f"  CHECKPOINT: {stage.upper().replace('_', ' ')}")
     print(f"{'='*60}")
     print(f"\n{summary}\n")
-    if options:
-        for i, opt in enumerate(options, 1):
-            print(f"  [{i}] {opt}")
-    print()
-    decision = input("Your choice (or type freely): ").strip()
+
+    if unattended:
+        decision = "1" if stage == "idea_selection" else "approved"
+        print(f"  [unattended] auto-decision: {decision}")
+    else:
+        if options:
+            for i, opt in enumerate(options, 1):
+                print(f"  [{i}] {opt}")
+        print()
+        decision = input("Your choice (or type freely): ").strip()
 
     job.checkpoint_log.append(
         CheckpointDecision(stage=stage, decision=decision, timestamp=datetime.now())
