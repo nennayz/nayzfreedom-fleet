@@ -84,7 +84,7 @@ def test_lila_live_image_calls_openai(mocker, tmp_path, monkeypatch):
     job = make_image_job(dry_run=False)
     job = agent.run(job)
     mock_client.images.generate.assert_called_once_with(
-        model="gpt-image-1",
+        model="gpt-image-2",
         prompt="gold lipstick on marble",
         n=1,
         size="1024x1024",
@@ -110,7 +110,7 @@ def test_lila_live_infographic_calls_openai(mocker, tmp_path, monkeypatch):
     job.bella_output = InfographicContent(title="T", points=["p1"], cta="c")
     job = agent.run(job)
     mock_client.images.generate.assert_called_once_with(
-        model="gpt-image-1",
+        model="gpt-image-2",
         prompt="clean white infographic layout",
         n=1,
         size="1024x1024",

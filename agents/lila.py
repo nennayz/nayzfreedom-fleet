@@ -147,7 +147,7 @@ class LilaAgent(BaseAgent):
         client = openai.OpenAI(api_key=self.config.openai_api_key)
         try:
             response = client.images.generate(
-                model="gpt-image-1",
+                model="gpt-image-2",
                 prompt=job.visual_prompt,
                 n=1,
                 size="1024x1024",
