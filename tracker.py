@@ -89,7 +89,19 @@ def _fetch_tiktok(result: dict, job: ContentJob, config: Config) -> PostPerforma
     token = config.tiktok_access_token
     headers = _auth_headers(token)
     video_id = result.get("video_id")
-    if not video_id:
+    if video_id:
+        query_resp = requests.post(
+            f"{_TIKTOK_BASE}/video/query/",
+            params={"fields": "id,like_count,view_count,share_count"},
+            headers={**headers, "Content-Type": "application/json; charset=UTF-8"},
+            json={"filters": {"video_ids": [video_id]}},
+        )
+        query_resp.raise_for_status()
+        videos = query_resp.json().get("data", {}).get("videos", [])
+        matched = videos[0] if videos else None
+        if not matched:
+            return None
+    else:
         list_resp = requests.post(
             f"{_TIKTOK_BASE}/video/list/",
             params={"fields": "id,create_time,like_count,view_count,share_count"},
@@ -112,18 +124,6 @@ def _fetch_tiktok(result: dict, job: ContentJob, config: Config) -> PostPerforma
             return None
         video_id = matched["id"]
         result["video_id"] = video_id
-    else:
-        query_resp = requests.post(
-            f"{_TIKTOK_BASE}/video/query/",
-            params={"fields": "id,like_count,view_count,share_count"},
-            headers={**headers, "Content-Type": "application/json; charset=UTF-8"},
-            json={"filters": {"video_ids": [video_id]}},
-        )
-        query_resp.raise_for_status()
-        videos = query_resp.json().get("data", {}).get("videos", [])
-        matched = videos[0] if videos else None
-        if not matched:
-            return None
     return PostPerformance(
         platform="tiktok",
         likes=matched.get("like_count"),
