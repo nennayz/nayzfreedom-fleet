@@ -106,3 +106,58 @@ def test_track_accumulates_snapshots(mocker):
     track_job(job, config)
     track_job(job, config)
     assert len(job.performance) == 2
+
+
+def test_track_tiktok_resolves_video_id_and_fetches_metrics(mocker):
+    mock_post = mocker.patch("tracker.requests.post")
+    mock_post.return_value.raise_for_status = mocker.MagicMock()
+    job = _make_published_job({"tiktok": {"status": "published", "publish_id": "pub-1"}})
+    job.id = "20260513_120000"
+    job_ts = int(
+        datetime.strptime("20260513_120000", "%Y%m%d_%H%M%S")
+        .replace(tzinfo=timezone.utc)
+        .timestamp()
+    )
+    mock_post.return_value.json.return_value = {
+        "data": {
+            "videos": [
+                {
+                    "id": "vid-1",
+                    "create_time": job_ts + 30,
+                    "like_count": 211,
+                    "view_count": 8400,
+                    "share_count": 47,
+                }
+            ]
+        }
+    }
+    result = track_job(job, _make_config())
+    assert len(result.performance) == 1
+    p = result.performance[0]
+    assert p.platform == "tiktok"
+    assert p.likes == 211
+    assert p.reach == 8400
+    assert p.shares == 47
+    assert result.publish_result["tiktok"]["video_id"] == "vid-1"
+    call_url = mock_post.call_args[0][0]
+    assert "video/list" in call_url
+
+
+def test_track_tiktok_uses_cached_video_id(mocker):
+    mock_post = mocker.patch("tracker.requests.post")
+    mock_post.return_value.raise_for_status = mocker.MagicMock()
+    mock_post.return_value.json.return_value = {
+        "data": {
+            "videos": [
+                {"id": "vid-2", "like_count": 300, "view_count": 9000, "share_count": 60}
+            ]
+        }
+    }
+    job = _make_published_job({
+        "tiktok": {"status": "published", "publish_id": "pub-2", "video_id": "vid-2"}
+    })
+    result = track_job(job, _make_config())
+    assert len(result.performance) == 1
+    assert result.performance[0].likes == 300
+    call_url = mock_post.call_args[0][0]
+    assert "video/query" in call_url
