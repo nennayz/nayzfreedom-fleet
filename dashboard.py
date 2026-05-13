@@ -41,14 +41,14 @@ def _root(request: Request) -> Path:
 def jobs_list(request: Request, _: str = Depends(verify_auth)):
     from dashboard_store import list_all_jobs
     jobs = list_all_jobs(_root(request))
-    return templates.TemplateResponse("jobs.html", {"request": request, "jobs": jobs})
+    return templates.TemplateResponse(request, "jobs.html", {"jobs": jobs})
 
 
 @app.get("/jobs/partial", response_class=HTMLResponse)
 def jobs_partial(request: Request, _: str = Depends(verify_auth)):
     from dashboard_store import list_all_jobs
     jobs = list_all_jobs(_root(request))
-    return templates.TemplateResponse("_jobs_partial.html", {"request": request, "jobs": jobs})
+    return templates.TemplateResponse(request, "_jobs_partial.html", {"jobs": jobs})
 
 
 if __name__ == "__main__":

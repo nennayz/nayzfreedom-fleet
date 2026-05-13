@@ -89,9 +89,9 @@ def test_dashboard_refuses_start_without_env():
         with pytest.raises(RuntimeError):
             import dashboard  # noqa: F401
     finally:
-        if saved_user:
+        if saved_user is not None:
             os.environ["DASHBOARD_USER"] = saved_user
-        if saved_pass:
+        if saved_pass is not None:
             os.environ["DASHBOARD_PASSWORD"] = saved_pass
         sys.modules.pop("dashboard", None)
         import dashboard  # noqa: F401  # re-import cleanly for subsequent tests
