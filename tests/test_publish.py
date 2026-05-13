@@ -290,3 +290,5 @@ def test_publish_tiktok_article_excluded_from_platforms(mocker):
     job = agent.run(job)
     assert "tiktok" not in job.publish_result
     assert job.publish_result["facebook"]["status"] == "published"
+    assert mock_post.call_count == 1
+    assert "page-123/feed" in mock_post.call_args[0][0]
