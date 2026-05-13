@@ -120,3 +120,57 @@ def test_publish_live_fb_schedule_flag_sends_scheduled_time(mocker, tmp_path, mo
     job = agent.run(job, schedule=True)
     assert "scheduled_publish_time" in str(mock_post.call_args)
     assert job.publish_result["facebook"]["status"] == "scheduled"
+
+
+def test_publish_live_ig_image_creates_container_then_publishes(mocker, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    img_file = tmp_path / "image.png"
+    img_file.write_bytes(b"PNG")
+    mock_post = mocker.patch("agents.publish.requests.post")
+    container_resp = mocker.MagicMock()
+    container_resp.raise_for_status = mocker.MagicMock()
+    container_resp.json.return_value = {"id": "container-1"}
+    publish_resp = mocker.MagicMock()
+    publish_resp.raise_for_status = mocker.MagicMock()
+    publish_resp.json.return_value = {"id": "ig-post-1"}
+    mock_post.side_effect = [container_resp, publish_resp]
+    agent = PublishAgent(make_publish_config())
+    job = make_image_job(dry_run=False)
+    job.image_path = str(img_file)
+    job.platforms = ["instagram"]
+    job = agent.run(job)
+    assert mock_post.call_count == 2
+    container_url = mock_post.call_args_list[0][0][0]
+    publish_url = mock_post.call_args_list[1][0][0]
+    assert "ig-456/media" in container_url
+    assert "ig-456/media_publish" in publish_url
+    assert job.publish_result["instagram"]["status"] == "published"
+
+
+def test_publish_live_ig_reels_uses_resumable_upload(mocker, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    vid_file = tmp_path / "video.mp4"
+    vid_file.write_bytes(b"MP4")
+    mock_post = mocker.patch("agents.publish.requests.post")
+    init_resp = mocker.MagicMock()
+    init_resp.raise_for_status = mocker.MagicMock()
+    init_resp.json.return_value = {"id": "container-2", "uri": "https://rupload.facebook.com/upload-123"}
+    upload_resp = mocker.MagicMock()
+    upload_resp.raise_for_status = mocker.MagicMock()
+    upload_resp.json.return_value = {"success": True}
+    publish_resp = mocker.MagicMock()
+    publish_resp.raise_for_status = mocker.MagicMock()
+    publish_resp.json.return_value = {"id": "reel-1"}
+    mock_post.side_effect = [init_resp, upload_resp, publish_resp]
+    agent = PublishAgent(make_publish_config())
+    job = make_video_job(dry_run=False, video_path=str(vid_file))
+    job.platforms = ["instagram"]
+    job = agent.run(job)
+    assert mock_post.call_count == 3
+    init_url = mock_post.call_args_list[0][0][0]
+    upload_url = mock_post.call_args_list[1][0][0]
+    publish_url = mock_post.call_args_list[2][0][0]
+    assert "ig-456/media" in init_url
+    assert "rupload.facebook.com" in upload_url
+    assert "ig-456/media_publish" in publish_url
+    assert job.publish_result["instagram"]["status"] == "published"
