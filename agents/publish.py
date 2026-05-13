@@ -172,8 +172,7 @@ class PublishAgent(BaseAgent):
     def _post_youtube(self, job: ContentJob, caption: str, scheduled_time: int | None) -> dict:
         if job.content_type != ContentType.VIDEO:
             return {"status": "skipped", "reason": "YouTube only supports video uploads"}
-        token = self._youtube_access_token(self.config)
-        return self._post_youtube_video(job, caption, scheduled_time, token)
+        raise NotImplementedError("_post_youtube_video not yet implemented")
 
     def _youtube_access_token(self, config) -> str:
         resp = requests.post(
@@ -194,6 +193,7 @@ class PublishAgent(BaseAgent):
         raise NotImplementedError("_post_youtube_video not yet implemented")
 
     def _youtube_scheduled_iso(self, scheduled_time: int) -> str:
+        # used by _post_youtube_video (Task 2)
         from datetime import datetime, timezone
         return datetime.fromtimestamp(scheduled_time, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 

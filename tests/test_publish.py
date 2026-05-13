@@ -403,3 +403,15 @@ def test_publish_youtube_article_excluded_from_platforms(mocker):
     assert job.publish_result["facebook"]["status"] == "published"
     assert mock_post.call_count == 1
     assert "page-123/feed" in mock_post.call_args_list[0][0][0]
+
+
+def test_publish_youtube_video_not_yet_implemented(mocker, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    vid_file = tmp_path / "video.mp4"
+    vid_file.write_bytes(b"MP4DATA")
+    agent = PublishAgent(make_publish_config())
+    job = make_video_job(dry_run=False, video_path=str(vid_file))
+    job.platforms = ["youtube"]
+    job = agent.run(job)
+    assert job.publish_result["youtube"]["status"] == "failed"
+    assert "not yet implemented" in job.publish_result["youtube"]["error"]
