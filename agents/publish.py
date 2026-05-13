@@ -205,7 +205,7 @@ class PublishAgent(BaseAgent):
             headers={
                 **self._auth_headers(token),
                 "Content-Type": "application/json",
-                "X-Upload-Content-Type": "video/*",
+                "X-Upload-Content-Type": "video/mp4",
                 "X-Upload-Content-Length": str(file_size),
             },
             json={
@@ -221,15 +221,14 @@ class PublishAgent(BaseAgent):
         init_resp.raise_for_status()
         upload_uri = init_resp.headers["Location"]
         with open(job.video_path, "rb") as f:
-            video_bytes = f.read()
-        upload_resp = requests.put(
-            upload_uri,
-            headers={
-                "Content-Type": "video/*",
-                "Content-Length": str(file_size),
-            },
-            data=video_bytes,
-        )
+            upload_resp = requests.put(
+                upload_uri,
+                headers={
+                    "Content-Type": "video/mp4",
+                    "Content-Length": str(file_size),
+                },
+                data=f,
+            )
         upload_resp.raise_for_status()
         resp_data = upload_resp.json()
         if "id" not in resp_data:
@@ -240,7 +239,6 @@ class PublishAgent(BaseAgent):
         return {"id": resp_data["id"], "status_code": "uploaded"}
 
     def _youtube_scheduled_iso(self, scheduled_time: int) -> str:
-        # used by _post_youtube_video (Task 2)
         from datetime import datetime, timezone
         return datetime.fromtimestamp(scheduled_time, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 

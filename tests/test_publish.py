@@ -429,6 +429,7 @@ def test_publish_youtube_video_upload(mocker, tmp_path, monkeypatch):
     init_url = mock_post.call_args_list[1][0][0]
     assert "youtube/v3/videos" in init_url
     assert mock_put.called
+    assert mock_put.call_args[1]["headers"]["Content-Type"] == "video/mp4"
     assert job.publish_result["youtube"]["status"] == "published"
     assert job.publish_result["youtube"]["id"] == "yt-1"
 
