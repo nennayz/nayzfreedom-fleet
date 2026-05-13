@@ -1,4 +1,5 @@
 from __future__ import annotations
+import subprocess
 import sys
 from pathlib import Path
 from unittest.mock import call, patch, MagicMock
@@ -118,3 +119,22 @@ def test_scheduler_exit_code_zero_on_all_success(tmp_path, monkeypatch):
     with patch("scheduler.subprocess.run", return_value=_make_ok_result()):
         exit_code = sched_module.run_scheduler(dry_run=False, root=tmp_path)
     assert exit_code == 0
+
+
+def test_scheduler_timeout_continues_and_sets_exit_1(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "projects" / "slay_hack").mkdir(parents=True)
+    import yaml
+    (tmp_path / "projects" / "slay_hack" / "weekly_calendar.yaml").write_text(
+        yaml.dump(MONDAY_CALENDAR)
+    )
+    monkeypatch.setattr(sched_module, "_today_name", lambda: "monday")
+    mock_proc = MagicMock()
+    timeout_exc = subprocess.TimeoutExpired(cmd=[], timeout=1800)
+    timeout_exc.process = mock_proc
+    side_effects = [timeout_exc] + [_make_ok_result()] * 6
+    with patch("scheduler.subprocess.run", side_effect=side_effects) as mock_run:
+        exit_code = sched_module.run_scheduler(dry_run=False, root=tmp_path)
+    assert mock_run.call_count == 7
+    assert exit_code == 1
+    mock_proc.kill.assert_called_once()

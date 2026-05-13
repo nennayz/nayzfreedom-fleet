@@ -57,6 +57,7 @@ class Orchestrator:
             "emma": EmmaAgent(config),
             "publish": PublishAgent(config),
         }
+        self._unattended: bool = False
 
     def run(self, job: ContentJob, unattended: bool = False) -> ContentJob:
         self._unattended = unattended

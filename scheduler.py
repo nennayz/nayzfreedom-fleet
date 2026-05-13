@@ -72,7 +72,10 @@ def run_scheduler(dry_run: bool = False, root: Path | None = None) -> int:
             logger.info("Running: project=%s key=%s content_type=%s", project_slug, key, content_type)
             try:
                 result = subprocess.run(cmd, cwd=_root, timeout=1800)
-            except subprocess.TimeoutExpired:
+            except subprocess.TimeoutExpired as exc:
+                if exc.process:
+                    exc.process.kill()
+                    exc.process.communicate()
                 logger.error("TIMEOUT: project=%s key=%s", project_slug, key)
                 any_failed = True
                 continue
