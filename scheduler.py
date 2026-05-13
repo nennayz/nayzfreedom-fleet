@@ -11,6 +11,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+_ROOT = Path(__file__).resolve().parent
+
 _KEY_TO_CONTENT_TYPE: dict[str, str] = {
     "short_video_1": "video",
     "short_video_2": "video",
@@ -29,8 +31,9 @@ def _today_name() -> str:
     return datetime.now().strftime("%A").lower()
 
 
-def run_scheduler(dry_run: bool = False) -> int:
-    calendars = sorted(Path("projects").glob("*/weekly_calendar.yaml"))
+def run_scheduler(dry_run: bool = False, root: Path | None = None) -> int:
+    _root = root if root is not None else _ROOT
+    calendars = sorted(_root.glob("projects/*/weekly_calendar.yaml"))
     if not calendars:
         logger.warning("No weekly_calendar.yaml found under projects/")
         return 0

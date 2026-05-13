@@ -40,7 +40,7 @@ def test_scheduler_loads_todays_brief(tmp_path, monkeypatch):
     )
     monkeypatch.setattr(sched_module, "_today_name", lambda: "monday")
     with patch("scheduler.subprocess.run", return_value=_make_ok_result()) as mock_run:
-        exit_code = sched_module.run_scheduler(dry_run=False)
+        exit_code = sched_module.run_scheduler(dry_run=False, root=tmp_path)
     assert exit_code == 0
     assert mock_run.call_count == 7
     calls_flat = [c.args[0] for c in mock_run.call_args_list]
@@ -58,7 +58,7 @@ def test_scheduler_skips_missing_day(tmp_path, monkeypatch):
     )
     monkeypatch.setattr(sched_module, "_today_name", lambda: "tuesday")
     with patch("scheduler.subprocess.run") as mock_run:
-        exit_code = sched_module.run_scheduler(dry_run=False)
+        exit_code = sched_module.run_scheduler(dry_run=False, root=tmp_path)
     assert mock_run.call_count == 0
     assert exit_code == 0
 
@@ -74,7 +74,7 @@ def test_scheduler_skips_blank_brief(tmp_path, monkeypatch):
     )
     monkeypatch.setattr(sched_module, "_today_name", lambda: "monday")
     with patch("scheduler.subprocess.run", return_value=_make_ok_result()) as mock_run:
-        exit_code = sched_module.run_scheduler(dry_run=False)
+        exit_code = sched_module.run_scheduler(dry_run=False, root=tmp_path)
     assert mock_run.call_count == 6
 
 
@@ -88,7 +88,7 @@ def test_scheduler_continues_after_failure(tmp_path, monkeypatch):
     monkeypatch.setattr(sched_module, "_today_name", lambda: "monday")
     results = [_make_fail_result()] + [_make_ok_result()] * 6
     with patch("scheduler.subprocess.run", side_effect=results) as mock_run:
-        exit_code = sched_module.run_scheduler(dry_run=False)
+        exit_code = sched_module.run_scheduler(dry_run=False, root=tmp_path)
     assert mock_run.call_count == 7
     assert exit_code == 1
 
@@ -102,7 +102,7 @@ def test_scheduler_dry_run_passes_flag(tmp_path, monkeypatch):
     )
     monkeypatch.setattr(sched_module, "_today_name", lambda: "monday")
     with patch("scheduler.subprocess.run", return_value=_make_ok_result()) as mock_run:
-        sched_module.run_scheduler(dry_run=True)
+        sched_module.run_scheduler(dry_run=True, root=tmp_path)
     for c in mock_run.call_args_list:
         assert "--dry-run" in c.args[0]
 
@@ -116,5 +116,5 @@ def test_scheduler_exit_code_zero_on_all_success(tmp_path, monkeypatch):
     )
     monkeypatch.setattr(sched_module, "_today_name", lambda: "monday")
     with patch("scheduler.subprocess.run", return_value=_make_ok_result()):
-        exit_code = sched_module.run_scheduler(dry_run=False)
+        exit_code = sched_module.run_scheduler(dry_run=False, root=tmp_path)
     assert exit_code == 0
