@@ -1,7 +1,7 @@
 from __future__ import annotations
 from datetime import datetime
 from enum import Enum
-from typing import Literal, Optional
+from typing import Annotated, Literal, Optional
 from pydantic import BaseModel, Field
 
 
@@ -11,6 +11,13 @@ class JobStatus(str, Enum):
     AWAITING_APPROVAL = "awaiting_approval"
     COMPLETED = "completed"
     FAILED = "failed"
+
+
+class ContentType(str, Enum):
+    VIDEO = "video"
+    ARTICLE = "article"
+    IMAGE = "image"
+    INFOGRAPHIC = "infographic"
 
 
 class VisualIdentity(BaseModel):
@@ -26,6 +33,12 @@ class BrandProfile(BaseModel):
     target_audience: str
     script_style: str
     nora_max_retries: int = 2
+    allowed_content_types: list[ContentType] = Field(
+        default_factory=lambda: [
+            ContentType.VIDEO, ContentType.IMAGE,
+            ContentType.INFOGRAPHIC, ContentType.ARTICLE,
+        ]
+    )
 
 
 class PMProfile(BaseModel):

@@ -1,7 +1,7 @@
 from models.content_job import (
     ContentJob, PMProfile, BrandProfile, VisualIdentity,
     Idea, Script, QAResult, GrowthStrategy, CheckpointDecision,
-    PostPerformance, JobStatus
+    PostPerformance, JobStatus, ContentType
 )
 
 def make_brand():
@@ -43,3 +43,23 @@ def test_qa_result_defaults():
 def test_pm_profile_has_name():
     pm = PMProfile(name="Slay", page_name="Slay Hack", persona="test", brand=make_brand())
     assert pm.name == "Slay"
+
+def test_content_type_values():
+    assert ContentType.VIDEO == "video"
+    assert ContentType.ARTICLE == "article"
+    assert ContentType.IMAGE == "image"
+    assert ContentType.INFOGRAPHIC == "infographic"
+
+def test_brand_profile_allowed_content_types_default():
+    brand = make_brand()
+    assert set(brand.allowed_content_types) == {
+        ContentType.VIDEO, ContentType.ARTICLE, ContentType.IMAGE, ContentType.INFOGRAPHIC
+    }
+
+def test_brand_profile_allowed_content_types_custom():
+    brand = BrandProfile(
+        mission="m", visual=VisualIdentity(colors=[], style=""),
+        platforms=["instagram"], tone="c", target_audience="t", script_style="s",
+        allowed_content_types=[ContentType.VIDEO, ContentType.IMAGE],
+    )
+    assert brand.allowed_content_types == [ContentType.VIDEO, ContentType.IMAGE]

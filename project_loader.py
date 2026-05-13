@@ -29,6 +29,10 @@ def load_project(project_slug: str) -> PMProfile:
         target_audience=brand_data["target_audience"],
         script_style=brand_data["script_style"],
         nora_max_retries=brand_data.get("nora_max_retries", 2),
+        allowed_content_types=brand_data.get(
+            "allowed_content_types",
+            ["video", "image", "infographic", "article"],
+        ),
     )
     return PMProfile(
         name=pm_data["name"],

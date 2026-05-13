@@ -1,6 +1,6 @@
 import pytest
 from project_loader import load_project, ProjectNotFoundError
-from models.content_job import PMProfile
+from models.content_job import PMProfile, ContentType
 
 
 def test_load_slay_hack():
@@ -16,3 +16,8 @@ def test_load_slay_hack():
 def test_load_missing_project_raises():
     with pytest.raises(ProjectNotFoundError, match="nonexistent"):
         load_project("nonexistent")
+
+def test_load_slay_hack_allowed_content_types():
+    pm = load_project("slay_hack")
+    assert ContentType.VIDEO in pm.brand.allowed_content_types
+    assert ContentType.ARTICLE in pm.brand.allowed_content_types

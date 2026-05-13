@@ -5,7 +5,14 @@ visual:
 platforms:
   - instagram
   - facebook
+  - tiktok
+  - youtube
 tone: "sassy, confident"
 target_audience: "Gen Z & Millennial women, USA"
 script_style: "lowercase Gen Z slang"
 nora_max_retries: 2
+allowed_content_types:
+  - video
+  - image
+  - infographic
+  - article
