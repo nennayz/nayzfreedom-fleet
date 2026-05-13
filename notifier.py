@@ -48,3 +48,32 @@ def send_slack_alert(
                 )
     except Exception as exc:  # noqa: BLE001
         print(f"WARNING: Failed to send Slack alert: {exc}", file=sys.stderr)
+
+
+def send_weekly_report(lines: list[str], dry_run: bool = False) -> None:
+    """Send a weekly performance report to Slack.
+
+    Args:
+        lines:   Lines of the report message to join and send.
+        dry_run: If True, print the message to stdout instead of posting.
+    """
+    message = "\n".join(lines)
+
+    if dry_run:
+        print(message)
+        return
+
+    url = os.environ.get("SLACK_WEBHOOK_URL")
+    if not url:
+        print("WARNING: SLACK_WEBHOOK_URL not set — skipping weekly report.", file=sys.stderr)
+        return
+
+    try:
+        with requests.post(url, json={"text": message}, timeout=10) as resp:
+            if not (200 <= resp.status_code < 300):
+                print(
+                    f"WARNING: Slack weekly report webhook returned status {resp.status_code}.",
+                    file=sys.stderr,
+                )
+    except Exception as exc:  # noqa: BLE001
+        print(f"WARNING: Failed to send weekly report: {exc}", file=sys.stderr)
