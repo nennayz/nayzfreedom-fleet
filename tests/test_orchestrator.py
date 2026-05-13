@@ -2,7 +2,7 @@ import json
 from unittest.mock import MagicMock, patch
 from orchestrator import Orchestrator
 from tests.test_mia import make_config, make_job
-from models.content_job import JobStatus
+from models.content_job import ContentType, Idea, JobStatus
 
 
 def _make_tool_use_block(name, tool_id="t1", input_data=None):
@@ -67,3 +67,30 @@ def test_orchestrator_dry_run_completes(mocker, tmp_path, monkeypatch):
     assert result.ideas is not None
     assert result.script is not None
     assert len(result.checkpoint_log) == 4
+
+
+def test_orchestrator_sets_content_type_at_idea_selection(mocker, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "output").mkdir()
+
+    from unittest.mock import MagicMock
+
+    orch = Orchestrator(make_config())
+    job = make_job(dry_run=True)
+    job.ideas = [
+        Idea(number=1, title="Lip Hack", hook="h", angle="Tutorial", content_type=ContentType.VIDEO),
+        Idea(number=2, title="Morning Routine", hook="h2", angle="Lifestyle", content_type=ContentType.ARTICLE),
+    ]
+
+    mock_checkpoint = MagicMock()
+    mock_checkpoint.decision = "2"
+    mocker.patch("orchestrator.pause", return_value=mock_checkpoint)
+
+    orch._dispatch(
+        "request_checkpoint",
+        {"stage": "idea_selection", "summary": "pick one", "options": ["1", "2"]},
+        job,
+    )
+
+    assert job.content_type == ContentType.ARTICLE
+    assert job.selected_idea.number == 2

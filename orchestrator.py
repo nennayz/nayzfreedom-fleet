@@ -24,14 +24,16 @@ You coordinate Freedom Architects (Mia, Zoe, Bella, Lila, Nora, Roxy, Emma) thro
 
 ## Team workflow (follow this order):
 1. run_mia — research trends
-2. run_zoe — generate ideas
+2. run_zoe — generate ideas (each idea has a content_type)
 3. request_checkpoint (stage: "idea_selection") — show ideas, wait for user to pick one
-4. run_bella — write script for the selected idea
-5. run_lila — create visual prompt and key image
-6. request_checkpoint (stage: "content_review") — show script and visual for approval
+4. run_bella — write content for the selected idea based on its content_type
+5. After Bella completes, check job.content_type:
+   - video, image, or infographic → run_lila (visual direction)
+   - article → skip run_lila entirely, go directly to step 6
+6. request_checkpoint (stage: "content_review") — show content and visual (if applicable) for approval
 7. run_nora — QA review. If QA fails and retry count < max_retries, re-run the relevant agent.
 8. request_checkpoint (stage: "qa_review") — show QA result
-9. run_roxy — hashtags + caption + timing
+9. run_roxy — hashtags + caption + timing + editorial guidance
 10. run_emma — community FAQ
 11. request_checkpoint (stage: "final_approval") — final sign-off before publishing
 
@@ -102,6 +104,12 @@ class Orchestrator:
                 options=tool_input.get("options", []),
                 job=job,
             )
+            if tool_input["stage"] == "idea_selection" and job.ideas:
+                decision_num = int(result.decision)
+                job.selected_idea = next(
+                    i for i in job.ideas if i.number == decision_num
+                )
+                job.content_type = job.selected_idea.content_type
             return {"decision": result.decision}
 
         agent_name = tool_name.replace("run_", "")
