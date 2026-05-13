@@ -22,6 +22,9 @@ if not DASHBOARD_USER or not DASHBOARD_PASSWORD:
 
 _ROOT = Path(__file__).resolve().parent
 
+VALID_CONTENT_TYPES = {"video", "article", "image", "infographic"}
+MAX_BRIEF_LEN = 2000
+
 app = FastAPI()
 app.mount("/static", StaticFiles(directory=str(_ROOT / "static")), name="static")
 templates = Jinja2Templates(directory=str(_ROOT / "templates"))
@@ -92,6 +95,10 @@ def trigger_run(
     valid = {p.parent.name for p in root.glob("projects/*/pm_profile.yaml")}
     if project not in valid:
         raise HTTPException(status_code=400, detail="Unknown project")
+    if content_type not in VALID_CONTENT_TYPES:
+        raise HTTPException(status_code=400, detail="Invalid content_type")
+    if len(brief) > MAX_BRIEF_LEN:
+        raise HTTPException(status_code=400, detail=f"Brief too long (max {MAX_BRIEF_LEN} chars)")
     cmd = [
         sys.executable, "main.py",
         "--project", project,
