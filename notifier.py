@@ -40,11 +40,11 @@ def send_slack_alert(
         return
 
     try:
-        resp = requests.post(url, json={"text": message}, timeout=10)
-        if resp.status_code >= 300:
-            print(
-                f"WARNING: Slack webhook returned status {resp.status_code}.",
-                file=sys.stderr,
-            )
+        with requests.post(url, json={"text": message}, timeout=10) as resp:
+            if not (200 <= resp.status_code < 300):
+                print(
+                    f"WARNING: Slack webhook returned status {resp.status_code}.",
+                    file=sys.stderr,
+                )
     except Exception as exc:  # noqa: BLE001
         print(f"WARNING: Failed to send Slack alert: {exc}", file=sys.stderr)
