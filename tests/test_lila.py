@@ -25,4 +25,45 @@ def test_lila_live_calls_claude_for_prompt(mocker):
     agent = LilaAgent(make_config())
     job = agent.run(make_job_with_bella_output(dry_run=False))
     assert job.visual_prompt == prompt
-    assert job.image_path == "output/test/image.png"
+    # VIDEO jobs produce a prompt but no image in Phase 1
+    assert job.image_path is None
+
+
+from models.content_job import ContentType, Article, ImageCaption, InfographicContent
+
+
+def make_article_job(dry_run=True):
+    from tests.test_bella import make_job_with_idea
+    job = make_job_with_idea(dry_run=dry_run, content_type=ContentType.ARTICLE)
+    job.bella_output = Article(heading="The Look", body="Step 1...", cta="Shop now")
+    return job
+
+
+def make_image_job(dry_run=True):
+    from tests.test_bella import make_job_with_idea
+    job = make_job_with_idea(dry_run=dry_run, content_type=ContentType.IMAGE)
+    job.bella_output = ImageCaption(caption="Soft glam", alt_text="Woman in gold tones")
+    return job
+
+
+def test_lila_skips_for_article():
+    agent = LilaAgent(make_config())
+    job = agent.run(make_article_job(dry_run=True))
+    assert job.visual_prompt is None
+    assert job.image_path is None
+    assert job.stage == "lila_done"
+
+
+def test_lila_dry_run_image_generates_prompt():
+    agent = LilaAgent(make_config())
+    job = agent.run(make_image_job(dry_run=True))
+    assert job.visual_prompt is not None
+    assert job.image_path is not None
+    assert job.stage == "lila_done"
+
+
+def test_lila_live_article_skips_claude(mocker):
+    mock_call = mocker.patch.object(LilaAgent, "_call_claude")
+    agent = LilaAgent(make_config())
+    agent.run(make_article_job(dry_run=False))
+    mock_call.assert_not_called()
