@@ -41,3 +41,17 @@ def load_project(project_slug: str) -> PMProfile:
         persona=pm_data["persona"].strip(),
         brand=brand,
     )
+
+
+def load_platform_specs(project_slug: str) -> dict[str, str]:
+    base = Path("projects") / project_slug
+    if not base.exists():
+        raise ProjectNotFoundError(f"Project '{project_slug}' not found in projects/")
+    specs_path = base / "platform_specs.yaml"
+    if not specs_path.exists():
+        return {}
+    try:
+        raw = yaml.safe_load(specs_path.read_text())
+    except yaml.YAMLError as e:
+        raise ProjectNotFoundError(f"Invalid YAML in platform_specs.yaml for '{project_slug}': {e}")
+    return {platform: data["editorial"] for platform, data in raw.items()}

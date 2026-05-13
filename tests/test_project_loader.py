@@ -1,5 +1,5 @@
 import pytest
-from project_loader import load_project, ProjectNotFoundError
+from project_loader import load_project, ProjectNotFoundError, load_platform_specs
 from models.content_job import PMProfile, ContentType
 
 
@@ -23,3 +23,15 @@ def test_load_slay_hack_allowed_content_types():
         ContentType.VIDEO, ContentType.ARTICLE,
         ContentType.IMAGE, ContentType.INFOGRAPHIC,
     }
+
+def test_load_platform_specs_slay_hack():
+    specs = load_platform_specs("slay_hack")
+    assert "instagram" in specs
+    assert "facebook" in specs
+    assert "tiktok" in specs
+    assert "youtube" in specs
+    assert len(specs["instagram"]) > 0
+
+def test_load_platform_specs_missing_project_raises():
+    with pytest.raises(ProjectNotFoundError):
+        load_platform_specs("nonexistent")

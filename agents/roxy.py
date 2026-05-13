@@ -3,12 +3,19 @@ import json
 from pathlib import Path
 from agents.base_agent import BaseAgent, TEAM_IDENTITY
 from models.content_job import ContentJob, GrowthStrategy
+from project_loader import load_platform_specs
 
 _DRY_RUN_STRATEGY = GrowthStrategy(
     hashtags=["#LongLastingLips","#GlossyLips","#LipHack","#QuietLuxury","#BeautyHacks","#GlowUp"],
     caption="the lip hack you didn't know you needed 💋 save this before your next glam sesh",
     best_post_time_utc="13:00",
     best_post_time_thai="20:00",
+    editorial_guidance={
+        "instagram": "Hook within 3 seconds. Caption under 150 chars. Hashtags in first comment.",
+        "facebook": "Conversational tone. 1-3 sentences. Hashtags optional, inline.",
+        "tiktok": "Text overlay on video. CTA in last 3 seconds. Sound-on assumed. Trending audio boosts reach.",
+        "youtube": "Thumbnail-first mindset. Title under 60 chars. Description with timestamps. First 30 seconds must hook.",
+    },
 )
 
 

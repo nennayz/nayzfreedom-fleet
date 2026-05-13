@@ -160,3 +160,18 @@ def test_content_job_content_type_and_bella_output_roundtrip():
     restored = ContentJob.model_validate_json(job.model_dump_json())
     assert restored.content_type == ContentType.ARTICLE
     assert isinstance(restored.bella_output, Article)
+
+def test_growth_strategy_editorial_guidance_default():
+    g = GrowthStrategy(
+        hashtags=["#a"], caption="cap",
+        best_post_time_utc="13:00", best_post_time_thai="20:00",
+    )
+    assert g.editorial_guidance == {}
+
+def test_growth_strategy_editorial_guidance_custom():
+    g = GrowthStrategy(
+        hashtags=["#a"], caption="cap",
+        best_post_time_utc="13:00", best_post_time_thai="20:00",
+        editorial_guidance={"instagram": "Hook within 3 seconds."},
+    )
+    assert g.editorial_guidance["instagram"] == "Hook within 3 seconds."

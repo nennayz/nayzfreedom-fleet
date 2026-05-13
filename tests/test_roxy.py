@@ -23,3 +23,10 @@ def test_roxy_live_calls_claude(mocker):
     agent = RoxyAgent(make_config())
     job = agent.run(make_job_post_qa(dry_run=False))
     assert job.growth_strategy.hashtags == ["#LipHack", "#GlossyLips"]
+
+def test_roxy_dry_run_strategy_has_editorial_guidance():
+    agent = RoxyAgent(make_config())
+    job = agent.run(make_job_post_qa(dry_run=True))
+    assert isinstance(job.growth_strategy.editorial_guidance, dict)
+    assert len(job.growth_strategy.editorial_guidance) > 0
+    assert "instagram" in job.growth_strategy.editorial_guidance

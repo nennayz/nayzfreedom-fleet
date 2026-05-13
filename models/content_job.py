@@ -102,6 +102,7 @@ class GrowthStrategy(BaseModel):
     caption: str
     best_post_time_utc: str
     best_post_time_thai: str
+    editorial_guidance: dict[str, str] = Field(default_factory=dict)
 
 
 class CheckpointDecision(BaseModel):

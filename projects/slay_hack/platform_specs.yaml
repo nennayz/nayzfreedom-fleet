@@ -1,0 +1,8 @@
+instagram:
+  editorial: "Hook within 3 seconds. Caption under 150 chars. Hashtags in first comment."
+facebook:
+  editorial: "Conversational tone. 1-3 sentences. Hashtags optional, inline."
+tiktok:
+  editorial: "Text overlay on video. CTA in last 3 seconds. Sound-on assumed. Trending audio boosts reach."
+youtube:
+  editorial: "Thumbnail-first mindset. Title under 60 chars. Description with timestamps. First 30 seconds must hook."
