@@ -3,7 +3,6 @@ import json
 from pathlib import Path
 from agents.base_agent import BaseAgent, TEAM_IDENTITY
 from models.content_job import ContentJob, GrowthStrategy
-from project_loader import load_platform_specs
 
 _DRY_RUN_STRATEGY = GrowthStrategy(
     hashtags=["#LongLastingLips","#GlossyLips","#LipHack","#QuietLuxury","#BeautyHacks","#GlowUp"],

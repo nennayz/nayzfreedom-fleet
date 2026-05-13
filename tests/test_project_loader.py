@@ -35,3 +35,11 @@ def test_load_platform_specs_slay_hack():
 def test_load_platform_specs_missing_project_raises():
     with pytest.raises(ProjectNotFoundError):
         load_platform_specs("nonexistent")
+
+def test_load_platform_specs_missing_file_returns_empty(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    project_dir = tmp_path / "projects" / "test_no_specs"
+    project_dir.mkdir(parents=True)
+    # No platform_specs.yaml — function should return {}
+    result = load_platform_specs("test_no_specs")
+    assert result == {}
