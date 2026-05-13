@@ -86,6 +86,11 @@ class Orchestrator:
                 save_job(job)
                 return job
 
+            if response.stop_reason != "tool_use":
+                job.status = JobStatus.FAILED
+                save_job(job)
+                raise RuntimeError(f"Unexpected stop_reason: {response.stop_reason}")
+
             tool_results = []
             for block in response.content:
                 if block.type != "tool_use":

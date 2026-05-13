@@ -92,3 +92,20 @@ def test_orchestrator_sets_content_type_at_idea_selection(mocker, tmp_path, monk
 
     assert job.content_type == ContentType.ARTICLE
     assert job.selected_idea.number == 2
+
+
+def test_orchestrator_raises_on_unexpected_stop_reason(mocker, tmp_path, monkeypatch):
+    import pytest
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "output").mkdir()
+
+    resp = MagicMock()
+    resp.stop_reason = "max_tokens"
+    resp.content = []
+    mocker.patch("orchestrator.anthropic.Anthropic").return_value.messages.create.return_value = resp
+
+    orch = Orchestrator(make_config())
+    job = make_job(dry_run=True)
+    with pytest.raises(RuntimeError, match="max_tokens"):
+        orch.run(job)
+    assert job.status == JobStatus.FAILED
