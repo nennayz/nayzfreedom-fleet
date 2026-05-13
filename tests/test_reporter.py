@@ -150,3 +150,73 @@ def test_reporter_skips_corrupt_job_file(tmp_path):
     data = collect_week_data(tmp_path, TODAY)  # must not raise
 
     assert data == {}
+
+
+def test_reporter_top_job_set_when_only_one_job(tmp_path):
+    job = _make_job(IN_WINDOW_ID, brief="only post", performance=[
+        PostPerformance(platform="facebook", reach=0, likes=0, saves=0, shares=0),
+    ])
+    _write_job(tmp_path, job)
+
+    from reporter import collect_week_data
+    data = collect_week_data(tmp_path, TODAY)
+
+    stats = data["Slay Hack Agency"]["facebook"]
+    assert stats.top_job_id == IN_WINDOW_ID
+    assert stats.top_job_brief == "only post"
+
+
+def test_reporter_top_job_tiebreaker_earlier_id_wins(tmp_path):
+    job1 = _make_job("20260511_060000", brief="earlier post", performance=[
+        PostPerformance(platform="facebook", reach=1000),
+    ])
+    job2 = _make_job("20260512_060000", brief="later post", performance=[
+        PostPerformance(platform="facebook", reach=1000),
+    ])
+    _write_job(tmp_path, job1)
+    _write_job(tmp_path, job2)
+
+    from reporter import collect_week_data
+    data = collect_week_data(tmp_path, TODAY)
+
+    assert data["Slay Hack Agency"]["facebook"].top_job_id == "20260511_060000"
+
+
+def test_reporter_aggregates_multi_platform_job(tmp_path):
+    job = _make_job(IN_WINDOW_ID, brief="multi platform", performance=[
+        PostPerformance(platform="facebook", reach=1000, likes=50, saves=10, shares=5),
+        PostPerformance(platform="instagram", reach=2000, likes=100, saves=20, shares=10),
+    ])
+    _write_job(tmp_path, job)
+
+    from reporter import collect_week_data
+    data = collect_week_data(tmp_path, TODAY)
+
+    assert data["Slay Hack Agency"]["facebook"].total_reach == 1000
+    assert data["Slay Hack Agency"]["instagram"].total_reach == 2000
+
+
+def test_reporter_output_dir_missing_returns_empty(tmp_path):
+    from reporter import collect_week_data
+    data = collect_week_data(tmp_path, TODAY)
+
+    assert data == {}
+
+
+def test_reporter_none_recorded_at_snapshot_not_preferred_over_dated(tmp_path):
+    dated = PostPerformance(
+        platform="facebook", reach=800, likes=20, saves=5, shares=3,
+        recorded_at=datetime(2026, 5, 12, 6, 0),
+    )
+    undated = PostPerformance(
+        platform="facebook", reach=300, likes=5, saves=1, shares=1,
+        recorded_at=None,
+    )
+    # undated appears after dated — should not replace it
+    job = _make_job(IN_WINDOW_ID, brief="none recorded_at test", performance=[dated, undated])
+    _write_job(tmp_path, job)
+
+    from reporter import collect_week_data
+    data = collect_week_data(tmp_path, TODAY)
+
+    assert data["Slay Hack Agency"]["facebook"].total_reach == 800

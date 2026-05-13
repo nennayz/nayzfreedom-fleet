@@ -88,7 +88,7 @@ def collect_week_data(root: Path, today: date) -> dict[str, dict[str, PlatformSt
             stats.total_likes += perf.likes or 0
             stats.total_saves += perf.saves or 0
             stats.total_shares += perf.shares or 0
-            if reach > stats.top_job_reach or (
+            if (not stats.top_job_id) or reach > stats.top_job_reach or (
                 reach == stats.top_job_reach and job.id < stats.top_job_id
             ):
                 stats.top_job_id = job.id
