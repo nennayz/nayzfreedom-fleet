@@ -147,6 +147,59 @@ def test_publish_live_ig_image_creates_container_then_publishes(mocker, tmp_path
     assert job.publish_result["instagram"]["status"] == "published"
 
 
+def test_publish_article_skips_instagram(mocker):
+    mock_post = mocker.patch("agents.publish.requests.post")
+    mock_post.return_value.raise_for_status = mocker.MagicMock()
+    mock_post.return_value.json.return_value = {"id": "fb-1"}
+    agent = PublishAgent(make_publish_config())
+    job = make_article_job(dry_run=False)
+    job.platforms = ["instagram", "facebook"]
+    job = agent.run(job)
+    assert "instagram" not in job.publish_result
+    assert job.publish_result["facebook"]["status"] == "published"
+    call_url = mock_post.call_args[0][0]
+    assert "ig-456" not in call_url
+
+
+def test_publish_partial_failure_records_per_platform(mocker, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    img_file = tmp_path / "image.png"
+    img_file.write_bytes(b"PNG")
+    mock_post = mocker.patch("agents.publish.requests.post")
+    fb_resp = mocker.MagicMock()
+    fb_resp.raise_for_status = mocker.MagicMock()
+    fb_resp.json.return_value = {"id": "fb-ok"}
+    mock_post.side_effect = [fb_resp, Exception("IG quota exceeded")]
+    agent = PublishAgent(make_publish_config())
+    job = make_image_job(dry_run=False)
+    job.image_path = str(img_file)
+    job.platforms = ["facebook", "instagram"]
+    job = agent.run(job)
+    assert job.publish_result["facebook"]["status"] == "published"
+    assert job.publish_result["instagram"]["status"] == "failed"
+    assert "IG quota exceeded" in job.publish_result["instagram"]["error"]
+    assert job.stage == "publish_done"
+
+
+def test_publish_missing_image_path_raises_value_error():
+    import pytest
+    agent = PublishAgent(make_publish_config())
+    job = make_image_job(dry_run=False)
+    job.image_path = None
+    with pytest.raises(ValueError, match=job.id):
+        agent.run(job)
+
+
+def test_publish_missing_media_file_raises_value_error(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    import pytest
+    agent = PublishAgent(make_publish_config())
+    job = make_image_job(dry_run=False)
+    job.image_path = str(tmp_path / "nonexistent.png")
+    with pytest.raises(ValueError, match=job.id):
+        agent.run(job)
+
+
 def test_publish_live_ig_reels_uses_resumable_upload(mocker, tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     vid_file = tmp_path / "video.mp4"
