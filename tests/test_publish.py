@@ -404,13 +404,80 @@ def test_publish_youtube_article_excluded_from_platforms(mocker):
     assert "page-123/feed" in mock_post.call_args_list[0][0][0]
 
 
-def test_publish_youtube_video_not_yet_implemented(mocker, tmp_path, monkeypatch):
+def test_publish_youtube_video_upload(mocker, tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     vid_file = tmp_path / "video.mp4"
     vid_file.write_bytes(b"MP4DATA")
+    mock_post = mocker.patch("agents.publish.requests.post")
+    mock_put = mocker.patch("agents.publish.requests.put")
+    auth_resp = mocker.MagicMock()
+    auth_resp.raise_for_status = mocker.MagicMock()
+    auth_resp.json.return_value = {"access_token": "yt-token"}
+    init_resp = mocker.MagicMock()
+    init_resp.raise_for_status = mocker.MagicMock()
+    init_resp.headers = {"Location": "https://upload.googleapis.com/v1/upload"}
+    mock_post.side_effect = [auth_resp, init_resp]
+    mock_put.return_value.raise_for_status = mocker.MagicMock()
+    mock_put.return_value.json.return_value = {"id": "yt-1", "status": {"uploadStatus": "uploaded"}}
     agent = PublishAgent(make_publish_config())
     job = make_video_job(dry_run=False, video_path=str(vid_file))
     job.platforms = ["youtube"]
     job = agent.run(job)
+    assert mock_post.call_count == 2
+    auth_url = mock_post.call_args_list[0][0][0]
+    assert "oauth2.googleapis.com/token" in auth_url
+    init_url = mock_post.call_args_list[1][0][0]
+    assert "youtube/v3/videos" in init_url
+    assert mock_put.called
+    assert job.publish_result["youtube"]["status"] == "published"
+    assert job.publish_result["youtube"]["id"] == "yt-1"
+
+
+def test_publish_youtube_scheduled(mocker, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    vid_file = tmp_path / "video.mp4"
+    vid_file.write_bytes(b"MP4DATA")
+    mock_post = mocker.patch("agents.publish.requests.post")
+    mock_put = mocker.patch("agents.publish.requests.put")
+    auth_resp = mocker.MagicMock()
+    auth_resp.raise_for_status = mocker.MagicMock()
+    auth_resp.json.return_value = {"access_token": "yt-token"}
+    init_resp = mocker.MagicMock()
+    init_resp.raise_for_status = mocker.MagicMock()
+    init_resp.headers = {"Location": "https://upload.googleapis.com/v1/upload"}
+    mock_post.side_effect = [auth_resp, init_resp]
+    mock_put.return_value.raise_for_status = mocker.MagicMock()
+    mock_put.return_value.json.return_value = {"id": "yt-2", "status": {"uploadStatus": "uploaded"}}
+    agent = PublishAgent(make_publish_config())
+    job = make_video_job(dry_run=False, video_path=str(vid_file))
+    job.platforms = ["youtube"]
+    job = agent.run(job, schedule=True)
+    init_body = mock_post.call_args_list[1][1]["json"]
+    assert init_body["status"]["privacyStatus"] == "private"
+    assert "publishAt" in init_body["status"]
+    assert job.publish_result["youtube"]["status"] == "scheduled"
+
+
+def test_publish_youtube_failure_does_not_affect_meta(mocker, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    vid_file = tmp_path / "video.mp4"
+    vid_file.write_bytes(b"MP4DATA")
+    mock_post = mocker.patch("agents.publish.requests.post")
+    mock_put = mocker.patch("agents.publish.requests.put")
+    fb_resp = mocker.MagicMock()
+    fb_resp.raise_for_status = mocker.MagicMock()
+    fb_resp.json.return_value = {"id": "fb-vid-1"}
+    auth_resp = mocker.MagicMock()
+    auth_resp.raise_for_status = mocker.MagicMock()
+    auth_resp.json.return_value = {"access_token": "yt-token"}
+    init_resp = mocker.MagicMock()
+    init_resp.raise_for_status.side_effect = Exception("QUOTA_EXCEEDED")
+    mock_post.side_effect = [fb_resp, auth_resp, init_resp]
+    mock_put.return_value.raise_for_status = mocker.MagicMock()
+    agent = PublishAgent(make_publish_config())
+    job = make_video_job(dry_run=False, video_path=str(vid_file))
+    job.platforms = ["facebook", "youtube"]
+    job = agent.run(job)
+    assert job.publish_result["facebook"]["status"] == "published"
     assert job.publish_result["youtube"]["status"] == "failed"
-    assert "not yet implemented" in job.publish_result["youtube"]["error"]
+    assert "QUOTA_EXCEEDED" in job.publish_result["youtube"]["error"]

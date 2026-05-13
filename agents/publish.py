@@ -172,7 +172,8 @@ class PublishAgent(BaseAgent):
     def _post_youtube(self, job: ContentJob, caption: str, scheduled_time: int | None) -> dict:
         if job.content_type != ContentType.VIDEO:
             return {"status": "skipped", "reason": "YouTube only supports video uploads"}
-        raise NotImplementedError("_post_youtube_video not yet implemented")
+        token = self._youtube_access_token(self.config)
+        return self._post_youtube_video(job, caption, scheduled_time, token)
 
     def _youtube_access_token(self, config) -> str:
         resp = requests.post(
@@ -190,7 +191,47 @@ class PublishAgent(BaseAgent):
     def _post_youtube_video(
         self, job: ContentJob, caption: str, scheduled_time: int | None, token: str
     ) -> dict:
-        raise NotImplementedError("_post_youtube_video not yet implemented")
+        if not job.video_path:
+            raise ValueError(f"PublishAgent: video_path is None for job {job.id}")
+        file_size = Path(job.video_path).stat().st_size
+        if file_size == 0:
+            raise ValueError(f"PublishAgent: video file is empty: {job.video_path}")
+        tags = job.growth_strategy.hashtags if job.growth_strategy else []
+        status_body: dict = {"privacyStatus": "private" if scheduled_time else "public"}
+        if scheduled_time:
+            status_body["publishAt"] = self._youtube_scheduled_iso(scheduled_time)
+        init_resp = requests.post(
+            f"{_YOUTUBE_UPLOAD_BASE}/videos?uploadType=resumable",
+            headers={
+                **self._auth_headers(token),
+                "Content-Type": "application/json",
+                "X-Upload-Content-Type": "video/*",
+                "X-Upload-Content-Length": str(file_size),
+            },
+            json={
+                "snippet": {
+                    "title": caption,
+                    "description": caption,
+                    "tags": tags,
+                    "categoryId": "22",
+                },
+                "status": status_body,
+            },
+        )
+        init_resp.raise_for_status()
+        upload_uri = init_resp.headers["Location"]
+        with open(job.video_path, "rb") as f:
+            upload_resp = requests.put(
+                upload_uri,
+                headers={
+                    "Content-Type": "video/*",
+                    "Content-Length": str(file_size),
+                },
+                data=f,
+            )
+        upload_resp.raise_for_status()
+        video_id = upload_resp.json()["id"]
+        return {"id": video_id, "status_code": "uploaded"}
 
     def _youtube_scheduled_iso(self, scheduled_time: int) -> str:
         # used by _post_youtube_video (Task 2)
