@@ -1,11 +1,12 @@
 from __future__ import annotations
 import os
 import secrets
+import subprocess
 import sys
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse
+from fastapi import Depends, FastAPI, Form, HTTPException, Request
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -69,6 +70,39 @@ def job_detail(job_id: str, request: Request, _: str = Depends(verify_auth)):
 def metrics(request: Request, _: str = Depends(verify_auth)):
     data = load_performance_all(_root(request))
     return templates.TemplateResponse(request, "metrics.html", {"data": data})
+
+
+@app.get("/trigger", response_class=HTMLResponse)
+def trigger_form(request: Request, _: str = Depends(verify_auth)):
+    root = _root(request)
+    projects = sorted(p.parent.name for p in root.glob("projects/*/pm_profile.yaml"))
+    return templates.TemplateResponse(request, "trigger.html", {"projects": projects})
+
+
+@app.post("/trigger")
+def trigger_run(
+    request: Request,
+    project: str = Form(...),
+    brief: str = Form(...),
+    content_type: str = Form(...),
+    dry_run: str = Form(default=None),
+    _: str = Depends(verify_auth),
+):
+    root = _root(request)
+    valid = {p.parent.name for p in root.glob("projects/*/pm_profile.yaml")}
+    if project not in valid:
+        raise HTTPException(status_code=400, detail="Unknown project")
+    cmd = [
+        sys.executable, "main.py",
+        "--project", project,
+        "--brief", brief,
+        "--content-type", content_type,
+        "--unattended",
+    ]
+    if dry_run:
+        cmd.append("--dry-run")
+    subprocess.Popen(cmd, cwd=str(_ROOT))
+    return RedirectResponse("/", status_code=303)
 
 
 if __name__ == "__main__":

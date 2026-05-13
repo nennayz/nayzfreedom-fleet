@@ -133,3 +133,59 @@ def test_metrics_shows_data(client):
     assert resp.status_code == 200
     assert "Slay Hack Agency" in resp.text
     assert "5,000" in resp.text
+
+
+def test_trigger_get_shows_form(tmp_path, client):
+    (tmp_path / "projects" / "slay_hack").mkdir(parents=True)
+    (tmp_path / "projects" / "slay_hack" / "pm_profile.yaml").write_text("page_name: test\n")
+    resp = client.get("/trigger", headers=_auth())
+    assert resp.status_code == 200
+    assert "<form" in resp.text
+    assert "slay_hack" in resp.text
+
+
+def test_trigger_spawns_subprocess(tmp_path, client):
+    (tmp_path / "projects" / "slay_hack").mkdir(parents=True)
+    (tmp_path / "projects" / "slay_hack" / "pm_profile.yaml").write_text("page_name: test\n")
+    mock_popen = MagicMock()
+    with patch("dashboard.subprocess.Popen", mock_popen):
+        resp = client.post(
+            "/trigger",
+            data={"project": "slay_hack", "brief": "test brief", "content_type": "video"},
+            headers=_auth(),
+            follow_redirects=False,
+        )
+    assert resp.status_code == 303
+    assert resp.headers["location"] == "/"
+    mock_popen.assert_called_once()
+    cmd = mock_popen.call_args.args[0]
+    assert "main.py" in cmd
+    assert "--project" in cmd
+    assert "slay_hack" in cmd
+    assert "--unattended" in cmd
+    assert "--dry-run" not in cmd
+
+
+def test_trigger_dry_run_adds_flag(tmp_path, client):
+    (tmp_path / "projects" / "slay_hack").mkdir(parents=True)
+    (tmp_path / "projects" / "slay_hack" / "pm_profile.yaml").write_text("page_name: test\n")
+    mock_popen = MagicMock()
+    with patch("dashboard.subprocess.Popen", mock_popen):
+        resp = client.post(
+            "/trigger",
+            data={"project": "slay_hack", "brief": "test", "content_type": "video", "dry_run": "1"},
+            headers=_auth(),
+            follow_redirects=False,
+        )
+    assert resp.status_code == 303
+    cmd = mock_popen.call_args.args[0]
+    assert "--dry-run" in cmd
+
+
+def test_trigger_rejects_unknown_project(client):
+    resp = client.post(
+        "/trigger",
+        data={"project": "nonexistent", "brief": "test", "content_type": "video"},
+        headers=_auth(),
+    )
+    assert resp.status_code == 400
