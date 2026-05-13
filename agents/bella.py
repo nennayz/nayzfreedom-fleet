@@ -1,11 +1,13 @@
 from __future__ import annotations
-import json
 from pathlib import Path
+from pydantic import TypeAdapter
 from agents.base_agent import BaseAgent, TEAM_IDENTITY
 from models.content_job import (
     ContentJob, ContentType,
     Script, Article, ImageCaption, InfographicContent, BellaOutput,
 )
+
+_bella_output_adapter = TypeAdapter(BellaOutput)
 
 _DRY_RUN_OUTPUTS: dict[ContentType, BellaOutput] = {
     ContentType.VIDEO: Script(
@@ -76,14 +78,16 @@ def _write_bella_output_file(job: ContentJob) -> None:
 
 class BellaAgent(BaseAgent):
     def run_dry(self, job: ContentJob, **kwargs) -> ContentJob:
+        if job.content_type is None:
+            raise ValueError("BellaAgent requires content_type to be set.")
         job.bella_output = _DRY_RUN_OUTPUTS[job.content_type]
         job.stage = "bella_done"
         _write_bella_output_file(job)
         return job
 
     def run_live(self, job: ContentJob, **kwargs) -> ContentJob:
-        from pydantic import TypeAdapter
-        from models.content_job import BellaOutput as _BellaOutput
+        if job.selected_idea is None or job.content_type is None:
+            raise ValueError("BellaAgent requires selected_idea and content_type to be set.")
         idea = job.selected_idea
         system = (
             TEAM_IDENTITY +
@@ -98,8 +102,7 @@ class BellaAgent(BaseAgent):
             + _PROMPTS[job.content_type]
         )
         raw = self._call_claude(system, user, max_tokens=1024)
-        ta = TypeAdapter(_BellaOutput)
-        job.bella_output = ta.validate_python(self._parse_json(raw))
+        job.bella_output = _bella_output_adapter.validate_python(self._parse_json(raw))
         job.stage = "bella_done"
         _write_bella_output_file(job)
         return job
