@@ -136,7 +136,6 @@ class PublishAgent(BaseAgent):
                 requests.put(
                     upload_url,
                     headers={
-                        **headers,
                         "Content-Range": f"bytes {start}-{end}/{file_size}",
                         "Content-Type": "video/mp4",
                     },
