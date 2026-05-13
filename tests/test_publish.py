@@ -220,7 +220,6 @@ def test_publish_agent_registered_in_orchestrator():
 
 def test_main_publish_only_flag_dispatches_publish_agent(mocker, tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    from models.content_job import ContentType, ImageCaption
     from job_store import save_job
 
     job = make_image_job(dry_run=False)
