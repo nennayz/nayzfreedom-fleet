@@ -11,6 +11,8 @@ _TIKTOK_BASE = "https://open.tiktokapis.com/v2"
 _TIKTOK_CHUNK_SIZE = 10 * 1024 * 1024  # 10 MB
 _TIKTOK_POLL_INTERVAL = 5
 _TIKTOK_POLL_TIMEOUT = 300
+_YOUTUBE_UPLOAD_BASE = "https://www.googleapis.com/upload/youtube/v3"
+_YOUTUBE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 logger = logging.getLogger(__name__)
 
 
@@ -24,7 +26,7 @@ class PublishAgent(BaseAgent):
         schedule: bool = kwargs.get("schedule", False)
         effective_platforms = [
             p for p in job.platforms
-            if not (job.content_type == ContentType.ARTICLE and p in ("instagram", "tiktok"))
+            if not (job.content_type == ContentType.ARTICLE and p in ("instagram", "tiktok", "youtube"))
         ]
         if job.content_type != ContentType.ARTICLE:
             media_path = job.video_path if job.content_type == ContentType.VIDEO else job.image_path
@@ -48,6 +50,11 @@ class PublishAgent(BaseAgent):
                     post_result = self._post_instagram(job, caption, scheduled_time)
                 elif platform == "tiktok":
                     post_result = self._post_tiktok(job, caption)
+                    if post_result.get("status") == "skipped":
+                        result[platform] = post_result
+                        continue
+                elif platform == "youtube":
+                    post_result = self._post_youtube(job, caption, scheduled_time)
                     if post_result.get("status") == "skipped":
                         result[platform] = post_result
                         continue
@@ -161,6 +168,34 @@ class PublishAgent(BaseAgent):
         raise TimeoutError(
             f"timed out waiting for TikTok processing after {_TIKTOK_POLL_TIMEOUT}s"
         )
+
+    def _post_youtube(self, job: ContentJob, caption: str, scheduled_time: int | None) -> dict:
+        if job.content_type != ContentType.VIDEO:
+            return {"status": "skipped", "reason": "YouTube only supports video uploads"}
+        token = self._youtube_access_token(self.config)
+        return self._post_youtube_video(job, caption, scheduled_time, token)
+
+    def _youtube_access_token(self, config) -> str:
+        resp = requests.post(
+            _YOUTUBE_TOKEN_URL,
+            data={
+                "grant_type": "refresh_token",
+                "client_id": config.youtube_client_id,
+                "client_secret": config.youtube_client_secret,
+                "refresh_token": config.youtube_refresh_token,
+            },
+        )
+        resp.raise_for_status()
+        return resp.json()["access_token"]
+
+    def _post_youtube_video(
+        self, job: ContentJob, caption: str, scheduled_time: int | None, token: str
+    ) -> dict:
+        raise NotImplementedError("_post_youtube_video not yet implemented")
+
+    def _youtube_scheduled_iso(self, scheduled_time: int) -> str:
+        from datetime import datetime, timezone
+        return datetime.fromtimestamp(scheduled_time, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     def _post_facebook(self, job: ContentJob, caption: str, scheduled_time: int | None) -> dict:
         token = self.config.meta_access_token

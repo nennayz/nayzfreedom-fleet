@@ -12,6 +12,9 @@ def make_publish_config():
         meta_page_id="page-123",
         meta_ig_user_id="ig-456",
         tiktok_access_token="tiktok-token",
+        youtube_client_id="yt-client-id",
+        youtube_client_secret="yt-client-secret",
+        youtube_refresh_token="yt-refresh-token",
     )
 
 
@@ -373,3 +376,30 @@ def test_publish_tiktok_failure_does_not_affect_meta(mocker, tmp_path, monkeypat
     assert job.publish_result["facebook"]["status"] == "published"
     assert job.publish_result["tiktok"]["status"] == "failed"
     assert "QUOTA_EXCEEDED" in job.publish_result["tiktok"]["error"]
+
+
+def test_publish_youtube_image_skips_with_reason(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    img_file = tmp_path / "image.png"
+    img_file.write_bytes(b"PNG")
+    agent = PublishAgent(make_publish_config())
+    job = make_image_job(dry_run=False)
+    job.image_path = str(img_file)
+    job.platforms = ["youtube"]
+    job = agent.run(job)
+    assert job.publish_result["youtube"]["status"] == "skipped"
+    assert "YouTube only supports video uploads" in job.publish_result["youtube"]["reason"]
+
+
+def test_publish_youtube_article_excluded_from_platforms(mocker):
+    mock_post = mocker.patch("agents.publish.requests.post")
+    mock_post.return_value.raise_for_status = mocker.MagicMock()
+    mock_post.return_value.json.return_value = {"id": "fb-1"}
+    agent = PublishAgent(make_publish_config())
+    job = make_article_job(dry_run=False)
+    job.platforms = ["facebook", "youtube"]
+    job = agent.run(job)
+    assert "youtube" not in job.publish_result
+    assert job.publish_result["facebook"]["status"] == "published"
+    assert mock_post.call_count == 1
+    assert "page-123/feed" in mock_post.call_args_list[0][0][0]

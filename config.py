@@ -19,7 +19,9 @@ class Config:
     meta_page_id: str = ""
     meta_ig_user_id: str = ""
     tiktok_access_token: str = ""
-    youtube_api_key: str = ""
+    youtube_client_id: str = ""
+    youtube_client_secret: str = ""
+    youtube_refresh_token: str = ""
 
     @classmethod
     def from_env(cls) -> Config:
@@ -37,5 +39,7 @@ class Config:
             meta_page_id=os.getenv("META_PAGE_ID", ""),
             meta_ig_user_id=os.getenv("META_IG_USER_ID", ""),
             tiktok_access_token=os.getenv("TIKTOK_ACCESS_TOKEN", ""),
-            youtube_api_key=os.getenv("YOUTUBE_API_KEY", ""),
+            youtube_client_id=os.getenv("YOUTUBE_CLIENT_ID", ""),
+            youtube_client_secret=os.getenv("YOUTUBE_CLIENT_SECRET", ""),
+            youtube_refresh_token=os.getenv("YOUTUBE_REFRESH_TOKEN", ""),
         )
