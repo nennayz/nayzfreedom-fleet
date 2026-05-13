@@ -3,6 +3,13 @@ from dataclasses import dataclass
 from datetime import datetime
 from models.content_job import ContentJob, CheckpointDecision
 
+_UNATTENDED_DECISIONS: dict[str, str] = {
+    "idea_selection": "1",
+    "content_review": "approved",
+    "qa_review": "approved",
+    "final_approval": "approved",
+}
+
 
 @dataclass
 class CheckpointResult:
@@ -23,7 +30,7 @@ def pause(
     print(f"\n{summary}\n")
 
     if unattended:
-        decision = "1" if stage == "idea_selection" else "approved"
+        decision = _UNATTENDED_DECISIONS.get(stage, "approved")
         print(f"  [unattended] auto-decision: {decision}")
     else:
         if options:

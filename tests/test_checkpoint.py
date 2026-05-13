@@ -46,6 +46,12 @@ def test_pause_unattended_other_stages_returns_approved():
         assert result.stage == stage
 
 
+def test_pause_unattended_unknown_stage_returns_approved():
+    job = make_job()
+    result = pause("some_future_stage", "summary", [], job, unattended=True)
+    assert result.decision == "approved"
+
+
 def test_pause_unattended_does_not_call_input(monkeypatch):
     called = []
     monkeypatch.setattr("builtins.input", lambda _: called.append(1) or "x")
