@@ -138,3 +138,38 @@ def test_scheduler_timeout_continues_and_sets_exit_1(tmp_path, monkeypatch):
     assert mock_run.call_count == 7
     assert exit_code == 1
     mock_proc.kill.assert_called_once()
+
+
+def test_scheduler_calls_notifier_on_failure(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "projects" / "slay_hack").mkdir(parents=True)
+    import yaml
+    (tmp_path / "projects" / "slay_hack" / "weekly_calendar.yaml").write_text(
+        yaml.dump(MONDAY_CALENDAR)
+    )
+    monkeypatch.setattr(sched_module, "_today_name", lambda: "monday")
+    results = [_make_fail_result()] + [_make_ok_result()] * 6
+    with patch("scheduler.subprocess.run", side_effect=results), \
+         patch("scheduler.send_slack_alert") as mock_alert:
+        sched_module.run_scheduler(dry_run=False, root=tmp_path)
+    mock_alert.assert_called_once()
+    failures = mock_alert.call_args.args[0]
+    assert len(failures) == 1
+    assert failures[0]["project"] == "slay_hack"
+    assert failures[0]["brief"] == "short_video_1"
+    assert failures[0]["content_type"] == "video"
+    assert failures[0]["exit_code"] == 1
+
+
+def test_scheduler_does_not_call_notifier_on_success(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "projects" / "slay_hack").mkdir(parents=True)
+    import yaml
+    (tmp_path / "projects" / "slay_hack" / "weekly_calendar.yaml").write_text(
+        yaml.dump(MONDAY_CALENDAR)
+    )
+    monkeypatch.setattr(sched_module, "_today_name", lambda: "monday")
+    with patch("scheduler.subprocess.run", return_value=_make_ok_result()), \
+         patch("scheduler.send_slack_alert") as mock_alert:
+        sched_module.run_scheduler(dry_run=False, root=tmp_path)
+    mock_alert.assert_not_called()

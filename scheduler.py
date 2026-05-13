@@ -5,6 +5,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 import yaml
+from notifier import send_slack_alert
 
 logging.basicConfig(
     level=logging.INFO,
@@ -39,7 +40,9 @@ def run_scheduler(dry_run: bool = False, root: Path | None = None) -> int:
         return 0
 
     today = _today_name()
-    any_failed = False
+    run_date = datetime.now().strftime("%Y-%m-%d")
+    failures: list[dict] = []
+    total = 0
 
     for calendar_path in calendars:
         project_slug = calendar_path.parent.name
@@ -58,6 +61,7 @@ def run_scheduler(dry_run: bool = False, root: Path | None = None) -> int:
                 continue
 
             content_type = _KEY_TO_CONTENT_TYPE[key]
+            total += 1
             cmd = [
                 sys.executable, "main.py",
                 "--project", project_slug,
@@ -77,15 +81,18 @@ def run_scheduler(dry_run: bool = False, root: Path | None = None) -> int:
                     exc.process.kill()
                     exc.process.communicate()
                 logger.error("TIMEOUT: project=%s key=%s", project_slug, key)
-                any_failed = True
+                failures.append({"project": project_slug, "brief": key, "content_type": content_type, "exit_code": None})
                 continue
             if result.returncode != 0:
                 logger.error("FAILED: project=%s key=%s brief=%r", project_slug, key, brief)
-                any_failed = True
+                failures.append({"project": project_slug, "brief": key, "content_type": content_type, "exit_code": result.returncode})
             else:
                 logger.info("OK: project=%s key=%s", project_slug, key)
 
-    return 1 if any_failed else 0
+    if failures:
+        send_slack_alert(failures, run_date, total, dry_run=dry_run)
+
+    return 1 if failures else 0
 
 
 if __name__ == "__main__":
