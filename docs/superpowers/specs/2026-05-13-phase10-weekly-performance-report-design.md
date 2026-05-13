@@ -55,9 +55,11 @@ Jobs with empty `performance` list are skipped silently.
 
 ### Aggregation
 
-Per `(page_name, platform)` group:
-- `total_likes`, `total_reach`, `total_saves`, `total_shares` — sum across all performance entries
-- `top_job` — the job with the highest single `reach` value; ties broken by `job.id` (lexicographic, i.e. earliest)
+For each job, select the **latest `PostPerformance` entry per platform** (by `recorded_at` descending; if `recorded_at` is `None`, use the last entry in the list). This prevents double-counting when the tracker records multiple snapshots for the same job.
+
+Per `(page_name, platform)` group, sum the selected entries across all jobs:
+- `total_likes`, `total_reach`, `total_saves`, `total_shares`
+- `top_job` — the job with the highest selected `reach` value; ties broken by `job.id` (lexicographic, i.e. earliest)
 - `job_count` — number of distinct jobs contributing data
 
 ### Markdown output
