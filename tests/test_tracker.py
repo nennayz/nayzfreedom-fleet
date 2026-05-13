@@ -172,3 +172,24 @@ def test_track_tiktok_no_match_skips_gracefully(mocker):
     job.id = "20260513_120000"
     result = track_job(job, _make_config())
     assert result.performance == []
+
+
+def test_main_track_flag_dispatches_tracker(mocker, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    from tests.test_publish import make_image_job, make_publish_config
+    from job_store import save_job
+
+    job = make_image_job(dry_run=False)
+    job.stage = "publish_done"
+    job.publish_result = {"facebook": {"status": "published", "id": "post-1"}}
+    save_job(job)
+
+    mock_track = mocker.patch("main.track_job", return_value=job)
+    mocker.patch("main.Config.from_env", return_value=make_publish_config())
+
+    import sys
+    sys.argv = ["main.py", "--track", job.id]
+    from main import main
+    main()
+
+    mock_track.assert_called_once()

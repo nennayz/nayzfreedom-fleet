@@ -7,6 +7,7 @@ from job_store import find_job, save_job
 from models.content_job import ContentJob, JobStatus
 from orchestrator import Orchestrator
 from project_loader import load_project, ProjectNotFoundError
+from tracker import track_job
 
 
 def main() -> None:
@@ -16,6 +17,8 @@ def main() -> None:
     group.add_argument("--resume", metavar="JOB_ID", help="Resume an interrupted job by ID")
     group.add_argument("--publish-only", metavar="JOB_ID",
                        help="Publish a completed job by ID (skips content generation)")
+    group.add_argument("--track", metavar="JOB_ID",
+                       help="Fetch and record post metrics for a published job")
     parser.add_argument("--brief", help="Content brief (required with --project)")
     parser.add_argument("--platforms", default="instagram,facebook",
                         help="Comma-separated platforms (default: instagram,facebook)")
@@ -46,6 +49,31 @@ def main() -> None:
         save_job(result)
         statuses = {p: v.get("status") for p, v in (result.publish_result or {}).items()}
         print(f"Publish complete: {statuses}")
+        return
+
+    if args.track:
+        try:
+            job = find_job(args.track)
+        except FileNotFoundError as e:
+            print(f"Error: {e}")
+            sys.exit(1)
+        if job.stage != "publish_done":
+            print(f"Error: job {job.id} is at stage '{job.stage}', expected 'publish_done'.")
+            sys.exit(1)
+        print(f"Tracking job {job.id} for {job.pm.page_name}")
+        job = track_job(job, config)
+        save_job(job)
+        if not job.performance:
+            print("No metrics available.")
+        else:
+            latest: dict = {}
+            for p in job.performance:
+                latest[p.platform] = p
+            for platform, p in latest.items():
+                print(
+                    f"{platform}: likes={p.likes}, reach={p.reach}, "
+                    f"shares={p.shares}, saves={p.saves}"
+                )
         return
 
     if args.resume:
