@@ -17,3 +17,21 @@ def test_config_raises_on_missing_anthropic_key(monkeypatch):
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     with pytest.raises(MissingAPIKeyError, match="ANTHROPIC_API_KEY"):
         Config.from_env()
+
+
+def test_config_loads_meta_page_id(monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "key")
+    monkeypatch.setenv("META_PAGE_ID", "123456789")
+    monkeypatch.setenv("META_IG_USER_ID", "987654321")
+    cfg = Config.from_env()
+    assert cfg.meta_page_id == "123456789"
+    assert cfg.meta_ig_user_id == "987654321"
+
+
+def test_config_meta_fields_default_empty(monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "key")
+    monkeypatch.delenv("META_PAGE_ID", raising=False)
+    monkeypatch.delenv("META_IG_USER_ID", raising=False)
+    cfg = Config.from_env()
+    assert cfg.meta_page_id == ""
+    assert cfg.meta_ig_user_id == ""
