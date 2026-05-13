@@ -99,6 +99,15 @@ python scheduler.py --dry-run
 # Cron entry for VPS (6 AM daily, logs to /var/log/nayzfreedom.log)
 # 0 6 * * * /path/to/.venv/bin/python /path/to/scheduler.py >> /var/log/nayzfreedom.log 2>&1
 
+# Run weekly performance reporter (generates markdown + sends Slack digest)
+python reporter.py
+
+# Weekly reporter dry-run (prints Slack message to stdout, no POST)
+python reporter.py --dry-run
+
+# Cron entry for VPS (8 AM every Monday)
+# 0 8 * * 1 /path/to/.venv/bin/python /path/to/reporter.py >> /var/log/nayzfreedom.log 2>&1
+
 # Run tests
 pytest
 
