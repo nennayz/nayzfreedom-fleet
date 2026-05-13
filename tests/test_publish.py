@@ -214,6 +214,29 @@ def test_publish_agent_registered_in_orchestrator():
     assert "publish" in orch.agents
 
 
+def test_main_publish_only_flag_dispatches_publish_agent(mocker, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    from models.content_job import ContentType, ImageCaption
+    from job_store import save_job
+
+    job = make_image_job(dry_run=False)
+    img_file = tmp_path / "image.png"
+    img_file.write_bytes(b"PNG")
+    job.image_path = str(img_file)
+    job.stage = "emma_done"
+    save_job(job)
+
+    mock_run = mocker.patch.object(PublishAgent, "run_live", return_value=job)
+    mocker.patch("main.Config.from_env", return_value=make_publish_config())
+
+    import sys
+    sys.argv = ["main.py", "--publish-only", job.id]
+    from main import main
+    main()
+
+    mock_run.assert_called_once()
+
+
 def test_publish_live_ig_reels_uses_resumable_upload(mocker, tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     vid_file = tmp_path / "video.mp4"
