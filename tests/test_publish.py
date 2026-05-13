@@ -57,3 +57,66 @@ def test_publish_dry_run_sets_result():
     job = agent.run(job)
     assert job.publish_result == {"dry_run": True, "platforms": job.platforms}
     assert job.stage == "publish_done"
+
+
+def test_publish_live_fb_image_calls_photos_endpoint(mocker, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    img_file = tmp_path / "image.png"
+    img_file.write_bytes(b"PNG")
+    mock_post = mocker.patch("agents.publish.requests.post")
+    mock_post.return_value.raise_for_status = mocker.MagicMock()
+    mock_post.return_value.json.return_value = {"id": "post-1"}
+    agent = PublishAgent(make_publish_config())
+    job = make_image_job(dry_run=False)
+    job.image_path = str(img_file)
+    job.platforms = ["facebook"]
+    job = agent.run(job)
+    assert mock_post.called
+    call_url = mock_post.call_args[0][0]
+    assert "page-123/photos" in call_url
+    assert job.publish_result["facebook"]["status"] == "published"
+
+
+def test_publish_live_fb_video_calls_videos_endpoint(mocker, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    vid_file = tmp_path / "video.mp4"
+    vid_file.write_bytes(b"MP4")
+    mock_post = mocker.patch("agents.publish.requests.post")
+    mock_post.return_value.raise_for_status = mocker.MagicMock()
+    mock_post.return_value.json.return_value = {"id": "vid-1"}
+    agent = PublishAgent(make_publish_config())
+    job = make_video_job(dry_run=False, video_path=str(vid_file))
+    job.platforms = ["facebook"]
+    job = agent.run(job)
+    call_url = mock_post.call_args[0][0]
+    assert "page-123/videos" in call_url
+    assert job.publish_result["facebook"]["status"] == "published"
+
+
+def test_publish_live_fb_article_calls_feed_endpoint(mocker):
+    mock_post = mocker.patch("agents.publish.requests.post")
+    mock_post.return_value.raise_for_status = mocker.MagicMock()
+    mock_post.return_value.json.return_value = {"id": "feed-1"}
+    agent = PublishAgent(make_publish_config())
+    job = make_article_job(dry_run=False)
+    job.platforms = ["facebook"]
+    job = agent.run(job)
+    call_url = mock_post.call_args[0][0]
+    assert "page-123/feed" in call_url
+    assert job.publish_result["facebook"]["status"] == "published"
+
+
+def test_publish_live_fb_schedule_flag_sends_scheduled_time(mocker, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    img_file = tmp_path / "image.png"
+    img_file.write_bytes(b"PNG")
+    mock_post = mocker.patch("agents.publish.requests.post")
+    mock_post.return_value.raise_for_status = mocker.MagicMock()
+    mock_post.return_value.json.return_value = {"id": "post-sched"}
+    agent = PublishAgent(make_publish_config())
+    job = make_image_job(dry_run=False)
+    job.image_path = str(img_file)
+    job.platforms = ["facebook"]
+    job = agent.run(job, schedule=True)
+    assert "scheduled_publish_time" in str(mock_post.call_args)
+    assert job.publish_result["facebook"]["status"] == "scheduled"

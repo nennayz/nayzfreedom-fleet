@@ -19,16 +19,17 @@ class PublishAgent(BaseAgent):
             p for p in job.platforms
             if not (job.content_type == ContentType.ARTICLE and p == "instagram")
         ]
-        media_path = job.video_path if job.content_type == ContentType.VIDEO else job.image_path
-        if not media_path:
-            raise ValueError(
-                f"PublishAgent: no media file on job {job.id} "
-                f"(content_type={job.content_type})"
-            )
-        if not Path(media_path).exists():
-            raise ValueError(
-                f"PublishAgent: media file not found: {media_path} (job {job.id})"
-            )
+        if job.content_type != ContentType.ARTICLE:
+            media_path = job.video_path if job.content_type == ContentType.VIDEO else job.image_path
+            if not media_path:
+                raise ValueError(
+                    f"PublishAgent: no media file on job {job.id} "
+                    f"(content_type={job.content_type})"
+                )
+            if not Path(media_path).exists():
+                raise ValueError(
+                    f"PublishAgent: media file not found: {media_path} (job {job.id})"
+                )
         scheduled_time = self._scheduled_unix_ts(job) if schedule else None
         caption = self._build_caption(job)
         result: dict = {}
@@ -70,7 +71,33 @@ class PublishAgent(BaseAgent):
             return None
 
     def _post_facebook(self, job: ContentJob, caption: str, scheduled_time: int | None) -> dict:
-        raise NotImplementedError
+        token = self.config.meta_access_token
+        page_id = self.config.meta_page_id
+        if job.content_type == ContentType.ARTICLE:
+            url = f"{_META_GRAPH_BASE}/{page_id}/feed"
+            data: dict = {"message": caption, "access_token": token}
+            if scheduled_time:
+                data["scheduled_publish_time"] = str(scheduled_time)
+                data["published"] = "false"
+            resp = requests.post(url, data=data)
+            resp.raise_for_status()
+            return resp.json()
+        media_path = job.image_path if job.content_type != ContentType.VIDEO else job.video_path
+        assert media_path is not None
+        if job.content_type == ContentType.VIDEO:
+            url = f"{_META_GRAPH_BASE}/{page_id}/videos"
+            caption_key = "description"
+        else:
+            url = f"{_META_GRAPH_BASE}/{page_id}/photos"
+            caption_key = "caption"
+        data = {caption_key: caption, "access_token": token}
+        if scheduled_time:
+            data["scheduled_publish_time"] = str(scheduled_time)
+            data["published"] = "false"
+        with open(media_path, "rb") as f:
+            resp = requests.post(url, data=data, files={"source": f})
+        resp.raise_for_status()
+        return resp.json()
 
     def _post_instagram(self, job: ContentJob, caption: str, scheduled_time: int | None) -> dict:
         raise NotImplementedError
