@@ -11,3 +11,7 @@ mypy>=1.10.0
 types-requests>=2.31.0
 types-pyyaml>=6.0
 google-cloud-aiplatform>=1.60.0
+fastapi
+uvicorn[standard]
+jinja2
+python-multipart

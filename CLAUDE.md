@@ -120,6 +120,12 @@ mypy .
 # Lint
 ruff check .
 ruff format .
+
+# Run dashboard (local only)
+python dashboard.py
+
+# Dashboard on VPS (accessible from outside)
+python dashboard.py --host 0.0.0.0 --port 8000
 ```
 
 ---
