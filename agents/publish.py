@@ -102,6 +102,8 @@ class PublishAgent(BaseAgent):
             raise ValueError(f"PublishAgent: video_path is None for job {job.id}")
         headers = self._auth_headers(token)
         file_size = Path(job.video_path).stat().st_size
+        if file_size == 0:
+            raise ValueError(f"PublishAgent: video file is empty: {job.video_path}")
         total_chunk_count = (file_size + _TIKTOK_CHUNK_SIZE - 1) // _TIKTOK_CHUNK_SIZE
         init_resp = requests.post(
             f"{_TIKTOK_BASE}/post/publish/video/init/",
