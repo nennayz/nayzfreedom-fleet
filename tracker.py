@@ -86,7 +86,7 @@ def _fetch_instagram(media_id: str, config: Config) -> PostPerformance:
 
 
 def _fetch_tiktok(result: dict, job: ContentJob, config: Config) -> PostPerformance | None:
-    raise NotImplementedError("_fetch_tiktok not yet implemented")
+    return None  # implemented in Task 2
 
 
 def _job_publish_time(job: ContentJob) -> int:
