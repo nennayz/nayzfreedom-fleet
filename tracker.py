@@ -31,9 +31,17 @@ def _fetch_platform_metrics(
     platform: str, result: dict, job: ContentJob, config: Config
 ) -> PostPerformance | None:
     if platform == "facebook":
-        return _fetch_facebook(result["id"], config)
+        post_id = result.get("id")
+        if not post_id:
+            logger.warning("facebook publish result missing 'id', skipping metrics")
+            return None
+        return _fetch_facebook(post_id, config)
     if platform == "instagram":
-        return _fetch_instagram(result["id"], config)
+        media_id = result.get("id")
+        if not media_id:
+            logger.warning("instagram publish result missing 'id', skipping metrics")
+            return None
+        return _fetch_instagram(media_id, config)
     if platform == "tiktok":
         return _fetch_tiktok(result, job, config)
     return None

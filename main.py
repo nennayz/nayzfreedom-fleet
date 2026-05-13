@@ -1,6 +1,7 @@
 from __future__ import annotations
 import argparse
 import sys
+from datetime import datetime, timezone
 from agents.publish import PublishAgent
 from config import Config, MissingAPIKeyError
 from job_store import find_job, save_job
@@ -66,8 +67,9 @@ def main() -> None:
         if not job.performance:
             print("No metrics available.")
         else:
+            _epoch = datetime.min.replace(tzinfo=timezone.utc)
             latest: dict = {}
-            for p in sorted(job.performance, key=lambda x: x.recorded_at):
+            for p in sorted(job.performance, key=lambda x: x.recorded_at or _epoch):
                 latest[p.platform] = p
             for platform, p in latest.items():
                 print(

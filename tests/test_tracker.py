@@ -165,6 +165,14 @@ def test_track_tiktok_uses_cached_video_id(mocker):
     assert "video/query" in call_url
 
 
+def test_track_fb_missing_id_skips_gracefully(mocker):
+    mock_get = mocker.patch("tracker.requests.get")
+    job = _make_published_job({"facebook": {"status": "published"}})  # no "id" key
+    result = track_job(job, _make_config())
+    assert result.performance == []
+    assert not mock_get.called
+
+
 def test_track_tiktok_no_match_skips_gracefully(mocker):
     mock_post = mocker.patch("tracker.requests.post")
     mock_post.return_value.raise_for_status = mocker.MagicMock()
