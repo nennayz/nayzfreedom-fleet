@@ -83,4 +83,59 @@ def send_and_wait(
     timeout_seconds: int,
     fallback: str,
 ) -> str:
-    raise NotImplementedError("implemented in Task 2")
+    keyboard = _build_keyboard(options)
+    text = f"⏸ <b>Checkpoint: {stage}</b>\n\n{summary}\n\nReply with a button or type freely:"
+
+    offset = _drain_updates(token)
+
+    try:
+        message_id = _send_message(token, chat_id, text, reply_markup=keyboard)
+    except Exception as exc:
+        logger.error("Failed to send Telegram checkpoint message: %s", exc)
+        return fallback
+
+    deadline = time.monotonic() + timeout_seconds
+
+    while time.monotonic() < deadline:
+        remaining = deadline - time.monotonic()
+        poll_timeout = min(5, int(remaining))
+        if poll_timeout <= 0:
+            break
+
+        updates = _get_updates(token, offset=offset, timeout=poll_timeout)
+        for update in updates:
+            offset = update["update_id"] + 1
+
+            if "callback_query" in update:
+                cq = update["callback_query"]
+                cq_chat_id = str(cq.get("message", {}).get("chat", {}).get("id", ""))
+                if cq_chat_id != str(chat_id):
+                    continue
+                decision = cq["data"]
+                _answer_callback(token, cq["id"])
+                _edit_message(token, chat_id, message_id,
+                               text + f"\n✅ Decision recorded: {decision}")
+                return decision
+
+            elif "message" in update:
+                msg = update["message"]
+                msg_chat_id = str(msg.get("chat", {}).get("id", ""))
+                if msg_chat_id != str(chat_id):
+                    continue
+                decision = msg.get("text", "").strip()
+                _edit_message(token, chat_id, message_id,
+                               text + f"\n✅ Decision recorded: {decision}")
+                return decision
+
+    logger.warning(
+        "Telegram checkpoint %s timed out after %ds, using fallback: %s",
+        stage, timeout_seconds, fallback,
+    )
+    try:
+        _send_message(
+            token, chat_id,
+            f"⏰ No reply for <b>{stage}</b> — auto-continuing with: {fallback}",
+        )
+    except Exception:
+        pass
+    return fallback
