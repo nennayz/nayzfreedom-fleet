@@ -89,6 +89,7 @@ def trigger_run(
     brief: str = Form(...),
     content_type: str = Form(...),
     dry_run: str = Form(default=None),
+    unattended: str = Form(default=None),
     _: str = Depends(verify_auth),
 ):
     root = _root(request)
@@ -104,10 +105,11 @@ def trigger_run(
         "--project", project,
         "--brief", brief,
         "--content-type", content_type,
-        "--unattended",
     ]
     if dry_run:
         cmd.append("--dry-run")
+    if unattended:
+        cmd.append("--unattended")
     subprocess.Popen(cmd, cwd=str(_ROOT))
     return RedirectResponse("/", status_code=303)
 
