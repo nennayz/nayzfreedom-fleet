@@ -17,7 +17,7 @@ def _api(token: str, method: str, **kwargs) -> dict:
         resp.raise_for_status()
     except Exception as exc:
         safe_url = _BASE_URL.format(token="<redacted>", method=method)
-        raise type(exc)(f"{safe_url}: {exc}") from exc
+        raise RuntimeError(f"Telegram request failed [{method}] {safe_url}: {type(exc).__name__}") from exc
     data = resp.json()
     if not data.get("ok"):
         raise RuntimeError(f"Telegram API error ({method}): {data.get('description', 'unknown')}")
