@@ -11,9 +11,17 @@ _BASE_URL = "https://api.telegram.org/bot{token}/{method}"
 
 def _api(token: str, method: str, **kwargs) -> dict:
     url = _BASE_URL.format(token=token, method=method)
-    resp = requests.post(url, json=kwargs, timeout=10)
-    resp.raise_for_status()
-    return resp.json()
+    http_timeout = kwargs.get("timeout", 5) + 5
+    try:
+        resp = requests.post(url, json=kwargs, timeout=http_timeout)
+        resp.raise_for_status()
+    except Exception as exc:
+        safe_url = _BASE_URL.format(token="<redacted>", method=method)
+        raise type(exc)(f"{safe_url}: {exc}") from exc
+    data = resp.json()
+    if not data.get("ok"):
+        raise RuntimeError(f"Telegram API error ({method}): {data.get('description', 'unknown')}")
+    return data
 
 
 def _get_updates(token: str, offset: int, timeout: int = 5) -> list[dict]:
