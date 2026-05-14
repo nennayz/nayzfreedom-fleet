@@ -1,5 +1,5 @@
 import sys
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 from checkpoint import pause, CheckpointResult
 from models.content_job import ContentJob, PMProfile, BrandProfile, VisualIdentity, ContentType
 
@@ -96,8 +96,6 @@ def test_main_unattended_flag_passed_to_orchestrator(mocker, tmp_path, monkeypat
     _, kwargs = mock_run.call_args
     assert kwargs.get("unattended") is True
 
-
-from unittest.mock import MagicMock
 
 
 def test_pause_uses_telegram_when_env_set(monkeypatch):
