@@ -2,6 +2,7 @@ from __future__ import annotations
 import argparse
 import sys
 from datetime import datetime, timezone
+from pathlib import Path
 from agents.publish import PublishAgent
 from config import Config, MissingAPIKeyError
 from job_store import find_job, save_job
@@ -9,6 +10,8 @@ from models.content_job import ContentJob, JobStatus
 from orchestrator import Orchestrator
 from project_loader import load_project, ProjectNotFoundError
 from tracker import track_job
+
+_LOCK_FILE = Path("/tmp/nayz_pipeline.lock")
 
 
 def main() -> None:
@@ -122,7 +125,10 @@ def main() -> None:
             print("[DRY-RUN MODE] No real API calls will be made.\n")
 
     orchestrator = Orchestrator(config)
-    result = orchestrator.run(job, unattended=args.unattended)
+    try:
+        result = orchestrator.run(job, unattended=args.unattended)
+    finally:
+        _LOCK_FILE.unlink(missing_ok=True)
 
     if result.status == JobStatus.COMPLETED:
         out_dir = f"output/{result.pm.page_name}/{result.id}"

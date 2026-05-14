@@ -151,3 +151,41 @@ def test_send_and_wait_get_updates_error():
                 "qa_review", "s", ["approved"], "tok", "456", 30, "approved",
             )
     assert result == "approved"
+
+
+def test_send_and_wait_writes_lock(tmp_path):
+    import telegram_checkpoint as tc
+    lock = tmp_path / "pipeline.lock"
+    TOKEN, CHAT_ID = "tok", "456789"
+    responses = [
+        _resp([]),
+        _resp({"message_id": 100}),
+        _resp([{"update_id": 1, "message": {"chat": {"id": 456789}, "text": "approved"}}]),
+        _resp({}),
+    ]
+    with patch("telegram_checkpoint.requests.post", side_effect=responses):
+        with patch("telegram_checkpoint.time.monotonic", return_value=0.0):
+            with patch.object(tc, "_LOCK_FILE", lock):
+                send_and_wait("qa_review", "s", ["approved"], TOKEN, CHAT_ID, 30, "approved")
+    # Lock is written (not deleted — main.py owns deletion)
+    assert lock.exists()
+
+
+def test_send_and_wait_writes_lock_on_send_failure(tmp_path):
+    import telegram_checkpoint as tc
+    lock = tmp_path / "pipeline.lock"
+    call_n = 0
+
+    def post_se(*args, **kwargs):
+        nonlocal call_n
+        call_n += 1
+        if call_n == 1:
+            return _resp([])
+        raise Exception("send failed")
+
+    with patch("telegram_checkpoint.requests.post", side_effect=post_se):
+        with patch.object(tc, "_LOCK_FILE", lock):
+            result = send_and_wait("qa_review", "s", ["approved"], "tok", "456", 30, "approved")
+    assert result == "approved"
+    # Lock is written even on failure (main.py will clean it up)
+    assert lock.exists()

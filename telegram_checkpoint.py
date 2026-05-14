@@ -1,12 +1,14 @@
 from __future__ import annotations
 import logging
 import time
+from pathlib import Path
 
 import requests
 
 logger = logging.getLogger(__name__)
 
 _BASE_URL = "https://api.telegram.org/bot{token}/{method}"
+_LOCK_FILE = Path("/tmp/nayz_pipeline.lock")
 
 
 def _api(token: str, method: str, **kwargs) -> dict:
@@ -83,6 +85,11 @@ def send_and_wait(
     timeout_seconds: int,
     fallback: str,
 ) -> str:
+    try:
+        _LOCK_FILE.write_text(str(time.time()))
+    except OSError as exc:
+        logger.warning("Could not write pipeline lock file: %s", exc)
+
     keyboard = _build_keyboard(options)
     text = f"⏸ <b>Checkpoint: {stage}</b>\n\n{summary}\n\nReply with a button or type freely:"
 
