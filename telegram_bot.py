@@ -91,12 +91,16 @@ def _load_state(path: Path) -> dict:
             path.unlink(missing_ok=True)
             return dict(_IDLE_STATE)
         return data
-    except (json.JSONDecodeError, KeyError, OSError):
+    except (json.JSONDecodeError, KeyError, OSError, TypeError, ValueError):
         return dict(_IDLE_STATE)
 
 
 def _save_state(path: Path, state: dict) -> None:
     """Write state file atomically."""
     tmp = path.with_suffix(".tmp")
-    tmp.write_text(json.dumps(state))
-    tmp.replace(path)
+    try:
+        tmp.write_text(json.dumps(state))
+        tmp.replace(path)
+    except OSError:
+        tmp.unlink(missing_ok=True)
+        raise

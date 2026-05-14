@@ -78,3 +78,10 @@ def test_save_state_atomic(tmp_path):
     data = {"state": "idle", "updated_at": 0.0}
     tb._save_state(path, data)
     assert json.loads(path.read_text())["state"] == "idle"
+
+
+def test_load_state_bad_updated_at(tmp_path):
+    path = tmp_path / "state.json"
+    path.write_text(json.dumps({"state": "awaiting_brief", "updated_at": None}))
+    state = tb._load_state(path)  # should not raise
+    assert state["state"] == "idle"
