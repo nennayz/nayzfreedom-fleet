@@ -126,6 +126,18 @@ python dashboard.py
 
 # Dashboard on VPS (accessible from outside)
 python dashboard.py --host 0.0.0.0 --port 8000
+
+# Telegram checkpoint approval (Phase 11b)
+# 1. Create a bot: message @BotFather on Telegram → /newbot → copy token
+# 2. Get your chat ID: message @userinfobot on Telegram → copy the id number
+# 3. Set env vars in .env:
+#    TELEGRAM_BOT_TOKEN=<token>
+#    TELEGRAM_CHAT_ID=<your_id>
+#    TELEGRAM_TIMEOUT_MINUTES=30   # optional, default 30
+# 4. Run pipeline in attended mode (no --unattended flag):
+#    python main.py --project slay_hack --brief "..."
+#    Pipeline pauses at each checkpoint and sends a Telegram message.
+#    Reply via button or free text. Auto-approves after TELEGRAM_TIMEOUT_MINUTES if no reply.
 ```
 
 ---
