@@ -101,18 +101,19 @@ def _build_keyboard(options: list[str]) -> dict:
    Reply with a button or type freely:
    [option1]  [option2]  ...
    ```
-4. Poll loop until `deadline = now + timeout_seconds`:
+4. Set `deadline = now + timeout_seconds` (countdown starts after send, giving the user the full window)
+5. Poll loop until deadline:
    - `getUpdates(offset=offset, timeout=min(5, remaining))`
    - For each update, advance `offset`
    - Skip updates not from `chat_id`
    - **Callback query** (button press): answer callback, edit message to remove buttons + append `✅ Decision recorded: {data}`, return `callback_data`
    - **Text message**: edit message to append `✅ Decision recorded: {text}`, return `text`
    - `getUpdates` errors: log warning, continue loop
-5. On timeout:
+6. On timeout:
    - Log warning
    - Send: `⏰ No reply for {stage} — auto-continuing with: {fallback}`
    - Return `fallback`
-6. If initial `sendMessage` fails: log error, return `fallback` immediately
+7. If initial `sendMessage` fails: log error, return `fallback` immediately
 
 Security: updates from any chat other than `chat_id` are silently skipped.
 
@@ -125,7 +126,11 @@ Read at module level:
 ```python
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
-TELEGRAM_TIMEOUT_MINUTES = int(os.environ.get("TELEGRAM_TIMEOUT_MINUTES", "30"))
+try:
+    TELEGRAM_TIMEOUT_MINUTES = int(os.environ.get("TELEGRAM_TIMEOUT_MINUTES", "30"))
+except ValueError:
+    logger.warning("Invalid TELEGRAM_TIMEOUT_MINUTES, defaulting to 30")
+    TELEGRAM_TIMEOUT_MINUTES = 30
 
 if bool(TELEGRAM_BOT_TOKEN) != bool(TELEGRAM_CHAT_ID):
     logger.warning(
