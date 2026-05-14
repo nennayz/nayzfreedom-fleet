@@ -75,6 +75,7 @@ DEPLOY_DIR="$(dirname "$0")"
 
 for unit in \
     nayzfreedom-dashboard.service \
+    nayzfreedom-bot.service \
     nayzfreedom-scheduler.service \
     nayzfreedom-scheduler.timer \
     nayzfreedom-reporter.service \
@@ -86,6 +87,7 @@ systemctl daemon-reload
 
 # Dashboard runs persistently
 systemctl enable --now nayzfreedom-dashboard.service
+systemctl enable --now nayzfreedom-bot.service
 
 # Scheduler + reporter run via timers
 systemctl enable --now nayzfreedom-scheduler.timer
@@ -99,6 +101,7 @@ echo "  1. Fill in API keys:  nano $INSTALL_DIR/.env"
 echo "  2. Restart dashboard: systemctl restart nayzfreedom-dashboard"
 echo "  3. Check dashboard:   systemctl status nayzfreedom-dashboard"
 echo "  4. View logs:         journalctl -u nayzfreedom-dashboard -f"
+echo "     Bot logs:          journalctl -u nayzfreedom-bot -f"
 echo "  5. Dashboard URL:     http://<your-server-ip>:8000"
 echo "     (Set DASHBOARD_USER / DASHBOARD_PASSWORD in .env for auth)"
 echo ""
