@@ -68,3 +68,86 @@ def test_send_and_wait_text_reply():
                 TOKEN, CHAT_ID, 30, "1",
             )
     assert result == "2"
+
+
+def test_send_and_wait_ignores_other_chat():
+    TOKEN, CHAT_ID = "tok", "456789"
+    responses = [
+        _resp([]),                          # drain
+        _resp({"message_id": 100}),         # sendMessage
+        _resp([{                            # poll 1: wrong chat
+            "update_id": 1,
+            "message": {"chat": {"id": 999999}, "text": "hacked"},
+        }]),
+        _resp([{                            # poll 2: correct chat
+            "update_id": 2,
+            "message": {"chat": {"id": 456789}, "text": "approved"},
+        }]),
+        _resp({}),                          # editMessageText
+    ]
+    with patch("telegram_checkpoint.requests.post", side_effect=responses):
+        with patch("telegram_checkpoint.time.monotonic", return_value=0.0):
+            result = send_and_wait(
+                "qa_review", "s", ["approved", "rejected"],
+                TOKEN, CHAT_ID, 30, "approved",
+            )
+    assert result == "approved"
+
+
+def test_send_and_wait_timeout():
+    TOKEN, CHAT_ID = "tok", "456789"
+    responses = [
+        _resp([]),                          # drain
+        _resp({"message_id": 100}),         # sendMessage (checkpoint)
+        _resp({"message_id": 101}),         # sendMessage (timeout notification)
+    ]
+    with patch("telegram_checkpoint.requests.post", side_effect=responses):
+        # monotonic call 1 → 0.0 (deadline = 30); call 2 → 100.0 (while False, skip loop)
+        with patch("telegram_checkpoint.time.monotonic", side_effect=[0.0, 100.0]):
+            result = send_and_wait(
+                "final_approval", "Last check.", ["approved", "rejected"],
+                TOKEN, CHAT_ID, 30, "approved",
+            )
+    assert result == "approved"
+
+
+def test_send_and_wait_send_fails():
+    call_n = 0
+
+    def post_se(*args, **kwargs):
+        nonlocal call_n
+        call_n += 1
+        if call_n == 1:
+            return _resp([])            # drain succeeds
+        raise Exception("send failed")  # sendMessage raises
+
+    with patch("telegram_checkpoint.requests.post", side_effect=post_se):
+        result = send_and_wait(
+            "qa_review", "s", ["approved"], "tok", "456", 30, "approved",
+        )
+    assert result == "approved"
+
+
+def test_send_and_wait_get_updates_error():
+    call_n = 0
+
+    def post_se(*args, **kwargs):
+        nonlocal call_n
+        call_n += 1
+        if call_n == 1:
+            return _resp([])                    # drain
+        if call_n == 2:
+            return _resp({"message_id": 100})   # sendMessage
+        if call_n == 3:
+            raise Exception("network error")    # getUpdates in loop raises
+        return _resp({"message_id": 101})       # timeout notification
+
+    with patch("telegram_checkpoint.requests.post", side_effect=post_se):
+        # monotonic: deadline=0+30=30; while 0<30→True; remaining=30-0=30;
+        # getUpdates raises (caught); while 100<30→False; timeout handler
+        with patch("telegram_checkpoint.time.monotonic",
+                   side_effect=[0.0, 0.0, 0.0, 100.0]):
+            result = send_and_wait(
+                "qa_review", "s", ["approved"], "tok", "456", 30, "approved",
+            )
+    assert result == "approved"
