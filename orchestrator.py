@@ -108,16 +108,23 @@ class Orchestrator:
 
     def _dispatch(self, tool_name: str, tool_input: dict, job: ContentJob) -> dict:
         if tool_name == "request_checkpoint":
+            stage = tool_input.get("stage")
+            options = tool_input.get("options", [])
+            # For idea_selection, always build options from job.ideas so
+            # Telegram shows numbered buttons even when Robin omits them.
+            if stage == "idea_selection" and job.ideas:
+                options = [f"{i.number}: {i.title}" for i in job.ideas]
             result = pause(
-                stage=tool_input.get("stage"),
+                stage=stage,
                 summary=tool_input.get("summary"),
-                options=tool_input.get("options", []),
+                options=options,
                 job=job,
                 unattended=self._unattended,
             )
-            if tool_input.get("stage") == "idea_selection" and job.ideas is not None:
+            if stage == "idea_selection" and job.ideas is not None:
                 try:
-                    decision_num = int(result.decision)
+                    # Support both "1" and "1: Title" formats
+                    decision_num = int(result.decision.split(":")[0].strip())
                     matched = next(
                         (i for i in job.ideas if i.number == decision_num), None
                     )
