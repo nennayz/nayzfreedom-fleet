@@ -278,7 +278,7 @@ def test_confirm_cancel(tmp_path, monkeypatch):
 
 
 def test_stale_lock_cleared(tmp_path):
-    """Lock older than 4 hours is deleted by run_bot on first iteration."""
+    """Lock older than 4 hours is deleted by run_bot and updates are processed in the same iteration."""
     lock_file = tmp_path / "lock"
     lock_file.write_text(str(time.time() - 5 * 3600))  # 5 hours ago
 
@@ -288,10 +288,11 @@ def test_stale_lock_cleared(tmp_path):
         iterations[0] += 1
         if iterations[0] >= 2:
             raise SystemExit(0)
-        return []
+        return [_msg_update(1, "hi")]  # update present in same iteration as stale lock removal
 
+    handled = []
     with patch.object(tb, "_get_updates", side_effect=fake_get_updates):
-        with patch.object(tb, "_handle_update"):
+        with patch.object(tb, "_handle_update", side_effect=lambda *a, **kw: handled.append(1)):
             try:
                 tb.run_bot(TOKEN, CHAT_ID, root=tmp_path,
                            lock_file=lock_file, state_file=tmp_path / "s.json")
@@ -299,6 +300,7 @@ def test_stale_lock_cleared(tmp_path):
                 pass
 
     assert not lock_file.exists()
+    assert len(handled) == 1  # update was processed in the same iteration the stale lock was cleared
 
 
 def test_run_bot_pauses_when_lock_fresh(tmp_path):
