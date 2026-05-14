@@ -123,6 +123,8 @@ def send_and_wait(
                 if msg_chat_id != str(chat_id):
                     continue
                 decision = msg.get("text", "").strip()
+                if not decision:
+                    continue
                 _edit_message(token, chat_id, message_id,
                                text + f"\n✅ Decision recorded: {decision}")
                 return decision
