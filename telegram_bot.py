@@ -124,7 +124,11 @@ def _spawn_pipeline(
     if state.get("dry_run"):
         cmd.append("--dry-run")
     lock_file.write_text(str(time.time()))
-    subprocess.Popen(cmd, cwd=str(root))
+    try:
+        subprocess.Popen(cmd, cwd=str(root))
+    except Exception:
+        lock_file.unlink(missing_ok=True)
+        raise
     _send_message(
         token, chat_id,
         "Pipeline started. ⏳\nYou'll receive checkpoint messages as it progresses.",
@@ -234,6 +238,9 @@ def _handle_update(
         _send_message(token, chat_id, "Brief? Describe the content you want.")
 
     elif current == "awaiting_brief":
+        if callback_id:
+            _send_message(token, chat_id, "Please type your brief as a message.")
+            return
         if not text:
             _send_message(token, chat_id, "Please type your brief.")
             return

@@ -217,6 +217,37 @@ def test_full_conversation_flow(tmp_path, monkeypatch):
     assert lock_file.exists()
 
 
+def test_full_conversation_flow_dry_run(tmp_path, monkeypatch):
+    """Dry-run path: Start ✅ should include --dry-run in spawned command."""
+    (tmp_path / "projects" / "slay_hack").mkdir(parents=True)
+    (tmp_path / "projects" / "slay_hack" / "pm_profile.yaml").write_text("name: test")
+
+    state_file = tmp_path / "state.json"
+    lock_file = tmp_path / "lock"
+
+    spawned = []
+    monkeypatch.setattr(tb.subprocess, "Popen", lambda cmd, **kw: spawned.append(cmd))
+
+    with patch("telegram_bot.requests.post", return_value=_resp({"message_id": 1})):
+        root = tmp_path
+
+        def handle(text_or_data, is_cb=False):
+            update = _cb_update(1, text_or_data) if is_cb else _msg_update(1, text_or_data)
+            tb._handle_update(update, TOKEN, CHAT_ID, root=root,
+                              state_file=state_file, lock_file=lock_file)
+
+        handle("hi")
+        handle("slay_hack", is_cb=True)
+        handle("video", is_cb=True)
+        handle("Yes — dry run", is_cb=True)   # ← dry run selected
+        handle("skincare mistakes")
+        handle("Start ✅", is_cb=True)
+
+    assert len(spawned) == 1
+    cmd = spawned[0]
+    assert "--dry-run" in cmd
+
+
 def test_confirm_cancel(tmp_path, monkeypatch):
     (tmp_path / "projects" / "slay_hack").mkdir(parents=True)
     (tmp_path / "projects" / "slay_hack" / "pm_profile.yaml").write_text("name: test")
