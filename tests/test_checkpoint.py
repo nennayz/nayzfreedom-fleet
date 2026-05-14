@@ -95,3 +95,56 @@ def test_main_unattended_flag_passed_to_orchestrator(mocker, tmp_path, monkeypat
     assert mock_run.called
     _, kwargs = mock_run.call_args
     assert kwargs.get("unattended") is True
+
+
+from unittest.mock import MagicMock
+
+
+def test_pause_uses_telegram_when_env_set(monkeypatch):
+    import checkpoint as cp
+    monkeypatch.setattr(cp, "TELEGRAM_BOT_TOKEN", "test-token")
+    monkeypatch.setattr(cp, "TELEGRAM_CHAT_ID", "123456")
+    monkeypatch.setattr(cp, "TELEGRAM_TIMEOUT_MINUTES", 30)
+
+    mock_send = MagicMock(return_value="approved")
+    monkeypatch.setattr(cp.telegram_checkpoint, "send_and_wait", mock_send)
+
+    job = make_job()
+    result = cp.pause("content_review", "Script ok.", ["approved", "rejected"], job)
+
+    mock_send.assert_called_once_with(
+        stage="content_review",
+        summary="Script ok.",
+        options=["approved", "rejected"],
+        token="test-token",
+        chat_id="123456",
+        timeout_seconds=1800,
+        fallback="approved",
+    )
+    assert result.decision == "approved"
+    assert result.stage == "content_review"
+
+
+def test_pause_falls_back_to_input_when_no_token(monkeypatch):
+    import checkpoint as cp
+    monkeypatch.setattr(cp, "TELEGRAM_BOT_TOKEN", "")
+    monkeypatch.setattr(cp, "TELEGRAM_CHAT_ID", "")
+
+    with patch("builtins.input", return_value="1"):
+        result = cp.pause("idea_selection", "Pick an idea.", ["Idea A", "Idea B"], make_job())
+
+    assert result.decision == "1"
+
+
+def test_pause_skips_telegram_when_unattended(monkeypatch):
+    import checkpoint as cp
+    monkeypatch.setattr(cp, "TELEGRAM_BOT_TOKEN", "test-token")
+    monkeypatch.setattr(cp, "TELEGRAM_CHAT_ID", "123456")
+
+    mock_send = MagicMock()
+    monkeypatch.setattr(cp.telegram_checkpoint, "send_and_wait", mock_send)
+
+    result = cp.pause("qa_review", "summary", [], make_job(), unattended=True)
+
+    mock_send.assert_not_called()
+    assert result.decision == "approved"
