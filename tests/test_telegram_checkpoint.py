@@ -169,6 +169,9 @@ def test_send_and_wait_writes_lock(tmp_path):
                 send_and_wait("qa_review", "s", ["approved"], TOKEN, CHAT_ID, 30, "approved")
     # Lock is written (not deleted — main.py owns deletion)
     assert lock.exists()
+    content = lock.read_text()
+    assert content  # non-empty
+    float(content)  # parseable as a timestamp — raises ValueError if wrong
 
 
 def test_send_and_wait_writes_lock_on_send_failure(tmp_path):
@@ -189,3 +192,6 @@ def test_send_and_wait_writes_lock_on_send_failure(tmp_path):
     assert result == "approved"
     # Lock is written even on failure (main.py will clean it up)
     assert lock.exists()
+    content = lock.read_text()
+    assert content  # non-empty
+    float(content)  # parseable as a timestamp — raises ValueError if wrong
