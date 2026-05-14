@@ -275,3 +275,52 @@ def test_confirm_cancel(tmp_path, monkeypatch):
     assert spawned == []
     assert not state_file.exists()
     assert not lock_file.exists()
+
+
+def test_stale_lock_cleared(tmp_path):
+    """Lock older than 4 hours is deleted by run_bot on first iteration."""
+    lock_file = tmp_path / "lock"
+    lock_file.write_text(str(time.time() - 5 * 3600))  # 5 hours ago
+
+    iterations = [0]
+
+    def fake_get_updates(*args, **kwargs):
+        iterations[0] += 1
+        if iterations[0] >= 2:
+            raise SystemExit(0)
+        return []
+
+    with patch.object(tb, "_get_updates", side_effect=fake_get_updates):
+        with patch.object(tb, "_handle_update"):
+            try:
+                tb.run_bot(TOKEN, CHAT_ID, root=tmp_path,
+                           lock_file=lock_file, state_file=tmp_path / "s.json")
+            except SystemExit:
+                pass
+
+    assert not lock_file.exists()
+
+
+def test_run_bot_pauses_when_lock_fresh(tmp_path):
+    """Bot skips _handle_update when a fresh lock file exists."""
+    lock_file = tmp_path / "lock"
+    lock_file.write_text(str(time.time()))  # fresh lock
+
+    iterations = [0]
+
+    def fake_get_updates(*args, **kwargs):
+        iterations[0] += 1
+        if iterations[0] >= 2:
+            raise SystemExit(0)
+        return [_msg_update(1, "hi")]
+
+    handled = []
+    with patch.object(tb, "_get_updates", side_effect=fake_get_updates):
+        with patch.object(tb, "_handle_update", side_effect=lambda *a, **kw: handled.append(1)):
+            try:
+                tb.run_bot(TOKEN, CHAT_ID, root=tmp_path,
+                           lock_file=lock_file, state_file=tmp_path / "s.json")
+            except SystemExit:
+                pass
+
+    assert handled == []  # _handle_update never called while lock is fresh

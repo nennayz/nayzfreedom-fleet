@@ -266,3 +266,56 @@ def _handle_update(
         else:
             _send_message(token, chat_id, "Start pipeline?",
                           reply_markup=_build_keyboard(["Start ✅", "Cancel ❌"]))
+
+
+# ── Poll loop ───────────────────────────────────────────────────────────────
+
+def run_bot(
+    token: str,
+    chat_id: str,
+    root: Path,
+    lock_file: Path = _LOCK_FILE,
+    state_file: Path = _STATE_FILE,
+) -> None:
+    """Main entry point. Polls Telegram indefinitely. Blocks."""
+    offset = 0
+    logger.info("Telegram bot started (chat_id=%s).", chat_id)
+
+    while True:
+        if lock_file.exists():
+            try:
+                age = time.time() - float(lock_file.read_text())
+                if age > _STALE_LOCK_AGE:
+                    logger.warning("Stale lock file (%.0f s old) — removing.", age)
+                    lock_file.unlink(missing_ok=True)
+                else:
+                    # Pipeline active — advance offset only, don't handle updates
+                    updates = _get_updates(token, offset=offset, timeout=5)
+                    for u in updates:
+                        offset = u["update_id"] + 1
+                    continue
+            except (ValueError, OSError):
+                lock_file.unlink(missing_ok=True)
+
+        updates = _get_updates(token, offset=offset, timeout=5)
+        for update in updates:
+            offset = update["update_id"] + 1
+            try:
+                _handle_update(update, token, chat_id, root,
+                               state_file=state_file, lock_file=lock_file)
+            except Exception as exc:
+                logger.error("Error handling update %s: %s",
+                             update.get("update_id"), exc)
+
+
+if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    )
+    _token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+    _chat_id = os.environ.get("TELEGRAM_CHAT_ID", "")
+    if not _token or not _chat_id:
+        logger.error("TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID must be set.")
+        sys.exit(1)
+    run_bot(_token, _chat_id, root=_ROOT)
