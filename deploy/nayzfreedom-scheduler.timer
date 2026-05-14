@@ -1,0 +1,11 @@
+[Unit]
+Description=NayzFreedom Daily Scheduler — 06:00 UTC
+Requires=nayzfreedom-scheduler.service
+
+[Timer]
+OnCalendar=*-*-* 06:00:00 UTC
+AccuracySec=1min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

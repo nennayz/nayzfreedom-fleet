@@ -1,0 +1,11 @@
+[Unit]
+Description=NayzFreedom Weekly Reporter — Monday 08:00 UTC
+Requires=nayzfreedom-reporter.service
+
+[Timer]
+OnCalendar=Mon *-*-* 08:00:00 UTC
+AccuracySec=1min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

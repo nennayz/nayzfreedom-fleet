@@ -1,0 +1,12 @@
+[Unit]
+Description=NayzFreedom Daily Scheduler (one-shot)
+After=network.target
+
+[Service]
+Type=oneshot
+User=nayzfreedom
+WorkingDirectory=/opt/nayzfreedom
+EnvironmentFile=/opt/nayzfreedom/.env
+ExecStart=/opt/nayzfreedom/.venv/bin/python scheduler.py
+StandardOutput=journal
+StandardError=journal
