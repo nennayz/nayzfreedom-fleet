@@ -28,8 +28,12 @@ Two coordination files:
 
 | File | Purpose |
 |---|---|
-| `/tmp/nayz_pipeline.lock` | Written by bot on spawn, deleted by `main.py` on exit. Prevents double-spawn and bot polling during checkpoint phases. |
+| `/tmp/nayz_pipeline.lock` | Written by bot on spawn AND by `send_and_wait()` on each checkpoint poll. Deleted by `main.py` on exit (via try/finally). Prevents bot polling during any pipeline phase regardless of how it was triggered (dashboard or Telegram). |
 | `/tmp/nayz_bot_state.json` | Conversation state between messages. Expires after 10 minutes of inactivity. |
+
+Lock file write/delete owners:
+- **Bot-triggered run:** bot writes lock before `Popen`, `main.py` deletes on exit
+- **Dashboard-triggered run:** `send_and_wait()` writes lock at start of each checkpoint poll, deletes on return — bot pauses automatically
 
 `telegram_bot.py` runs as a persistent systemd service. Its poll loop:
 1. Check lock file — if present and age < 4 hours, skip processing (pipeline active)
