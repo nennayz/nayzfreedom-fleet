@@ -234,14 +234,16 @@ button[type="submit"]:hover { background: var(--navy-soft); }
   text-decoration-color: rgba(255,255,255,0.45);
 }
 .aurora-command,
-.island-command {
+.island-command,
+.mission-command {
   display: grid;
   gap: 1rem;
   grid-template-columns: minmax(0, 1.4fr) minmax(150px, 0.4fr) minmax(150px, 0.4fr);
   margin-bottom: 1.5rem;
 }
 .aurora-command article,
-.island-command article {
+.island-command article,
+.mission-command article {
   background: rgba(255,255,255,0.82);
   border: 1px solid var(--line);
   border-radius: 20px;
@@ -249,31 +251,37 @@ button[type="submit"]:hover { background: var(--navy-soft); }
   padding: 1.15rem;
 }
 .aurora-command article:first-child,
-.island-command article:first-child {
+.island-command article:first-child,
+.mission-command article:first-child {
   background:
     linear-gradient(135deg, rgba(125,226,209,0.2), rgba(185,131,255,0.14)),
     rgba(255,255,255,0.86);
 }
 .aurora-command p,
-.island-command p {
+.island-command p,
+.mission-command p {
   color: var(--muted);
   line-height: 1.5;
   margin-bottom: 0.75rem;
 }
 .aurora-command a,
-.island-command a {
+.island-command a,
+.mission-command a {
   font-weight: 700;
 }
 .aurora-command span,
 .aurora-command small,
 .island-command span,
-.island-command small {
+.island-command small,
+.mission-command span,
+.mission-command small {
   color: var(--muted);
   display: block;
   font-size: 0.82rem;
 }
 .aurora-command strong,
-.island-command strong {
+.island-command strong,
+.mission-command strong {
   display: block;
   font-size: 2.1rem;
   line-height: 1;
@@ -756,6 +764,7 @@ a:hover { color: var(--navy-soft); }
   .command-brief,
   .aurora-command,
   .island-command,
+  .mission-command,
   .content-grid,
   .stat-grid,
   .domain-grid,

@@ -9,6 +9,25 @@
   </div>
 </section>
 
+<section class="mission-command">
+  <article>
+    <p class="eyebrow">Mission command</p>
+    <h2>{{ mission_command.state }}</h2>
+    <p>{{ mission_command.action }}</p>
+    <a href="/aurora">Return to island</a>
+  </article>
+  <article>
+    <span>Current stage</span>
+    <strong>{{ mission_command.stage_label }}</strong>
+    <small>{{ mission_command.owner }} · {{ mission_command.station }}</small>
+  </article>
+  <article>
+    <span>Progress</span>
+    <strong>{{ mission_command.progress }}</strong>
+    <small>{{ job.status.value | status_label }}</small>
+  </article>
+</section>
+
 <section class="content-grid">
   <article class="panel">
     <p><strong>Island:</strong> {{ job.pm.page_name }}</p>

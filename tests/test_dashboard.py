@@ -257,6 +257,9 @@ def test_job_detail_shows_brief(tmp_path, client):
     assert "NayzFreedom Fleet" in resp.text
     assert "nayzfreedom_fleet" not in resp.text
     assert "Voyage log" in resp.text
+    assert "Mission command" in resp.text
+    assert "Review the publish result and record performance when results arrive." in resp.text
+    assert "Return to island" in resp.text
     assert "Command the Brief" in resp.text
     assert "/aurora/crew/robin" in resp.text
 
@@ -277,6 +280,8 @@ def test_job_detail_workflow_marks_current_crew_stage(tmp_path, client):
         resp = client.get("/jobs/20260512_070000", headers=_auth())
     assert resp.status_code == 200
     assert "Shape the Vision" in resp.text
+    assert "Current stage" in resp.text
+    assert "Lila Lens is holding the current stage." in resp.text
     assert "Lila Lens" in resp.text
     assert "Studio Deck" in resp.text
     assert "timeline-step current" in resp.text

@@ -96,6 +96,42 @@ def _build_voyage_steps(job) -> list[dict]:
     return steps
 
 
+def _mission_command(job, voyage_steps: list[dict], completed_count: int) -> dict:
+    status_value = getattr(job.status, "value", str(job.status))
+    current = next(
+        (item for item in voyage_steps if item["state"] in {"current", "blocked"}),
+        voyage_steps[-1] if voyage_steps else None,
+    )
+    step = current["step"] if current else None
+    member = current["member"] if current else None
+    owner = member.name if member else step.owner_name if step else "Mission crew"
+
+    if status_value == "failed":
+        state = "Needs Captain"
+        action = "Review the failure and decide whether to rerun, redirect, or close the mission."
+    elif status_value == "awaiting_approval":
+        state = "Needs Captain"
+        action = "Approve or redirect the waiting checkpoint before the workflow continues."
+    elif status_value == "completed":
+        state = "Complete"
+        action = "Review the publish result and record performance when results arrive."
+    elif status_value == "running":
+        state = "In Motion"
+        action = f"{owner} is holding the current stage."
+    else:
+        state = "Ready"
+        action = "Start or resume the mission workflow."
+
+    return {
+        "state": state,
+        "action": action,
+        "stage_label": step.label if step else "Not started",
+        "owner": owner,
+        "station": step.station if step else "Mission deck",
+        "progress": f"{completed_count}/{len(voyage_steps)}",
+    }
+
+
 @app.get("/", response_class=HTMLResponse)
 def captains_deck(request: Request, _: str = Depends(verify_auth)):
     jobs = list_all_jobs(_root(request))
@@ -249,6 +285,7 @@ def job_detail(job_id: str, request: Request, _: str = Depends(verify_auth)):
     faq_content = faq_path.read_text() if faq_path.exists() else None
     voyage_steps = _build_voyage_steps(job)
     completed_count = sum(1 for item in voyage_steps if item["state"] == "done")
+    mission_command = _mission_command(job, voyage_steps, completed_count)
     return templates.TemplateResponse(
         request,
         "job_detail.html",
@@ -258,6 +295,7 @@ def job_detail(job_id: str, request: Request, _: str = Depends(verify_auth)):
             "voyage_steps": voyage_steps,
             "progress_count": completed_count,
             "total_stages": len(voyage_steps),
+            "mission_command": mission_command,
         },
     )
 
