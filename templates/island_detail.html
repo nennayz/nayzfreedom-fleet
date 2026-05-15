@@ -17,6 +17,31 @@
   </div>
 </section>
 
+<section class="island-command">
+  <article>
+    <p class="eyebrow">Island command</p>
+    <h2>{{ command_brief.state }}</h2>
+    <p>{{ command_brief.action }}</p>
+    {% if attention_jobs %}
+    <a href="/jobs/{{ attention_jobs[0].id }}">Open island priority</a>
+    {% elif active_jobs %}
+    <a href="/jobs/{{ active_jobs[0].id }}">Monitor island mission</a>
+    {% else %}
+    <a href="/aurora/new-mission?project={{ project_slug }}">Launch island mission</a>
+    {% endif %}
+  </article>
+  <article>
+    <span>PM</span>
+    <strong>{{ pm.name }}</strong>
+    <small>{{ pm.page_name }}</small>
+  </article>
+  <article>
+    <span>Needs Captain</span>
+    <strong>{{ attention_jobs | length }}</strong>
+    <small>blocked or awaiting approval</small>
+  </article>
+</section>
+
 <section class="stat-grid wide">
   <div class="stat-card">
     <span>Total missions</span>
@@ -84,6 +109,48 @@
       <h2>Island operating context</h2>
     </div>
     <p class="muted">{{ pm.persona }}</p>
+  </article>
+</section>
+
+<section class="content-grid">
+  <article class="panel">
+    <div class="section-heading">
+      <p class="eyebrow">In motion</p>
+      <h2>Active island missions</h2>
+    </div>
+    {% if active_jobs %}
+    <div class="mission-list">
+      {% for job in active_jobs %}
+      <a href="/jobs/{{ job.id }}" class="mission-row">
+        <span>{{ job.id[:8] }}</span>
+        <strong>{{ job.brief[:42] }}{% if job.brief | length > 42 %}…{% endif %}</strong>
+        <em class="badge badge-{{ job.status.value }}">{{ job.status.value | status_label }}</em>
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="muted">No island missions running right now.</p>
+    {% endif %}
+  </article>
+
+  <article class="panel">
+    <div class="section-heading">
+      <p class="eyebrow">Signals</p>
+      <h2>Island needs attention</h2>
+    </div>
+    {% if attention_jobs %}
+    <div class="mission-list">
+      {% for job in attention_jobs %}
+      <a href="/jobs/{{ job.id }}" class="mission-row">
+        <span>{{ job.id[:8] }}</span>
+        <strong>{{ job.brief[:42] }}{% if job.brief | length > 42 %}…{% endif %}</strong>
+        <em class="badge badge-{{ job.status.value }}">{{ job.status.value | status_label }}</em>
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="muted">No blocked or approval-waiting island missions.</p>
+    {% endif %}
   </article>
 </section>
 

@@ -170,6 +170,8 @@ def island_detail(project_slug: str, request: Request, _: str = Depends(verify_a
         if project_slug_matches(job.project, project_slug)
     ]
     summary = summarize_jobs(jobs)
+    signals = attention_jobs(jobs)
+    active = active_jobs(jobs)
     return templates.TemplateResponse(
         request,
         "island_detail.html",
@@ -178,6 +180,9 @@ def island_detail(project_slug: str, request: Request, _: str = Depends(verify_a
             "pm": pm,
             "jobs": jobs[:5],
             "summary": summary,
+            "attention_jobs": signals,
+            "active_jobs": active,
+            "command_brief": command_brief(jobs),
             "allowed_content_types": [content_type.value for content_type in pm.brand.allowed_content_types],
         },
     )

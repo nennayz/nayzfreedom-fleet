@@ -174,14 +174,20 @@ def test_island_detail_renders(tmp_path, client, monkeypatch):
     )
     _write_job(tmp_path, "20260512_060000", brief="island mission", status="completed")
     _write_job(tmp_path, "20260512_070000", brief="attention mission", status="failed")
+    _write_job(tmp_path, "20260512_080000", brief="active island mission", status="running")
     monkeypatch.chdir(tmp_path)
     resp = client.get("/aurora/islands/nayzfreedom_fleet", headers=_auth())
     assert resp.status_code == 200
     assert "NayzFreedom Fleet" in resp.text
+    assert "Island command" in resp.text
+    assert "Open island priority" in resp.text
+    assert "PM" in resp.text
+    assert "Slay" in resp.text
     assert "mission" in resp.text
     assert "Launch island mission" in resp.text
     assert "/aurora/new-mission?project=nayzfreedom_fleet" in resp.text
     assert "island mission" in resp.text
+    assert "active island mission" in resp.text
     assert "Needs attention" in resp.text
     assert "bold persona" in resp.text
     assert "video" in resp.text
