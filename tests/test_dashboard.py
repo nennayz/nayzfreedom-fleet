@@ -118,9 +118,15 @@ def test_dashboard_status_badges_use_human_labels(tmp_path, client):
 def test_aurora_overview_shows_projects(tmp_path, client):
     (tmp_path / "projects" / "nayzfreedom_fleet").mkdir(parents=True)
     (tmp_path / "projects" / "nayzfreedom_fleet" / "pm_profile.yaml").write_text("page_name: test\n")
+    _write_job(tmp_path, "20260512_060000", brief="needs aurora", status="failed")
+    _write_job(tmp_path, "20260513_060000", brief="active aurora", status="running")
     resp = client.get("/aurora", headers=_auth())
     assert resp.status_code == 200
     assert "The Aurora" in resp.text
+    assert "Mission control" in resp.text
+    assert "Open priority mission" in resp.text
+    assert "needs aurora" in resp.text
+    assert "active aurora" in resp.text
     assert "test" in resp.text
     assert "/aurora/islands/nayzfreedom_fleet" in resp.text
 

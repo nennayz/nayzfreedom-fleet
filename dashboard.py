@@ -126,12 +126,17 @@ def aurora_overview(request: Request, _: str = Depends(verify_auth)):
     jobs = list_all_jobs(root)
     projects = _project_options(root)
     performance = load_performance_all(root)
+    signals = attention_jobs(jobs)
+    active = active_jobs(jobs)
     return templates.TemplateResponse(
         request,
         "aurora.html",
         {
             "jobs": jobs[:5],
             "summary": summarize_jobs(jobs),
+            "attention_jobs": signals,
+            "active_jobs": active,
+            "command_brief": command_brief(jobs),
             "projects": projects,
             "performance": performance,
             "crew": CREW[:4],
