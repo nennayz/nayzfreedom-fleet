@@ -34,11 +34,12 @@ def _make_pm_dict(page_name: str = "Slay Hack Agency") -> dict:
 
 
 def _write_job(tmp_path: Path, job_id: str, brief: str = "test brief",
-               status: str = "completed", page: str = "Slay Hack Agency") -> None:
+               status: str = "completed", page: str = "Slay Hack Agency",
+               stage: str = "init") -> None:
     job = {
         "id": job_id, "project": "slay_hack", "pm": _make_pm_dict(page),
         "brief": brief, "platforms": ["facebook"], "status": status,
-        "stage": "init", "dry_run": False, "performance": [], "checkpoint_log": [],
+        "stage": stage, "dry_run": False, "performance": [], "checkpoint_log": [],
     }
     job_dir = tmp_path / "output" / page / job_id
     job_dir.mkdir(parents=True, exist_ok=True)
@@ -182,6 +183,30 @@ def test_job_detail_shows_brief(tmp_path, client):
     assert resp.status_code == 200
     assert "luxury brands are amazing" in resp.text
     assert "Voyage log" in resp.text
+    assert "Command the Brief" in resp.text
+    assert "/aurora/crew/robin" in resp.text
+
+
+def test_job_detail_workflow_marks_current_crew_stage(tmp_path, client):
+    _write_job(
+        tmp_path,
+        "20260512_070000",
+        brief="visual stage mission",
+        status="running",
+        stage="lila_done",
+    )
+    from models.content_job import ContentJob
+    job = ContentJob.model_validate_json(
+        (tmp_path / "output" / "Slay Hack Agency" / "20260512_070000" / "job.json").read_text()
+    )
+    with patch.object(_dm, "find_job", return_value=job):
+        resp = client.get("/jobs/20260512_070000", headers=_auth())
+    assert resp.status_code == 200
+    assert "Shape the Vision" in resp.text
+    assert "Lila Lens" in resp.text
+    assert "Studio Deck" in resp.text
+    assert "timeline-step current" in resp.text
+    assert "/aurora/crew/lila" in resp.text
 
 
 def test_metrics_no_data(client):

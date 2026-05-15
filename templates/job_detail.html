@@ -22,11 +22,22 @@
       <h2>Workflow timeline</h2>
     </div>
     <div class="timeline polished-timeline">
-      {% for stage, label, agent in voyage_stages %}
-      <div class="timeline-step {% if stage in completed_stages %}done{% endif %}">
+      {% for item in voyage_steps %}
+      <div class="timeline-step {{ item.state }}" style="--member-accent: {{ item.member.accent_color if item.member else '#b08a3a' }}">
+        {% if item.member %}
+        <img src="{{ item.member.image }}" alt="{{ item.member.name }}">
+        {% else %}
         <span></span>
-        <strong>{{ label }}</strong>
-        <em>{{ agent }}</em>
+        {% endif %}
+        <div>
+          <strong>{{ item.step.label }}</strong>
+          {% if item.member %}
+          <a href="/aurora/crew/{{ item.member.slug }}">{{ item.member.name }}</a>
+          {% else %}
+          <em>{{ item.step.owner_name }}</em>
+          {% endif %}
+          <small>{{ item.step.station }} · {{ item.step.action }}</small>
+        </div>
       </div>
       {% endfor %}
     </div>

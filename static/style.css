@@ -433,37 +433,69 @@ button[type="submit"]:hover { background: var(--navy-soft); }
   gap: 0.8rem;
 }
 .timeline-step {
+  align-items: start;
   display: grid;
-  gap: 0.2rem 0.7rem;
-  grid-template-columns: auto 1fr;
+  gap: 0.2rem 0.85rem;
+  grid-template-columns: 34px 1fr;
+  min-height: 44px;
+  opacity: 0.62;
+  position: relative;
 }
-.timeline-step span {
+.timeline-step > span,
+.timeline-step img {
   border: 2px solid var(--line);
   border-radius: 50%;
   display: block;
-  grid-row: span 2;
-  height: 16px;
-  margin-top: 0.2rem;
-  width: 16px;
+  height: 34px;
+  margin-top: 0.05rem;
+  object-fit: cover;
+  object-position: center top;
+  width: 34px;
 }
-.timeline-step em {
+.timeline-step a,
+.timeline-step em,
+.timeline-step small {
   color: var(--muted);
+  display: block;
   font-size: 0.86rem;
+  font-style: normal;
+  margin-top: 0.12rem;
 }
-.timeline-step.done span {
-  background: var(--gold);
-  border-color: var(--gold);
+.timeline-step a {
+  color: var(--navy);
+  font-weight: 700;
+  text-decoration: none;
+}
+.timeline-step.current,
+.timeline-step.done,
+.timeline-step.blocked {
+  opacity: 1;
+}
+.timeline-step.done > span,
+.timeline-step.done img {
+  border-color: var(--member-accent, var(--gold));
+  box-shadow: 0 0 0 3px rgba(176,138,58,0.14);
+}
+.timeline-step.current > span,
+.timeline-step.current img {
+  border-color: var(--member-accent, var(--gold));
+  box-shadow: 0 0 0 4px rgba(125,226,209,0.22);
+}
+.timeline-step.blocked > span,
+.timeline-step.blocked img {
+  border-color: #b54747;
+  box-shadow: 0 0 0 4px rgba(181,71,71,0.14);
 }
 .polished-timeline {
   position: relative;
 }
 .polished-timeline::before {
   background: linear-gradient(var(--gold-soft), rgba(16,35,63,0.08));
-  bottom: 0.25rem;
+  bottom: 1rem;
   content: "";
-  left: 7px;
+  left: 16px;
   position: absolute;
-  top: 0.25rem;
+  top: 1rem;
   width: 2px;
 }
 .progress-bar {

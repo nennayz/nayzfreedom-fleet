@@ -10,7 +10,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from crew_registry import CREW, get_crew_member
+from crew_registry import CREW, WORKFLOW_STEPS, get_crew_member
 from dashboard_store import list_all_jobs, load_performance_all, summarize_jobs
 from job_store import find_job
 from project_loader import load_project
@@ -26,17 +26,6 @@ _ROOT = Path(__file__).resolve().parent
 
 VALID_CONTENT_TYPES = {"video", "article", "image", "infographic"}
 MAX_BRIEF_LEN = 2000
-
-VOYAGE_STAGES = [
-    ("mia_done", "Scout the Horizon", "Mia Trend"),
-    ("zoe_done", "Chart the Route", "Zoe Spark"),
-    ("bella_done", "Write the Tale", "Bella Quill"),
-    ("lila_done", "Shape the Vision", "Lila Lens"),
-    ("nora_done", "Inspect the Cargo", "Nora Sharp"),
-    ("roxy_done", "Set the Trade Winds", "Roxy Rise"),
-    ("emma_done", "Prepare the Port Talk", "Emma Heart"),
-    ("publish_done", "Raise the Flag", "Publish"),
-]
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory=str(_ROOT / "static")), name="static")
@@ -56,9 +45,26 @@ def _root(request: Request) -> Path:
     return getattr(request.app.state, "root", _ROOT)
 
 
-def _stage_completed(job, stage: str) -> bool:
-    order = [item[0] for item in VOYAGE_STAGES]
-    return job.stage in order and order.index(job.stage) >= order.index(stage)
+def _build_voyage_steps(job) -> list[dict]:
+    order = [step.stage for step in WORKFLOW_STEPS]
+    current_index = order.index(job.stage) if job.stage in order else 0
+    status_value = getattr(job.status, "value", str(job.status))
+    steps = []
+    for index, step in enumerate(WORKFLOW_STEPS):
+        member = get_crew_member(step.crew_slug) if step.crew_slug else None
+        if index < current_index:
+            state = "done"
+        elif index == current_index:
+            if status_value == "failed":
+                state = "blocked"
+            elif status_value == "completed" or step.stage == "publish_done":
+                state = "done"
+            else:
+                state = "current"
+        else:
+            state = "upcoming"
+        steps.append({"step": step, "member": member, "state": state})
+    return steps
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -171,17 +177,17 @@ def job_detail(job_id: str, request: Request, _: str = Depends(verify_auth)):
     root = _root(request)
     faq_path = root / "output" / job.pm.page_name / job_id / "faq.md"
     faq_content = faq_path.read_text() if faq_path.exists() else None
-    completed_stages = {stage for stage, _, _ in VOYAGE_STAGES if _stage_completed(job, stage)}
+    voyage_steps = _build_voyage_steps(job)
+    completed_count = sum(1 for item in voyage_steps if item["state"] == "done")
     return templates.TemplateResponse(
         request,
         "job_detail.html",
         {
             "job": job,
             "faq_content": faq_content,
-            "voyage_stages": VOYAGE_STAGES,
-            "completed_stages": completed_stages,
-            "progress_count": len(completed_stages),
-            "total_stages": len(VOYAGE_STAGES),
+            "voyage_steps": voyage_steps,
+            "progress_count": completed_count,
+            "total_stages": len(voyage_steps),
         },
     )
 

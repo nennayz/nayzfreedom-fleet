@@ -24,6 +24,16 @@ class CrewMember:
     quote: str
 
 
+@dataclass(frozen=True)
+class MissionStep:
+    stage: str
+    label: str
+    crew_slug: str | None
+    owner_name: str
+    station: str
+    action: str
+
+
 CREW = (
     CrewMember(
         slug="robin",
@@ -176,6 +186,82 @@ CREW = (
         visual_signature="rose accents, welcoming accessories, soft but capable presence",
         accent_color="#d56f9f",
         quote="A crew is remembered by how it welcomes people aboard.",
+    ),
+)
+
+
+WORKFLOW_STEPS = (
+    MissionStep(
+        stage="init",
+        label="Command the Brief",
+        crew_slug="robin",
+        owner_name="Robin",
+        station="Captain's Bridge",
+        action="frames the mission and keeps the route aligned",
+    ),
+    MissionStep(
+        stage="mia_done",
+        label="Scout the Horizon",
+        crew_slug="mia",
+        owner_name="Mia Trend",
+        station="Crow's Nest",
+        action="finds trend signals and platform context",
+    ),
+    MissionStep(
+        stage="zoe_done",
+        label="Chart the Route",
+        crew_slug="zoe",
+        owner_name="Zoe Spark",
+        station="Map Room",
+        action="turns signals into creative directions",
+    ),
+    MissionStep(
+        stage="bella_done",
+        label="Write the Tale",
+        crew_slug="bella",
+        owner_name="Bella Quill",
+        station="Captain's Library",
+        action="writes the script, article, or copy",
+    ),
+    MissionStep(
+        stage="lila_done",
+        label="Shape the Vision",
+        crew_slug="lila",
+        owner_name="Lila Lens",
+        station="Studio Deck",
+        action="builds the visual direction",
+    ),
+    MissionStep(
+        stage="nora_done",
+        label="Inspect the Cargo",
+        crew_slug="nora",
+        owner_name="Nora Sharp",
+        station="Inspection Bay",
+        action="checks quality and catches risk",
+    ),
+    MissionStep(
+        stage="roxy_done",
+        label="Set the Trade Winds",
+        crew_slug="roxy",
+        owner_name="Roxy Rise",
+        station="Signal Deck",
+        action="sets caption, hashtags, and timing",
+    ),
+    MissionStep(
+        stage="emma_done",
+        label="Prepare the Port Talk",
+        crew_slug="emma",
+        owner_name="Emma Heart",
+        station="Harbor Lounge",
+        action="prepares community guidance and FAQ",
+    ),
+    MissionStep(
+        stage="publish_done",
+        label="Raise the Flag",
+        crew_slug=None,
+        owner_name="Publish",
+        station="Launch Deck",
+        action="publishes or schedules the completed mission",
     ),
 )
 
