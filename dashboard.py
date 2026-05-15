@@ -13,7 +13,13 @@ from fastapi.templating import Jinja2Templates
 from crew_registry import CREW, WORKFLOW_STEPS, get_crew_member
 from dashboard_store import list_all_jobs, load_performance_all, summarize_jobs
 from job_store import find_job
-from project_loader import list_project_slugs, load_project, project_slug_matches, resolve_project_slug
+from project_loader import (
+    list_project_slugs,
+    load_project,
+    load_project_page_name,
+    project_slug_matches,
+    resolve_project_slug,
+)
 
 DASHBOARD_USER = os.environ.get("DASHBOARD_USER")
 DASHBOARD_PASSWORD = os.environ.get("DASHBOARD_PASSWORD")
@@ -43,6 +49,13 @@ def verify_auth(credentials: HTTPBasicCredentials = Depends(security)) -> str:
 
 def _root(request: Request) -> Path:
     return getattr(request.app.state, "root", _ROOT)
+
+
+def _project_options(root: Path) -> list[dict]:
+    options = []
+    for slug in list_project_slugs(root):
+        options.append({"slug": slug, "label": load_project_page_name(slug, root=root)})
+    return options
 
 
 def _build_voyage_steps(job) -> list[dict]:
@@ -86,7 +99,7 @@ def captains_deck(request: Request, _: str = Depends(verify_auth)):
 def aurora_overview(request: Request, _: str = Depends(verify_auth)):
     root = _root(request)
     jobs = list_all_jobs(root)
-    projects = list_project_slugs(root)
+    projects = _project_options(root)
     performance = load_performance_all(root)
     return templates.TemplateResponse(
         request,
@@ -116,12 +129,14 @@ def aurora_character_sheet(slug: str, request: Request, _: str = Depends(verify_
 
 @app.get("/aurora/islands/{project_slug}", response_class=HTMLResponse)
 def island_detail(project_slug: str, request: Request, _: str = Depends(verify_auth)):
+    root = _root(request)
+    project_slug = resolve_project_slug(project_slug)
     try:
-        pm = load_project(project_slug)
+        pm = load_project(project_slug, root=root)
     except Exception:
         raise HTTPException(status_code=404, detail=f"Island {project_slug!r} not found")
     jobs = [
-        job for job in list_all_jobs(_root(request))
+        job for job in list_all_jobs(root)
         if project_slug_matches(job.project, project_slug)
     ]
     summary = summarize_jobs(jobs)
@@ -153,12 +168,13 @@ def aurora_metrics(request: Request, _: str = Depends(verify_auth)):
 @app.get("/aurora/new-mission", response_class=HTMLResponse)
 def aurora_new_mission(request: Request, _: str = Depends(verify_auth)):
     root = _root(request)
-    projects = list_project_slugs(root)
+    project_slugs = list_project_slugs(root)
+    projects = _project_options(root)
     selected_project = request.query_params.get("project")
     if selected_project:
         selected_project = resolve_project_slug(selected_project)
-    if selected_project not in projects:
-        selected_project = projects[0] if projects else None
+    if selected_project not in project_slugs:
+        selected_project = project_slugs[0] if project_slugs else None
     return templates.TemplateResponse(
         request,
         "trigger.html",

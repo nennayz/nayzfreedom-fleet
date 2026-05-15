@@ -82,7 +82,8 @@ def test_aurora_overview_shows_projects(tmp_path, client):
     resp = client.get("/aurora", headers=_auth())
     assert resp.status_code == 200
     assert "The Aurora" in resp.text
-    assert "nayzfreedom_fleet" in resp.text
+    assert "test" in resp.text
+    assert "/aurora/islands/nayzfreedom_fleet" in resp.text
 
 
 def test_aurora_crew_pages_render(client):
@@ -148,7 +149,7 @@ def test_new_mission_preselects_project(tmp_path, client):
         (tmp_path / "projects" / slug / "pm_profile.yaml").write_text("page_name: test\n")
     resp = client.get("/aurora/new-mission?project=nayzfreedom_fleet", headers=_auth())
     assert resp.status_code == 200
-    assert '<option value="nayzfreedom_fleet" selected>nayzfreedom_fleet</option>' in resp.text
+    assert '<option value="nayzfreedom_fleet" selected>test</option>' in resp.text
 
 
 def test_placeholder_ship_pages_render(client):
@@ -253,7 +254,7 @@ def test_trigger_get_shows_form(tmp_path, client):
     resp = client.get("/trigger", headers=_auth())
     assert resp.status_code == 200
     assert "<form" in resp.text
-    assert "nayzfreedom_fleet" in resp.text
+    assert '<option value="nayzfreedom_fleet" selected>test</option>' in resp.text
 
 
 def test_trigger_spawns_subprocess(tmp_path, client):

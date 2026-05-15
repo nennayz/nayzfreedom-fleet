@@ -25,9 +25,19 @@ def list_project_slugs(root: Path | None = None) -> list[str]:
     return sorted(p.parent.name for p in base.glob("*/pm_profile.yaml"))
 
 
-def load_project(project_slug: str) -> PMProfile:
+def load_project_page_name(project_slug: str, root: Path | None = None) -> str:
     resolved_slug = resolve_project_slug(project_slug)
-    base = Path("projects") / resolved_slug
+    base = (root or Path(".")) / "projects" / resolved_slug
+    try:
+        pm_data = yaml.safe_load((base / "pm_profile.yaml").read_text()) or {}
+    except (FileNotFoundError, yaml.YAMLError):
+        return resolved_slug
+    return pm_data.get("page_name") or resolved_slug
+
+
+def load_project(project_slug: str, root: Path | None = None) -> PMProfile:
+    resolved_slug = resolve_project_slug(project_slug)
+    base = (root or Path(".")) / "projects" / resolved_slug
     if not base.exists():
         raise ProjectNotFoundError(f"Project '{project_slug}' not found in projects/")
 
@@ -61,9 +71,9 @@ def load_project(project_slug: str) -> PMProfile:
     )
 
 
-def load_platform_specs(project_slug: str) -> dict[str, str]:
+def load_platform_specs(project_slug: str, root: Path | None = None) -> dict[str, str]:
     resolved_slug = resolve_project_slug(project_slug)
-    base = Path("projects") / resolved_slug
+    base = (root or Path(".")) / "projects" / resolved_slug
     if not base.exists():
         raise ProjectNotFoundError(f"Project '{project_slug}' not found in projects/")
     specs_path = base / "platform_specs.yaml"

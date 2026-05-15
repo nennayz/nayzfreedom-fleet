@@ -46,8 +46,8 @@
     </div>
     <div class="tag-list">
       {% for project in projects %}
-      <a class="island-chip" href="/aurora/islands/{{ project }}">
-        <span>{{ project }}</span>
+      <a class="island-chip" href="/aurora/islands/{{ project.slug }}">
+        <span>{{ project.label }}</span>
         <small>View island</small>
       </a>
       {% else %}
