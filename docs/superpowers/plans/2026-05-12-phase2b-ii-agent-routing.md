@@ -74,7 +74,7 @@ def test_orchestrator_sets_content_type_at_idea_selection(mocker, tmp_path, monk
 - [ ] **Step 2: Run test to verify it fails**
 
 ```bash
-cd /Users/nennayz/Desktop/NayzFreedom && \
+cd /Users/nennayz/Documents/NayzFreedom/code/slayhack && \
   .venv/bin/pytest tests/test_orchestrator.py::test_orchestrator_sets_content_type_at_idea_selection -v
 ```
 
@@ -137,7 +137,7 @@ Never skip a checkpoint. After final_approval, declare the job complete.
 - [ ] **Step 5: Run tests to verify they pass**
 
 ```bash
-cd /Users/nennayz/Desktop/NayzFreedom && \
+cd /Users/nennayz/Documents/NayzFreedom/code/slayhack && \
   .venv/bin/pytest tests/test_orchestrator.py -v
 ```
 
@@ -146,7 +146,7 @@ Expected: all orchestrator tests pass including the new one.
 - [ ] **Step 6: Run full test suite**
 
 ```bash
-cd /Users/nennayz/Desktop/NayzFreedom && .venv/bin/pytest -v
+cd /Users/nennayz/Documents/NayzFreedom/code/slayhack && .venv/bin/pytest -v
 ```
 
 Expected: 59 passed.
@@ -265,7 +265,7 @@ def test_bella_system_prompt_includes_team_identity(mocker):
 - [ ] **Step 2: Run tests to verify they fail**
 
 ```bash
-cd /Users/nennayz/Desktop/NayzFreedom && .venv/bin/pytest tests/test_bella.py -v
+cd /Users/nennayz/Documents/NayzFreedom/code/slayhack && .venv/bin/pytest tests/test_bella.py -v
 ```
 
 Expected: failures — Bella still writes `job.script` and `bella_output` is never set.
@@ -479,7 +479,7 @@ to:
 - [ ] **Step 8: Run tests to verify they pass**
 
 ```bash
-cd /Users/nennayz/Desktop/NayzFreedom && .venv/bin/pytest tests/test_bella.py tests/test_lila.py tests/test_nora.py tests/test_orchestrator.py -v
+cd /Users/nennayz/Documents/NayzFreedom/code/slayhack && .venv/bin/pytest tests/test_bella.py tests/test_lila.py tests/test_nora.py tests/test_orchestrator.py -v
 ```
 
 Expected: all pass.
@@ -487,7 +487,7 @@ Expected: all pass.
 - [ ] **Step 9: Run full test suite**
 
 ```bash
-cd /Users/nennayz/Desktop/NayzFreedom && .venv/bin/pytest -v
+cd /Users/nennayz/Documents/NayzFreedom/code/slayhack && .venv/bin/pytest -v
 ```
 
 Expected: all tests pass (net +5 new Bella tests).
@@ -552,7 +552,7 @@ def test_lila_live_article_skips_claude(mocker):
 - [ ] **Step 2: Run tests to verify they fail**
 
 ```bash
-cd /Users/nennayz/Desktop/NayzFreedom && \
+cd /Users/nennayz/Documents/NayzFreedom/code/slayhack && \
   .venv/bin/pytest tests/test_lila.py::test_lila_skips_for_article \
                    tests/test_lila.py::test_lila_dry_run_image_generates_prompt \
                    tests/test_lila.py::test_lila_live_article_skips_claude -v
@@ -661,7 +661,7 @@ class LilaAgent(BaseAgent):
 - [ ] **Step 4: Run tests to verify they pass**
 
 ```bash
-cd /Users/nennayz/Desktop/NayzFreedom && .venv/bin/pytest tests/test_lila.py -v
+cd /Users/nennayz/Documents/NayzFreedom/code/slayhack && .venv/bin/pytest tests/test_lila.py -v
 ```
 
 Expected: all pass.
@@ -669,7 +669,7 @@ Expected: all pass.
 - [ ] **Step 5: Run full test suite**
 
 ```bash
-cd /Users/nennayz/Desktop/NayzFreedom && .venv/bin/pytest -v
+cd /Users/nennayz/Documents/NayzFreedom/code/slayhack && .venv/bin/pytest -v
 ```
 
 Expected: all tests pass.
@@ -729,7 +729,7 @@ def test_nora_live_video_includes_visual_in_prompt(mocker):
 - [ ] **Step 2: Run tests to verify they fail**
 
 ```bash
-cd /Users/nennayz/Desktop/NayzFreedom && \
+cd /Users/nennayz/Documents/NayzFreedom/code/slayhack && \
   .venv/bin/pytest tests/test_nora.py::test_nora_live_article_skips_visual_qa \
                    tests/test_nora.py::test_nora_live_video_includes_visual_in_prompt -v
 ```
@@ -820,7 +820,7 @@ class NoraAgent(BaseAgent):
 - [ ] **Step 4: Run tests to verify they pass**
 
 ```bash
-cd /Users/nennayz/Desktop/NayzFreedom && .venv/bin/pytest tests/test_nora.py -v
+cd /Users/nennayz/Documents/NayzFreedom/code/slayhack && .venv/bin/pytest tests/test_nora.py -v
 ```
 
 Expected: all pass.
@@ -828,7 +828,7 @@ Expected: all pass.
 - [ ] **Step 5: Run full test suite**
 
 ```bash
-cd /Users/nennayz/Desktop/NayzFreedom && .venv/bin/pytest -v
+cd /Users/nennayz/Documents/NayzFreedom/code/slayhack && .venv/bin/pytest -v
 ```
 
 Expected: all tests pass.
@@ -895,7 +895,7 @@ def test_roxy_live_populates_editorial_guidance(mocker, tmp_path, monkeypatch):
 - [ ] **Step 2: Run tests to verify they fail**
 
 ```bash
-cd /Users/nennayz/Desktop/NayzFreedom && \
+cd /Users/nennayz/Documents/NayzFreedom/code/slayhack && \
   .venv/bin/pytest tests/test_roxy.py::test_roxy_live_populates_editorial_guidance -v
 ```
 
@@ -991,7 +991,7 @@ class RoxyAgent(BaseAgent):
 - [ ] **Step 4: Run tests to verify they pass**
 
 ```bash
-cd /Users/nennayz/Desktop/NayzFreedom && .venv/bin/pytest tests/test_roxy.py -v
+cd /Users/nennayz/Documents/NayzFreedom/code/slayhack && .venv/bin/pytest tests/test_roxy.py -v
 ```
 
 Expected: all pass.
@@ -999,7 +999,7 @@ Expected: all pass.
 - [ ] **Step 5: Run full test suite**
 
 ```bash
-cd /Users/nennayz/Desktop/NayzFreedom && .venv/bin/pytest -v
+cd /Users/nennayz/Documents/NayzFreedom/code/slayhack && .venv/bin/pytest -v
 ```
 
 Expected: all tests pass.

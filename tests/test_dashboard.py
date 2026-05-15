@@ -1,5 +1,6 @@
 from __future__ import annotations
 import base64
+import html
 import json
 import os
 import sys
@@ -89,8 +90,29 @@ def test_aurora_crew_pages_render(client):
     assert crew.status_code == 200
     assert "Crew" in crew.text
     assert "Robin" in crew.text
+    assert "Mission command" in crew.text
+    assert "Captain&#39;s Bridge" in crew.text
     assert detail.status_code == 200
     assert "Chief Officer" in detail.text
+    assert "Operational contract" in detail.text
+    assert "command coat" in detail.text
+
+
+def test_aurora_all_crew_character_sheets_render(client):
+    from crew_registry import CREW
+
+    for member in CREW:
+        resp = client.get(f"/aurora/crew/{member.slug}", headers=_auth())
+        assert resp.status_code == 200
+        text = html.unescape(resp.text)
+        assert member.name in resp.text
+        assert member.workflow_stage in resp.text
+        assert member.station in text
+
+
+def test_aurora_crew_detail_unknown_member_404(client):
+    resp = client.get("/aurora/crew/unknown", headers=_auth())
+    assert resp.status_code == 404
 
 
 def test_island_detail_renders(tmp_path, client, monkeypatch):

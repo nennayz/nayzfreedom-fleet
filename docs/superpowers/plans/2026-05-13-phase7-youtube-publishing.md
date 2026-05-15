@@ -62,7 +62,7 @@ def test_publish_youtube_article_excluded_from_platforms(mocker):
 - [ ] **Step 2: Run to verify they fail**
 
 ```bash
-cd /Users/nennayz/Desktop/NayzFreedom && .venv/bin/python -m pytest tests/test_publish.py::test_publish_youtube_image_skips_with_reason tests/test_publish.py::test_publish_youtube_article_excluded_from_platforms -v
+cd /Users/nennayz/Documents/NayzFreedom/code/slayhack && .venv/bin/python -m pytest tests/test_publish.py::test_publish_youtube_image_skips_with_reason tests/test_publish.py::test_publish_youtube_article_excluded_from_platforms -v
 ```
 
 Expected: FAIL — `test_publish_youtube_image_skips_with_reason` gets `{"status": "skipped", "error": "unsupported platform: youtube"}` (wrong key), `test_publish_youtube_article_excluded_from_platforms` has `youtube` in `publish_result`.

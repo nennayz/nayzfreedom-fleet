@@ -337,6 +337,33 @@ button[type="submit"]:hover { background: var(--navy-soft); }
 .crew-grid {
   grid-template-columns: repeat(4, 1fr);
 }
+.crew-chain {
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: repeat(4, 1fr);
+  margin-bottom: 1rem;
+}
+.crew-chain-step {
+  border-left: 4px solid var(--member-accent, var(--gold));
+  color: inherit;
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.35rem 0.7rem;
+  text-decoration: none;
+}
+.crew-chain-step span,
+.crew-chain-step em,
+.crew-station {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.crew-chain-step strong {
+  font-size: 0.92rem;
+}
+.crew-station {
+  display: block;
+  margin: -0.35rem 0 0.7rem;
+}
 .crew-card {
   background: rgba(255,255,255,0.82);
   border: 1px solid var(--line);
@@ -344,8 +371,17 @@ button[type="submit"]:hover { background: var(--navy-soft); }
   box-shadow: var(--shadow);
   color: inherit;
   padding: 1.1rem;
+  position: relative;
   text-decoration: none;
   transition: transform 160ms ease, box-shadow 160ms ease;
+}
+.crew-card::before {
+  background: var(--member-accent, var(--gold));
+  border-radius: 999px;
+  content: "";
+  display: block;
+  height: 5px;
+  margin-bottom: 0.9rem;
 }
 .crew-card:hover {
   box-shadow: 0 22px 48px rgba(16, 35, 63, 0.14);
@@ -363,6 +399,7 @@ button[type="submit"]:hover { background: var(--navy-soft); }
 }
 .character-hero {
   align-items: center;
+  border-top: 5px solid var(--member-accent, var(--gold));
   display: grid;
   gap: 1.25rem;
   grid-template-columns: 220px 1fr;
@@ -375,6 +412,20 @@ button[type="submit"]:hover { background: var(--navy-soft); }
   object-fit: cover;
   object-position: center top;
   width: 220px;
+}
+.character-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+}
+.character-meta span {
+  background: rgba(16,35,63,0.06);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  padding: 0.38rem 0.65rem;
 }
 
 .timeline {
@@ -530,6 +581,7 @@ a:hover { color: var(--navy-soft); }
   .content-grid,
   .stat-grid,
   .domain-grid,
+  .crew-chain,
   .crew-grid {
     grid-template-columns: 1fr;
   }

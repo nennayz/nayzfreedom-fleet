@@ -142,7 +142,7 @@ def test_track_accumulates_snapshots(mocker):
 - [ ] **Step 2: Run to verify all 5 fail**
 
 ```bash
-cd /Users/nennayz/Desktop/NayzFreedom && .venv/bin/python -m pytest tests/test_tracker.py -v
+cd /Users/nennayz/Documents/NayzFreedom/code/slayhack && .venv/bin/python -m pytest tests/test_tracker.py -v
 ```
 
 Expected: FAIL — `ModuleNotFoundError: No module named 'tracker'`

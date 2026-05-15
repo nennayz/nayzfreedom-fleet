@@ -3,15 +3,25 @@
 <section class="hero aurora-hero compact-hero">
   <p class="eyebrow">The Aurora</p>
   <h1>Crew</h1>
-  <p class="hero-copy">Eight specialists aboard The Aurora, each with a distinct role, silhouette, and visual identity.</p>
+  <p class="hero-copy">Eight specialists aboard The Aurora, arranged as a working mission chain from command to community handoff.</p>
+</section>
+<section class="panel crew-chain">
+  {% for member in crew %}
+  <a class="crew-chain-step" href="/aurora/crew/{{ member.slug }}" style="--member-accent: {{ member.accent_color }}">
+    <span>{{ member.mission_phase }}</span>
+    <strong>{{ member.workflow_stage }}</strong>
+    <em>{{ member.name }}</em>
+  </a>
+  {% endfor %}
 </section>
 <section class="crew-grid">
   {% for member in crew %}
-  <a class="crew-card" href="/aurora/crew/{{ member.slug }}">
+  <a class="crew-card" href="/aurora/crew/{{ member.slug }}" style="--member-accent: {{ member.accent_color }}">
     <img class="crew-portrait" src="{{ member.image }}" alt="{{ member.name }}">
     <p class="eyebrow">{{ member.ship_role }}</p>
     <h2>{{ member.name }}</h2>
     <span class="role-pill">{{ member.operational_role }}</span>
+    <span class="crew-station">{{ member.station }}</span>
     <p>{{ member.summary }}</p>
   </a>
   {% endfor %}

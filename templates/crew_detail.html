@@ -1,12 +1,17 @@
 {% extends "base.html" %}
 {% block content %}
-<section class="character-hero panel">
+<section class="character-hero panel" style="--member-accent: {{ member.accent_color }}">
   <img class="character-portrait" src="{{ member.image }}" alt="{{ member.name }}">
   <div>
     <p class="eyebrow">{{ member.ship_role }}</p>
     <h1>{{ member.name }}</h1>
     <p class="hero-copy">{{ member.summary }}</p>
     <span class="role-pill">{{ member.operational_role }}</span>
+    <div class="character-meta">
+      <span>{{ member.mission_phase }}</span>
+      <span>{{ member.workflow_stage }}</span>
+      <span>{{ member.station }}</span>
+    </div>
   </div>
 </section>
 
@@ -17,7 +22,8 @@
       <h2>{{ member.operational_role }}</h2>
     </div>
     <p><strong>Personality:</strong> {{ member.personality }}</p>
-    <p><strong>Signature quote:</strong> “{{ member.quote }}”</p>
+    <p><strong>Visual signature:</strong> {{ member.visual_signature }}</p>
+    <p><strong>Signature quote:</strong> "{{ member.quote }}"</p>
   </article>
   <article class="panel">
     <div class="section-heading">
@@ -44,5 +50,13 @@
     </div>
     <div class="tag-list">{% for item in member.outputs %}<span class="tag">{{ item }}</span>{% endfor %}</div>
   </article>
+</section>
+
+<section class="panel">
+  <div class="section-heading">
+    <p class="eyebrow">Operational contract</p>
+    <h2>How to work with {{ member.name }}</h2>
+  </div>
+  <p class="muted">Use {{ member.name }} when the mission reaches <strong>{{ member.workflow_stage }}</strong>. Feed her the inputs above, expect the outputs above, and use the watch-outs as review checks before moving to the next crew station.</p>
 </section>
 {% endblock %}

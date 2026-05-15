@@ -130,7 +130,7 @@ def test_lila_live_video_generate_video_prompt_guard(mocker, tmp_path, monkeypat
 - [ ] **Step 2: Run new/updated tests — confirm they FAIL**
 
 ```bash
-/Users/nennayz/Desktop/NayzFreedom/.venv/bin/python3 -m pytest \
+/Users/nennayz/Documents/NayzFreedom/code/slayhack/.venv/bin/python3 -m pytest \
   tests/test_lila.py::test_lila_dry_run_video_sets_video_path \
   tests/test_lila.py::test_lila_live_video_calls_claude_and_generate_video \
   tests/test_lila.py::test_lila_live_video_calls_veo3 \
@@ -144,7 +144,7 @@ Expected: all 6 FAIL (old tests removed, new ones reference missing `_generate_v
 
 - [ ] **Step 3: Add `google-cloud-aiplatform` to `requirements.txt`**
 
-Append to `/Users/nennayz/Desktop/NayzFreedom/requirements.txt`:
+Append to `/Users/nennayz/Documents/NayzFreedom/code/slayhack/requirements.txt`:
 
 ```
 google-cloud-aiplatform>=1.60.0
@@ -153,7 +153,7 @@ google-cloud-aiplatform>=1.60.0
 Install it:
 
 ```bash
-/Users/nennayz/Desktop/NayzFreedom/.venv/bin/python3 -m pip install google-cloud-aiplatform>=1.60.0 2>&1 | tail -3
+/Users/nennayz/Documents/NayzFreedom/code/slayhack/.venv/bin/python3 -m pip install google-cloud-aiplatform>=1.60.0 2>&1 | tail -3
 ```
 
 - [ ] **Step 4: Update `agents/lila.py` imports**
@@ -315,7 +315,7 @@ Add after `_generate_image` (before end of class):
 - [ ] **Step 9: Run the 6 new/updated Lila tests — confirm they PASS**
 
 ```bash
-/Users/nennayz/Desktop/NayzFreedom/.venv/bin/python3 -m pytest \
+/Users/nennayz/Documents/NayzFreedom/code/slayhack/.venv/bin/python3 -m pytest \
   tests/test_lila.py::test_lila_dry_run_video_sets_video_path \
   tests/test_lila.py::test_lila_live_video_calls_claude_and_generate_video \
   tests/test_lila.py::test_lila_live_video_calls_veo3 \
@@ -330,7 +330,7 @@ Expected: 6 PASSED.
 - [ ] **Step 10: Run the full test suite — confirm no regressions**
 
 ```bash
-/Users/nennayz/Desktop/NayzFreedom/.venv/bin/python3 -m pytest -v 2>&1 | tail -10
+/Users/nennayz/Documents/NayzFreedom/code/slayhack/.venv/bin/python3 -m pytest -v 2>&1 | tail -10
 ```
 
 Expected: all tests pass.
@@ -457,7 +457,7 @@ def test_nora_video_qa_send_back_to_never_lila(mocker, tmp_path, monkeypatch):
 - [ ] **Step 2: Run the 6 affected Nora tests — confirm failures**
 
 ```bash
-/Users/nennayz/Desktop/NayzFreedom/.venv/bin/python3 -m pytest \
+/Users/nennayz/Documents/NayzFreedom/code/slayhack/.venv/bin/python3 -m pytest \
   tests/test_nora.py::test_nora_live_fail_increments_retry \
   tests/test_nora.py::test_nora_live_pass \
   tests/test_nora.py::test_nora_live_video_includes_visual_in_prompt \
@@ -601,7 +601,7 @@ With:
 - [ ] **Step 6: Run the 6 Nora tests — confirm they PASS**
 
 ```bash
-/Users/nennayz/Desktop/NayzFreedom/.venv/bin/python3 -m pytest \
+/Users/nennayz/Documents/NayzFreedom/code/slayhack/.venv/bin/python3 -m pytest \
   tests/test_nora.py::test_nora_live_fail_increments_retry \
   tests/test_nora.py::test_nora_live_pass \
   tests/test_nora.py::test_nora_live_video_includes_visual_in_prompt \
@@ -616,7 +616,7 @@ Expected: 6 PASSED.
 - [ ] **Step 7: Run the full test suite — confirm no regressions**
 
 ```bash
-/Users/nennayz/Desktop/NayzFreedom/.venv/bin/python3 -m pytest -v 2>&1 | tail -10
+/Users/nennayz/Documents/NayzFreedom/code/slayhack/.venv/bin/python3 -m pytest -v 2>&1 | tail -10
 ```
 
 Expected: all tests pass.

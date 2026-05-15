@@ -10,6 +10,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from crew_registry import CREW, get_crew_member
 from dashboard_store import list_all_jobs, load_performance_all, summarize_jobs
 from job_store import find_job
 from project_loader import load_project
@@ -25,17 +26,6 @@ _ROOT = Path(__file__).resolve().parent
 
 VALID_CONTENT_TYPES = {"video", "article", "image", "infographic"}
 MAX_BRIEF_LEN = 2000
-
-CREW = [
-    {"slug": "robin", "name": "Robin", "image": "/static/crew/robin.png", "ship_role": "Chief Officer", "operational_role": "Orchestrator", "summary": "Keeps The Aurora aligned and turns briefs into action.", "personality": "calm, strategic, decisive", "strengths": ["coordination", "prioritization", "decision framing"], "watch_outs": ["can optimize for throughput before artistry"], "inputs": ["captain brief", "project context", "performance history"], "outputs": ["mission route", "crew dispatch", "final coordination"], "quote": "A good voyage is won before the sails rise."},
-    {"slug": "mia", "name": "Mia Trend", "image": "/static/crew/mia.png", "ship_role": "Lookout", "operational_role": "Trend Researcher", "summary": "Scans the horizon for trends, signals, and timely opportunities.", "personality": "curious, alert, analytical", "strengths": ["trend sensing", "research", "signal detection"], "watch_outs": ["fresh signals still need strategic judgment"], "inputs": ["brief", "platforms"], "outputs": ["trend data", "formats", "timely context"], "quote": "The horizon always speaks first."},
-    {"slug": "zoe", "name": "Zoe Spark", "image": "/static/crew/zoe.png", "ship_role": "Cartographer of Ideas", "operational_role": "Idea Generator", "summary": "Turns research into creative routes worth pursuing.", "personality": "bright, imaginative, energetic", "strengths": ["ideation", "hooks", "angles"], "watch_outs": ["many routes still require one sharp choice"], "inputs": ["trend data", "brand context"], "outputs": ["idea set", "hooks", "content angles"], "quote": "One spark is enough to chart a new sea."},
-    {"slug": "bella", "name": "Bella Quill", "image": "/static/crew/bella.png", "ship_role": "Scribe", "operational_role": "Script Writer", "summary": "Shapes the chosen idea into words that sound like the brand.", "personality": "elegant, persuasive, empathetic", "strengths": ["voice", "structure", "copy"], "watch_outs": ["needs a strong idea to sing"], "inputs": ["selected idea", "brand voice"], "outputs": ["script", "article", "caption copy"], "quote": "Every voyage needs a tale worth repeating."},
-    {"slug": "lila", "name": "Lila Lens", "image": "/static/crew/lila.png", "ship_role": "Visual Director", "operational_role": "Visual Creator", "summary": "Translates story into imagery, mood, and cinematic direction.", "personality": "stylish, visionary, polished", "strengths": ["composition", "visual language", "prompt direction"], "watch_outs": ["visual ambition must still serve the brief"], "inputs": ["script", "content type", "brand aesthetic"], "outputs": ["visual prompt", "image/video direction"], "quote": "If the eye believes it, the heart follows."},
-    {"slug": "nora", "name": "Nora Sharp", "image": "/static/crew/nora.png", "ship_role": "Inspector", "operational_role": "QA Editor", "summary": "Protects standards before anything leaves the ship.", "personality": "precise, honest, supportive", "strengths": ["review", "quality control", "risk spotting"], "watch_outs": ["perfection must not stall momentum"], "inputs": ["script", "visuals"], "outputs": ["QA verdict", "revision feedback"], "quote": "Better one hard truth on deck than one weak post at sea."},
-    {"slug": "roxy", "name": "Roxy Rise", "image": "/static/crew/roxy.png", "ship_role": "Trade Winds Strategist", "operational_role": "Growth Strategist", "summary": "Finds the best timing, framing, and route to reach the audience.", "personality": "upbeat, data-driven, tactical", "strengths": ["distribution", "hashtags", "timing"], "watch_outs": ["growth should amplify, not distort, the message"], "inputs": ["finished content", "platform context"], "outputs": ["caption", "hashtags", "posting timing"], "quote": "Even treasure needs the right tide."},
-    {"slug": "emma", "name": "Emma Heart", "image": "/static/crew/emma.png", "ship_role": "Community Keeper", "operational_role": "Community Specialist", "summary": "Prepares warm, useful responses for the people waiting on shore.", "personality": "warm, clear, attentive", "strengths": ["community care", "FAQ", "tone"], "watch_outs": ["kindness works best with clarity"], "inputs": ["final content", "brand context"], "outputs": ["FAQ", "response guidance"], "quote": "A crew is remembered by how it welcomes people aboard."},
-]
 
 VOYAGE_STAGES = [
     ("mia_done", "Scout the Horizon", "Mia Trend"),
@@ -112,7 +102,7 @@ def aurora_crew(request: Request, _: str = Depends(verify_auth)):
 
 @app.get("/aurora/crew/{slug}", response_class=HTMLResponse)
 def aurora_character_sheet(slug: str, request: Request, _: str = Depends(verify_auth)):
-    member = next((member for member in CREW if member["slug"] == slug), None)
+    member = get_crew_member(slug)
     if member is None:
         raise HTTPException(status_code=404, detail=f"Crew member {slug!r} not found")
     return templates.TemplateResponse(request, "crew_detail.html", {"member": member})
