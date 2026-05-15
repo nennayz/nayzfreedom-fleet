@@ -34,3 +34,23 @@ def summarize_jobs(jobs: list[ContentJob]) -> dict[str, int]:
         "failed": sum(job.status == "failed" for job in jobs),
         "awaiting_approval": sum(job.status == "awaiting_approval" for job in jobs),
     }
+
+
+def attention_jobs(jobs: list[ContentJob], limit: int = 5) -> list[ContentJob]:
+    priority = {"failed": 0, "awaiting_approval": 1}
+    items = [
+        job for job in jobs
+        if getattr(job.status, "value", str(job.status)) in priority
+    ]
+    return sorted(
+        items,
+        key=lambda job: (priority[getattr(job.status, "value", str(job.status))], job.id),
+        reverse=False,
+    )[:limit]
+
+
+def active_jobs(jobs: list[ContentJob], limit: int = 5) -> list[ContentJob]:
+    return [
+        job for job in jobs
+        if getattr(job.status, "value", str(job.status)) == "running"
+    ][:limit]

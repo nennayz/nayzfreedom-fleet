@@ -31,8 +31,15 @@
   <article class="panel">
     <div class="section-heading">
       <p class="eyebrow">Captain's brief</p>
-      <h2>What needs attention</h2>
+      <h2>Command priority</h2>
     </div>
+    {% if attention_jobs %}
+    <p class="priority-line">Review {{ attention_jobs | length }} mission{% if attention_jobs | length != 1 %}s{% endif %} before launching new work.</p>
+    {% elif active_jobs %}
+    <p class="priority-line">Monitor {{ active_jobs | length }} active mission{% if active_jobs | length != 1 %}s{% endif %}; no blockers are currently flagged.</p>
+    {% else %}
+    <p class="priority-line">The Aurora is clear. Launch a mission when the next brief is ready.</p>
+    {% endif %}
     <div class="stat-grid">
       <div class="stat-card">
         <span>Total missions</span>
@@ -55,8 +62,50 @@
 
   <article class="panel">
     <div class="section-heading">
-      <p class="eyebrow">Latest voyages</p>
-      <h2>Recent Aurora missions</h2>
+      <p class="eyebrow">Signals</p>
+      <h2>Needs attention</h2>
+    </div>
+    {% if attention_jobs %}
+    <div class="mission-list">
+      {% for job in attention_jobs %}
+      <a href="/jobs/{{ job.id }}" class="mission-row">
+        <span>{{ job.id[:8] }}</span>
+        <strong>{{ job.brief[:42] }}{% if job.brief | length > 42 %}…{% endif %}</strong>
+        <em class="badge badge-{{ job.status.value }}">{{ job.status.value }}</em>
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="muted">No blocked or approval-waiting missions.</p>
+    {% endif %}
+  </article>
+</section>
+
+<section class="content-grid">
+  <article class="panel">
+    <div class="section-heading">
+      <p class="eyebrow">In motion</p>
+      <h2>Active missions</h2>
+    </div>
+    {% if active_jobs %}
+    <div class="mission-list">
+      {% for job in active_jobs %}
+      <a href="/jobs/{{ job.id }}" class="mission-row">
+        <span>{{ job.id[:8] }}</span>
+        <strong>{{ job.brief[:42] }}{% if job.brief | length > 42 %}…{% endif %}</strong>
+        <em class="badge badge-{{ job.status.value }}">{{ job.status.value }}</em>
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="muted">No missions running right now.</p>
+    {% endif %}
+  </article>
+
+  <article class="panel">
+    <div class="section-heading">
+      <p class="eyebrow">Recent voyages</p>
+      <h2>Latest Aurora missions</h2>
     </div>
     {% if jobs %}
     <div class="mission-list">

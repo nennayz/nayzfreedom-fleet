@@ -243,6 +243,14 @@ button[type="submit"]:hover { background: var(--navy-soft); }
 .panel { padding: 1.25rem; }
 .section-heading { margin-bottom: 1rem; }
 
+.priority-line {
+  color: var(--ink);
+  font-size: 1rem;
+  font-weight: 650;
+  line-height: 1.5;
+  margin-bottom: 1rem;
+}
+
 .stat-grid {
   grid-template-columns: repeat(4, 1fr);
 }

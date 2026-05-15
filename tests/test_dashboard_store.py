@@ -100,3 +100,27 @@ def test_summarize_jobs_counts_statuses():
         "failed": 1,
         "awaiting_approval": 0,
     }
+
+
+def test_attention_jobs_prioritizes_failed_then_approval():
+    from dashboard_store import attention_jobs
+    failed = _make_job("20260512_060000")
+    failed.status = JobStatus.FAILED
+    approval = _make_job("20260513_060000")
+    approval.status = JobStatus.AWAITING_APPROVAL
+    running = _make_job("20260514_060000")
+    running.status = JobStatus.RUNNING
+
+    result = attention_jobs([running, approval, failed])
+
+    assert [job.id for job in result] == ["20260512_060000", "20260513_060000"]
+
+
+def test_active_jobs_returns_running_only():
+    from dashboard_store import active_jobs
+    running = _make_job("20260514_060000")
+    running.status = JobStatus.RUNNING
+    failed = _make_job("20260512_060000")
+    failed.status = JobStatus.FAILED
+
+    assert active_jobs([failed, running]) == [running]

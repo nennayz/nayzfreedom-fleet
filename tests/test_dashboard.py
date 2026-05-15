@@ -76,6 +76,21 @@ def test_captains_deck_shows_recent_mission(tmp_path, client):
     assert "luxury brands rock" in resp.text
 
 
+def test_captains_deck_surfaces_attention_and_active_missions(tmp_path, client):
+    _write_job(tmp_path, "20260512_060000", brief="needs review", status="failed")
+    _write_job(tmp_path, "20260513_060000", brief="still moving", status="running")
+
+    resp = client.get("/", headers=_auth())
+
+    assert resp.status_code == 200
+    assert "Command priority" in resp.text
+    assert "Review 1 mission before launching new work." in resp.text
+    assert "Needs attention" in resp.text
+    assert "needs review" in resp.text
+    assert "Active missions" in resp.text
+    assert "still moving" in resp.text
+
+
 def test_aurora_overview_shows_projects(tmp_path, client):
     (tmp_path / "projects" / "nayzfreedom_fleet").mkdir(parents=True)
     (tmp_path / "projects" / "nayzfreedom_fleet" / "pm_profile.yaml").write_text("page_name: test\n")

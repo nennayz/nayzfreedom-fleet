@@ -11,7 +11,13 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from crew_registry import CREW, WORKFLOW_STEPS, get_crew_member
-from dashboard_store import list_all_jobs, load_performance_all, summarize_jobs
+from dashboard_store import (
+    active_jobs,
+    attention_jobs,
+    list_all_jobs,
+    load_performance_all,
+    summarize_jobs,
+)
 from job_store import find_job
 from project_loader import (
     list_project_slugs,
@@ -84,12 +90,17 @@ def _build_voyage_steps(job) -> list[dict]:
 def captains_deck(request: Request, _: str = Depends(verify_auth)):
     jobs = list_all_jobs(_root(request))
     performance = load_performance_all(_root(request))
+    summary = summarize_jobs(jobs)
+    signals = attention_jobs(jobs)
+    active = active_jobs(jobs)
     return templates.TemplateResponse(
         request,
         "captains_deck.html",
         {
             "jobs": jobs[:5],
-            "summary": summarize_jobs(jobs),
+            "summary": summary,
+            "attention_jobs": signals,
+            "active_jobs": active,
             "performance": performance,
         },
     )
