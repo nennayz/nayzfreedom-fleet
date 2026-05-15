@@ -46,6 +46,12 @@ def _write_job(tmp_path: Path, job_id: str, brief: str = "test brief",
     (job_dir / "job.json").write_text(json.dumps(job))
 
 
+def test_healthz_does_not_require_auth(client):
+    resp = client.get("/healthz")
+    assert resp.status_code == 200
+    assert resp.json() == {"status": "ok", "service": "nayzfreedom-dashboard"}
+
+
 @pytest.fixture
 def client(tmp_path):
     _dm.app.state.root = tmp_path

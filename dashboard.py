@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -53,6 +53,11 @@ def _status_label(value: object) -> str:
 
 
 templates.env.filters["status_label"] = _status_label
+
+
+@app.get("/healthz")
+def healthz():
+    return JSONResponse({"status": "ok", "service": "nayzfreedom-dashboard"})
 
 
 def verify_auth(credentials: HTTPBasicCredentials = Depends(security)) -> str:
