@@ -132,6 +132,44 @@ def _mission_command(job, voyage_steps: list[dict], completed_count: int) -> dic
     }
 
 
+def _mission_outputs(job, faq_content: str | None) -> list[dict[str, str]]:
+    content_ready = job.bella_output is not None
+    visual_ready = bool(job.visual_prompt or job.image_path or job.video_path)
+    content_type = getattr(job.content_type, "value", job.content_type)
+    visual_required = content_type != "article"
+    growth_ready = job.growth_strategy is not None
+    community_ready = bool(faq_content)
+    publish_ready = job.publish_result is not None
+
+    return [
+        {
+            "label": "Content",
+            "state": "Ready" if content_ready else "Waiting",
+            "detail": "Bella output is available." if content_ready else "Waiting for written content.",
+        },
+        {
+            "label": "Visual",
+            "state": "Ready" if visual_ready else "Not needed" if not visual_required else "Waiting",
+            "detail": "Visual direction is available." if visual_ready else "Article mission can skip visual direction." if not visual_required else "Waiting for visual direction.",
+        },
+        {
+            "label": "Growth",
+            "state": "Ready" if growth_ready else "Waiting",
+            "detail": "Caption, hashtags, and timing are available." if growth_ready else "Waiting for Roxy's strategy.",
+        },
+        {
+            "label": "Community",
+            "state": "Ready" if community_ready else "Waiting",
+            "detail": "FAQ is available." if community_ready else "Waiting for Emma's FAQ.",
+        },
+        {
+            "label": "Publish",
+            "state": "Ready" if publish_ready else "Waiting",
+            "detail": "Publish result is recorded." if publish_ready else "Waiting for launch result.",
+        },
+    ]
+
+
 @app.get("/", response_class=HTMLResponse)
 def captains_deck(request: Request, _: str = Depends(verify_auth)):
     jobs = list_all_jobs(_root(request))
@@ -286,6 +324,7 @@ def job_detail(job_id: str, request: Request, _: str = Depends(verify_auth)):
     voyage_steps = _build_voyage_steps(job)
     completed_count = sum(1 for item in voyage_steps if item["state"] == "done")
     mission_command = _mission_command(job, voyage_steps, completed_count)
+    mission_outputs = _mission_outputs(job, faq_content)
     return templates.TemplateResponse(
         request,
         "job_detail.html",
@@ -296,6 +335,7 @@ def job_detail(job_id: str, request: Request, _: str = Depends(verify_auth)):
             "progress_count": completed_count,
             "total_stages": len(voyage_steps),
             "mission_command": mission_command,
+            "mission_outputs": mission_outputs,
         },
     )
 

@@ -246,10 +246,21 @@ def test_job_detail_404(client):
 
 def test_job_detail_shows_brief(tmp_path, client):
     _write_job(tmp_path, "20260512_060000", brief="luxury brands are amazing")
-    from models.content_job import ContentJob
+    from models.content_job import ContentJob, ContentType, GrowthStrategy, Script
     job = ContentJob.model_validate_json(
         (tmp_path / "output" / "NayzFreedom Fleet" / "20260512_060000" / "job.json").read_text()
     )
+    job.content_type = ContentType.VIDEO
+    job.bella_output = Script(hook="hook", body="body", cta="cta", duration_seconds=15)
+    job.visual_prompt = "visual direction"
+    job.growth_strategy = GrowthStrategy(
+        hashtags=["#test"],
+        caption="caption",
+        best_post_time_utc="12:00",
+        best_post_time_thai="19:00",
+    )
+    job.publish_result = {"dry_run": True}
+    (tmp_path / "output" / "NayzFreedom Fleet" / "20260512_060000" / "faq.md").write_text("faq ready")
     with patch.object(_dm, "find_job", return_value=job):
         resp = client.get("/jobs/20260512_060000", headers=_auth())
     assert resp.status_code == 200
@@ -260,6 +271,13 @@ def test_job_detail_shows_brief(tmp_path, client):
     assert "Mission command" in resp.text
     assert "Review the publish result and record performance when results arrive." in resp.text
     assert "Return to island" in resp.text
+    assert "Mission cargo" in resp.text
+    assert "Output readiness" in resp.text
+    assert "Bella output is available." in resp.text
+    assert "Visual direction is available." in resp.text
+    assert "Caption, hashtags, and timing are available." in resp.text
+    assert "FAQ is available." in resp.text
+    assert "Publish result is recorded." in resp.text
     assert "Command the Brief" in resp.text
     assert "/aurora/crew/robin" in resp.text
 
@@ -282,6 +300,8 @@ def test_job_detail_workflow_marks_current_crew_stage(tmp_path, client):
     assert "Shape the Vision" in resp.text
     assert "Current stage" in resp.text
     assert "Lila Lens is holding the current stage." in resp.text
+    assert "Waiting for written content." in resp.text
+    assert "Waiting for visual direction." in resp.text
     assert "Lila Lens" in resp.text
     assert "Studio Deck" in resp.text
     assert "timeline-step current" in resp.text

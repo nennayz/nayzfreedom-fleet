@@ -28,6 +28,22 @@
   </article>
 </section>
 
+<section class="panel">
+  <div class="section-heading">
+    <p class="eyebrow">Mission cargo</p>
+    <h2>Output readiness</h2>
+  </div>
+  <div class="output-grid">
+    {% for item in mission_outputs %}
+    <div class="output-card">
+      <span>{{ item.label }}</span>
+      <strong>{{ item.state }}</strong>
+      <small>{{ item.detail }}</small>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
 <section class="content-grid">
   <article class="panel">
     <p><strong>Island:</strong> {{ job.pm.page_name }}</p>
