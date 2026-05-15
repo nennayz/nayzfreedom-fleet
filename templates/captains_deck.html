@@ -71,7 +71,7 @@
       <a href="/jobs/{{ job.id }}" class="mission-row">
         <span>{{ job.id[:8] }}</span>
         <strong>{{ job.brief[:42] }}{% if job.brief | length > 42 %}…{% endif %}</strong>
-        <em class="badge badge-{{ job.status.value }}">{{ job.status.value }}</em>
+        <em class="badge badge-{{ job.status.value }}">{{ job.status.value | status_label }}</em>
       </a>
       {% endfor %}
     </div>
@@ -93,7 +93,7 @@
       <a href="/jobs/{{ job.id }}" class="mission-row">
         <span>{{ job.id[:8] }}</span>
         <strong>{{ job.brief[:42] }}{% if job.brief | length > 42 %}…{% endif %}</strong>
-        <em class="badge badge-{{ job.status.value }}">{{ job.status.value }}</em>
+        <em class="badge badge-{{ job.status.value }}">{{ job.status.value | status_label }}</em>
       </a>
       {% endfor %}
     </div>
@@ -113,7 +113,7 @@
       <a href="/jobs/{{ job.id }}" class="mission-row">
         <span>{{ job.id[:8] }}</span>
         <strong>{{ job.brief[:42] }}{% if job.brief | length > 42 %}…{% endif %}</strong>
-        <em class="badge badge-{{ job.status.value }}">{{ job.status.value }}</em>
+        <em class="badge badge-{{ job.status.value }}">{{ job.status.value | status_label }}</em>
       </a>
       {% endfor %}
     </div>

@@ -45,6 +45,14 @@ templates = Jinja2Templates(directory=str(_ROOT / "templates"))
 security = HTTPBasic()
 
 
+def _status_label(value: object) -> str:
+    raw = getattr(value, "value", str(value))
+    return raw.replace("_", " ").title()
+
+
+templates.env.filters["status_label"] = _status_label
+
+
 def verify_auth(credentials: HTTPBasicCredentials = Depends(security)) -> str:
     correct_user = secrets.compare_digest(credentials.username, DASHBOARD_USER)
     correct_pass = secrets.compare_digest(credentials.password, DASHBOARD_PASSWORD)

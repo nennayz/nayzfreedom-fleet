@@ -89,6 +89,23 @@ def test_captains_deck_surfaces_attention_and_active_missions(tmp_path, client):
     assert "needs review" in resp.text
     assert "Active missions" in resp.text
     assert "still moving" in resp.text
+    assert "Failed" in resp.text
+    assert "Running" in resp.text
+
+
+def test_dashboard_status_badges_use_human_labels(tmp_path, client):
+    _write_job(
+        tmp_path,
+        "20260512_060000",
+        brief="approval needed",
+        status="awaiting_approval",
+    )
+
+    resp = client.get("/", headers=_auth())
+
+    assert resp.status_code == 200
+    assert "Awaiting Approval" in resp.text
+    assert ">awaiting_approval<" not in resp.text
 
 
 def test_aurora_overview_shows_projects(tmp_path, client):
