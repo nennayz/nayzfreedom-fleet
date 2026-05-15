@@ -6,7 +6,7 @@ from models.content_job import PMProfile, ContentType
 def test_load_nayzfreedom_fleet():
     pm = load_project("nayzfreedom_fleet")
     assert isinstance(pm, PMProfile)
-    assert pm.name == "Nayz"
+    assert pm.name == "Slay"
     assert pm.page_name == "NayzFreedom Fleet"
     assert "Quiet Luxury" in pm.persona
     assert pm.brand.nora_max_retries == 2
@@ -20,6 +20,7 @@ def test_load_missing_project_raises():
 
 def test_load_legacy_slay_hack_alias():
     pm = load_project("slay_hack")
+    assert pm.name == "Slay"
     assert pm.page_name == "NayzFreedom Fleet"
 
 

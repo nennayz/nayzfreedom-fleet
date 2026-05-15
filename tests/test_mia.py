@@ -14,7 +14,7 @@ def make_job(dry_run=True):
         mission="m", visual=VisualIdentity(colors=[], style=""), platforms=["instagram"],
         tone="sassy", target_audience="Gen Z USA", script_style="lowercase", nora_max_retries=2,
     )
-    pm = PMProfile(name="Nayz", page_name="NayzFreedom Fleet", persona="test pm", brand=brand)
+    pm = PMProfile(name="Slay", page_name="NayzFreedom Fleet", persona="test pm", brand=brand)
     return ContentJob(project="nayzfreedom_fleet", pm=pm, brief="lipstick that lasts", platforms=["instagram"], dry_run=dry_run)
 
 

@@ -54,8 +54,8 @@ def test_qa_result_defaults():
     assert qa.script_feedback is None
 
 def test_pm_profile_has_name():
-    pm = PMProfile(name="Nayz", page_name="NayzFreedom Fleet", persona="test", brand=make_brand())
-    assert pm.name == "Nayz"
+    pm = PMProfile(name="Slay", page_name="NayzFreedom Fleet", persona="test", brand=make_brand())
+    assert pm.name == "Slay"
 
 def test_content_type_values():
     assert ContentType.VIDEO == "video"
