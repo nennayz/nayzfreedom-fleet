@@ -12,6 +12,7 @@ Current identity rules:
 
 - Captain / owner identity: **Nayz**
 - Current Aurora project PM identity: **Slay**
+- Current Aurora project display name: **SlayHack**
 - Product and top-level operating system: **NayzFreedom Fleet**
 - Canonical project slug: `nayzfreedom_fleet`
 - Legacy slug: `slay_hack`, compatibility alias only
@@ -164,7 +165,7 @@ Primary routes:
 
 - `/` — Captain's Deck with command brief, fleet ship status, active missions, and attention signals
 - `/aurora` — The Aurora mission-control hub
-- `/aurora/islands/nayzfreedom_fleet` — current project island, PM Slay, brand profile, island command state
+- `/aurora/islands/nayzfreedom_fleet` — current SlayHack project island, PM Slay, brand profile, island command state
 - `/aurora/missions` — all missions
 - `/jobs/{job_id}` — mission detail / voyage log with mission command, current stage, progress, output readiness, timeline, and artifacts
 - `/aurora/crew` and `/aurora/crew/{slug}` — Aurora crew registry and character sheets
@@ -193,7 +194,7 @@ The Freedom and Lyra should stay clearly marked as planned until their data mode
 
 ```
 output/
-└── NayzFreedom Fleet/
+└── SlayHack/
     └── 20260512_143022/
         ├── job.json          ← full ContentJob state (resume point)
         ├── ideas.md          ← Zoe's ideas

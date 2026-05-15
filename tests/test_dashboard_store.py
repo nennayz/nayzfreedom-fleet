@@ -8,7 +8,7 @@ from models.content_job import (
 )
 
 
-def _make_pm(page_name: str = "NayzFreedom Fleet") -> PMProfile:
+def _make_pm(page_name: str = "SlayHack") -> PMProfile:
     brand = BrandProfile(
         mission="m", visual=VisualIdentity(colors=[], style=""),
         platforms=[], tone="", target_audience="", script_style="",
@@ -17,7 +17,7 @@ def _make_pm(page_name: str = "NayzFreedom Fleet") -> PMProfile:
     return PMProfile(name="Test PM", page_name=page_name, persona="", brand=brand)
 
 
-def _make_job(job_id: str, page_name: str = "NayzFreedom Fleet") -> ContentJob:
+def _make_job(job_id: str, page_name: str = "SlayHack") -> ContentJob:
     return ContentJob(
         id=job_id, project="nayzfreedom_fleet", pm=_make_pm(page_name),
         brief="test brief", platforms=["facebook"],
@@ -53,7 +53,7 @@ def test_list_all_jobs_returns_jobs_sorted_newest_first(tmp_path):
 def test_list_all_jobs_skips_corrupt_files(tmp_path):
     valid = _make_job("20260512_060000")
     _write_job(tmp_path, valid)
-    corrupt_dir = tmp_path / "output" / "NayzFreedom Fleet" / "20260511_060000"
+    corrupt_dir = tmp_path / "output" / "SlayHack" / "20260511_060000"
     corrupt_dir.mkdir(parents=True, exist_ok=True)
     (corrupt_dir / "job.json").write_text("not valid json {{{")
 
@@ -81,13 +81,13 @@ def test_list_all_jobs_normalizes_legacy_project_identity(tmp_path):
     _write_job(tmp_path, legacy)
     project_dir = tmp_path / "projects" / "nayzfreedom_fleet"
     project_dir.mkdir(parents=True)
-    (project_dir / "pm_profile.yaml").write_text('page_name: "NayzFreedom Fleet"\n')
+    (project_dir / "pm_profile.yaml").write_text('page_name: "SlayHack"\n')
 
     from dashboard_store import list_all_jobs
     result = list_all_jobs(tmp_path)
 
     assert result[0].project == "nayzfreedom_fleet"
-    assert result[0].pm.page_name == "NayzFreedom Fleet"
+    assert result[0].pm.page_name == "SlayHack"
 
 
 def test_load_performance_all_delegates_to_collect_week_data(tmp_path):

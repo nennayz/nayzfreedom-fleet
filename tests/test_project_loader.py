@@ -7,7 +7,7 @@ def test_load_nayzfreedom_fleet():
     pm = load_project("nayzfreedom_fleet")
     assert isinstance(pm, PMProfile)
     assert pm.name == "Slay"
-    assert pm.page_name == "NayzFreedom Fleet"
+    assert pm.page_name == "SlayHack"
     assert "Quiet Luxury" in pm.persona
     assert pm.brand.nora_max_retries == 2
     assert "#D4AF37" in pm.brand.visual.colors
@@ -21,7 +21,7 @@ def test_load_missing_project_raises():
 def test_load_legacy_slay_hack_alias():
     pm = load_project("slay_hack")
     assert pm.name == "Slay"
-    assert pm.page_name == "NayzFreedom Fleet"
+    assert pm.page_name == "SlayHack"
 
 
 def test_load_nayzfreedom_fleet_allowed_content_types():
