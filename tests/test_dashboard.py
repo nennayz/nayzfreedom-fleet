@@ -66,6 +66,9 @@ def test_captains_deck_empty(client):
     resp = client.get("/", headers=_auth())
     assert resp.status_code == 200
     assert "Captain's Deck" in resp.text
+    assert "Ready for first mission" in resp.text
+    assert "Nami comes after privacy and memory boundaries are clear" in resp.text
+    assert "Genie comes after the Fleet shell is stable" in resp.text
     assert "Needs Captain" not in resp.text
     assert "Launch the first Aurora mission when the brief is ready." in resp.text
     assert "Next best action" in resp.text

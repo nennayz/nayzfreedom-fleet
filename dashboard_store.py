@@ -71,6 +71,50 @@ def command_brief(jobs: list[ContentJob]) -> dict[str, str]:
     }
 
 
+def fleet_status(jobs: list[ContentJob]) -> list[dict[str, str]]:
+    summary = summarize_jobs(jobs)
+    brief = command_brief(jobs)
+    aurora_state = brief["state"]
+    if aurora_state == "Needs Captain":
+        aurora_detail = f"{summary['failed']} failed · {summary['awaiting_approval']} awaiting approval"
+    elif aurora_state == "In Motion":
+        aurora_detail = f"{summary['running']} active · {summary['completed']} completed"
+    elif summary["total"]:
+        aurora_detail = f"{summary['total']} total · ready for next mission"
+    else:
+        aurora_detail = "Ready for first mission"
+
+    return [
+        {
+            "name": "The Aurora",
+            "href": "/aurora",
+            "css_class": "aurora-card",
+            "kicker": "Work ship",
+            "description": "Brands, missions, publishing, and external impact.",
+            "state": aurora_state,
+            "detail": aurora_detail,
+        },
+        {
+            "name": "The Freedom",
+            "href": "/freedom",
+            "css_class": "freedom-card",
+            "kicker": "Personal ship",
+            "description": "Freedom Five, personal systems, and the Horizon Atlas.",
+            "state": "Planned",
+            "detail": "Nami comes after privacy and memory boundaries are clear",
+        },
+        {
+            "name": "The Lyra",
+            "href": "/lyra",
+            "css_class": "lyra-card",
+            "kicker": "Music ship",
+            "description": "Songs, releases, and the artistic catalog guided by Genie.",
+            "state": "Planned",
+            "detail": "Genie comes after the Fleet shell is stable",
+        },
+    ]
+
+
 def attention_jobs(jobs: list[ContentJob], limit: int = 5) -> list[ContentJob]:
     priority = {"failed": 0, "awaiting_approval": 1}
     items = [

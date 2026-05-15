@@ -140,6 +140,23 @@ def test_command_brief_handles_empty_deck():
     assert result["action"] == "Launch the first Aurora mission when the brief is ready."
 
 
+def test_fleet_status_keeps_aurora_live_and_future_ships_planned():
+    from dashboard_store import fleet_status
+    running = _make_job("20260512_060000")
+    running.status = JobStatus.RUNNING
+    completed = _make_job("20260511_060000")
+
+    result = fleet_status([running, completed])
+
+    assert result[0]["name"] == "The Aurora"
+    assert result[0]["state"] == "In Motion"
+    assert result[0]["detail"] == "1 active · 1 completed"
+    assert result[1]["name"] == "The Freedom"
+    assert result[1]["state"] == "Planned"
+    assert result[2]["name"] == "The Lyra"
+    assert result[2]["state"] == "Planned"
+
+
 def test_attention_jobs_prioritizes_failed_then_approval():
     from dashboard_store import attention_jobs
     failed = _make_job("20260512_060000")
