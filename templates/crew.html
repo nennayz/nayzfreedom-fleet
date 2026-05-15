@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero aurora-hero compact-hero">
+  <p class="eyebrow">The Aurora</p>
+  <h1>Crew</h1>
+  <p class="hero-copy">Eight specialists aboard The Aurora, each with a distinct role, silhouette, and visual identity.</p>
+</section>
+<section class="crew-grid">
+  {% for member in crew %}
+  <a class="crew-card" href="/aurora/crew/{{ member.slug }}">
+    <img class="crew-portrait" src="{{ member.image }}" alt="{{ member.name }}">
+    <p class="eyebrow">{{ member.ship_role }}</p>
+    <h2>{{ member.name }}</h2>
+    <span class="role-pill">{{ member.operational_role }}</span>
+    <p>{{ member.summary }}</p>
+  </a>
+  {% endfor %}
+</section>
+{% endblock %}

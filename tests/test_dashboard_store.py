@@ -82,3 +82,21 @@ def test_load_performance_all_delegates_to_collect_week_data(tmp_path):
         result = load_performance_all(tmp_path)
     mock_fn.assert_called_once_with(tmp_path, date.today())
     assert result == fake_data
+
+
+def test_summarize_jobs_counts_statuses():
+    from dashboard_store import summarize_jobs
+    jobs = [
+        _make_job("20260512_060000"),
+        _make_job("20260511_060000"),
+        _make_job("20260510_060000"),
+    ]
+    jobs[1].status = JobStatus.RUNNING
+    jobs[2].status = JobStatus.FAILED
+    assert summarize_jobs(jobs) == {
+        "total": 3,
+        "completed": 1,
+        "running": 1,
+        "failed": 1,
+        "awaiting_approval": 0,
+    }

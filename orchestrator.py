@@ -1,6 +1,7 @@
 from __future__ import annotations
 import json
 import anthropic
+from activity_logger import log_action
 from agents.mia import MiaAgent
 from agents.zoe import ZoeAgent
 from agents.bella import BellaAgent
@@ -62,6 +63,7 @@ class Orchestrator:
     def run(self, job: ContentJob, unattended: bool = False) -> ContentJob:
         self._unattended = unattended
         job.status = JobStatus.RUNNING
+        log_action("orchestrator_start", {"job_id": job.id, "unattended": unattended})
         system_prompt = _ROBIN_SYSTEM.format(
             pm_name=job.pm.name,
             page_name=job.pm.page_name,
@@ -84,6 +86,7 @@ class Orchestrator:
             if response.stop_reason == "end_turn":
                 job.status = JobStatus.COMPLETED
                 save_job(job)
+                log_action("orchestrator_complete", {"job_id": job.id, "status": job.status.value})
                 return job
 
             if response.stop_reason != "tool_use":
@@ -114,6 +117,11 @@ class Orchestrator:
             # Telegram shows numbered buttons even when Robin omits them.
             if stage == "idea_selection" and job.ideas:
                 options = [f"{i.number}: {i.title}" for i in job.ideas]
+            log_action("request_checkpoint", {
+                "job_id": job.id,
+                "stage": stage,
+                "options": options,
+            })
             result = pause(
                 stage=stage,
                 summary=tool_input.get("summary"),
@@ -143,4 +151,9 @@ class Orchestrator:
         if agent_name == "publish" and "schedule" in tool_input:
             kwargs["schedule"] = bool(tool_input["schedule"])
         self.agents[agent_name].run(job, **kwargs)
+        log_action("run_agent", {
+            "job_id": job.id,
+            "agent": agent_name,
+            "stage": job.stage,
+        })
         return {"status": "ok", "stage": job.stage}

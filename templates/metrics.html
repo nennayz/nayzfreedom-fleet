@@ -1,6 +1,9 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Performance (Last 7 Days)</h1>
+<section class="page-header">
+  <p class="eyebrow">The Aurora</p>
+  <h1>Performance (Last 7 Days)</h1>
+</section>
 {% if data %}
 {% for page_name, platforms in data.items() %}
 <h2>{{ page_name }}</h2>
@@ -14,13 +17,13 @@
   <tbody>
   {% for platform, stats in platforms.items() %}
     <tr>
-      <td>{{ platform }}</td>
-      <td>{{ stats.job_count }}</td>
-      <td>{{ "{:,}".format(stats.total_reach) }}</td>
-      <td>{{ "{:,}".format(stats.total_likes) }}</td>
-      <td>{{ "{:,}".format(stats.total_saves) }}</td>
-      <td>{{ "{:,}".format(stats.total_shares) }}</td>
-      <td>
+      <td data-label="Platform">{{ platform }}</td>
+      <td data-label="Jobs">{{ stats.job_count }}</td>
+      <td data-label="Reach">{{ "{:,}".format(stats.total_reach) }}</td>
+      <td data-label="Likes">{{ "{:,}".format(stats.total_likes) }}</td>
+      <td data-label="Saves">{{ "{:,}".format(stats.total_saves) }}</td>
+      <td data-label="Shares">{{ "{:,}".format(stats.total_shares) }}</td>
+      <td data-label="Top Post">
         {% if stats.top_job_id %}
         <a href="/jobs/{{ stats.top_job_id }}">{{ stats.top_job_brief[:40] }}</a>
         {% endif %}

@@ -1,8 +1,17 @@
 .env
 .venv/
+.vscode/settings.json
+.claude/launch.json
+.claude/*.local.json
 __pycache__/
 *.pyc
+slayhack-c9ecc5796833.json
+token.json
+client_secret*.json
+service-account*.json
+google-credentials*.json
 output/
+logs/
 .mypy_cache/
 .ruff_cache/
 .superpowers/
@@ -12,3 +21,8 @@ output/
 htmlcov/
 .env.local
 .env.*.local
+
+# Private personal knowledge bases should not be committed.
+# Use vault-template/ as the shareable starter structure instead.
+vault/
+*.vault.local/

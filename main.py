@@ -3,7 +3,12 @@ import argparse
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from agents.publish import PublishAgent
+from activity_logger import log_action, log_command
 from config import Config, MissingAPIKeyError
 from job_store import find_job, save_job
 from models.content_job import ContentJob, JobStatus
@@ -41,14 +46,17 @@ def main() -> None:
         help="Auto-approve all checkpoints — required when running from cron",
     )
     args = parser.parse_args()
+    log_command("main_invocation", {"argv": sys.argv[1:]})
 
     try:
         config = Config.from_env()
     except MissingAPIKeyError as e:
+        log_action("config_error", {"error": str(e)})
         print(f"Error: {e}\nCopy .env.example to .env and fill in your API keys.")
         sys.exit(1)
 
     if args.publish_only:
+        log_command("publish_only", {"job_id": args.publish_only, "schedule": args.schedule})
         try:
             job = find_job(args.publish_only)
         except FileNotFoundError as e:
@@ -67,6 +75,7 @@ def main() -> None:
         return
 
     if args.track:
+        log_command("track", {"job_id": args.track})
         try:
             job = find_job(args.track)
         except Exception as e:
@@ -95,6 +104,7 @@ def main() -> None:
     if args.resume:
         try:
             job = find_job(args.resume)
+            log_command("resume_job", {"job_id": args.resume})
             print(f"Resuming job {job.id} for {job.pm.page_name} (stage: {job.stage})")
         except FileNotFoundError as e:
             print(f"Error: {e}")
@@ -120,6 +130,14 @@ def main() -> None:
             from models.content_job import ContentType as CT
             job.content_type = CT(args.content_type)
         save_job(job)
+        log_command("start_job", {
+            "job_id": job.id,
+            "project": args.project,
+            "brief": args.brief,
+            "platforms": platforms,
+            "content_type": args.content_type,
+            "dry_run": args.dry_run,
+        })
         print(f"Starting job {job.id} for {pm.page_name}")
         if args.dry_run:
             print("[DRY-RUN MODE] No real API calls will be made.\n")

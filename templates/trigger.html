@@ -1,6 +1,9 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>New Run</h1>
+<section class="page-header">
+  <p class="eyebrow">The Aurora</p>
+  <h1>New Mission</h1>
+</section>
 <form method="post" action="/trigger" onsubmit="return confirm('Start this pipeline run?')">
   <div>
     <label for="project">Project</label>
@@ -27,12 +30,6 @@
     <label>
       <input type="checkbox" name="dry_run" value="1" checked>
       Dry Run
-    </label>
-  </div>
-  <div>
-    <label>
-      <input type="checkbox" name="unattended" value="1">
-      Unattended (skip Telegram, auto-approve)
     </label>
   </div>
   <button type="submit">Start Pipeline</button>

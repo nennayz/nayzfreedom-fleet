@@ -1,12 +1,37 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Job: {{ job.id }}</h1>
-<p><strong>Project:</strong> {{ job.project }}</p>
-<p><strong>Brief:</strong> {{ job.brief }}</p>
-<p><strong>Platforms:</strong> {{ job.platforms | join(", ") }}</p>
-<p><strong>Content Type:</strong> {{ job.content_type or "—" }}</p>
-<p><strong>Status:</strong> <span class="badge badge-{{ job.status }}">{{ job.status }}</span></p>
-<p><strong>Stage:</strong> {{ job.stage }}</p>
+<section class="hero aurora-hero">
+  <p class="eyebrow">Voyage log</p>
+  <h1>Mission {{ job.id }}</h1>
+  <p class="hero-copy">{{ job.brief }}</p>
+  <div class="progress-bar" aria-label="Voyage progress">
+    <span style="width: {{ (progress_count / total_stages * 100) | round(0) }}%"></span>
+  </div>
+</section>
+
+<section class="content-grid">
+  <article class="panel">
+    <p><strong>Island:</strong> {{ job.project }}</p>
+    <p><strong>Platforms:</strong> {{ job.platforms | join(", ") }}</p>
+    <p><strong>Content Type:</strong> {{ job.content_type.value if job.content_type else "—" }}</p>
+    <p><strong>Status:</strong> <span class="badge badge-{{ job.status.value }}">{{ job.status.value }}</span></p>
+  </article>
+  <article class="panel">
+    <div class="section-heading">
+      <p class="eyebrow">Voyage route</p>
+      <h2>Workflow timeline</h2>
+    </div>
+    <div class="timeline polished-timeline">
+      {% for stage, label, agent in voyage_stages %}
+      <div class="timeline-step {% if stage in completed_stages %}done{% endif %}">
+        <span></span>
+        <strong>{{ label }}</strong>
+        <em>{{ agent }}</em>
+      </div>
+      {% endfor %}
+    </div>
+  </article>
+</section>
 
 {% if job.bella_output %}
 <details>

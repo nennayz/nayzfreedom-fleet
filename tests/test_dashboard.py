@@ -60,17 +60,63 @@ def test_dashboard_wrong_credentials(client):
     assert resp.status_code == 401
 
 
-def test_jobs_list_empty(client):
+def test_captains_deck_empty(client):
     resp = client.get("/", headers=_auth())
     assert resp.status_code == 200
-    assert "No jobs yet" in resp.text
+    assert "Captain's Deck" in resp.text
+    assert "No missions yet" in resp.text
 
 
-def test_jobs_list_shows_job(tmp_path, client):
+def test_captains_deck_shows_recent_mission(tmp_path, client):
     _write_job(tmp_path, "20260512_060000", brief="luxury brands rock")
     resp = client.get("/", headers=_auth())
     assert resp.status_code == 200
     assert "luxury brands rock" in resp.text
+
+
+def test_aurora_overview_shows_projects(tmp_path, client):
+    (tmp_path / "projects" / "slay_hack").mkdir(parents=True)
+    (tmp_path / "projects" / "slay_hack" / "pm_profile.yaml").write_text("page_name: test\n")
+    resp = client.get("/aurora", headers=_auth())
+    assert resp.status_code == 200
+    assert "The Aurora" in resp.text
+    assert "slay_hack" in resp.text
+
+
+def test_aurora_crew_pages_render(client):
+    crew = client.get("/aurora/crew", headers=_auth())
+    detail = client.get("/aurora/crew/robin", headers=_auth())
+    assert crew.status_code == 200
+    assert "Crew" in crew.text
+    assert "Robin" in crew.text
+    assert detail.status_code == 200
+    assert "Chief Officer" in detail.text
+
+
+def test_island_detail_renders(tmp_path, client, monkeypatch):
+    (tmp_path / "projects" / "slay_hack").mkdir(parents=True)
+    (tmp_path / "projects" / "slay_hack" / "pm_profile.yaml").write_text(
+        'name: "Slay"\npage_name: "Slay Hack"\npersona: "bold"\n'
+    )
+    (tmp_path / "projects" / "slay_hack" / "brand.yaml").write_text(
+        'mission: "mission"\nvisual:\n  colors: ["#fff"]\n  style: "minimal"\n'
+        'platforms: ["instagram"]\ntone: "sassy"\ntarget_audience: "women"\n'
+        'script_style: "lowercase"\n'
+    )
+    monkeypatch.chdir(tmp_path)
+    resp = client.get("/aurora/islands/slay_hack", headers=_auth())
+    assert resp.status_code == 200
+    assert "Slay Hack" in resp.text
+    assert "mission" in resp.text
+
+
+def test_placeholder_ship_pages_render(client):
+    freedom = client.get("/freedom", headers=_auth())
+    lyra = client.get("/lyra", headers=_auth())
+    assert freedom.status_code == 200
+    assert "Freedom Five" in freedom.text
+    assert lyra.status_code == 200
+    assert "Song voyage" in lyra.text
 
 
 def test_jobs_partial_returns_fragment(tmp_path, client):
@@ -113,6 +159,7 @@ def test_job_detail_shows_brief(tmp_path, client):
         resp = client.get("/jobs/20260512_060000", headers=_auth())
     assert resp.status_code == 200
     assert "luxury brands are amazing" in resp.text
+    assert "Voyage log" in resp.text
 
 
 def test_metrics_no_data(client):
@@ -156,7 +203,7 @@ def test_trigger_spawns_subprocess(tmp_path, client):
             follow_redirects=False,
         )
     assert resp.status_code == 303
-    assert resp.headers["location"] == "/"
+    assert resp.headers["location"] == "/aurora/missions"
     mock_popen.assert_called_once()
     cmd = mock_popen.call_args.args[0]
     assert "main.py" in cmd

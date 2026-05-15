@@ -5,6 +5,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 import yaml
+from activity_logger import log_action, log_command
 from notifier import send_slack_alert
 
 logging.basicConfig(
@@ -44,6 +45,7 @@ def run_scheduler(dry_run: bool = False, root: Path | None = None) -> int:
     failures: list[dict] = []
     total = 0
 
+    log_action("scheduler_start", {"run_date": run_date, "dry_run": dry_run})
     for calendar_path in calendars:
         project_slug = calendar_path.parent.name
         with open(calendar_path) as f:
@@ -74,6 +76,13 @@ def run_scheduler(dry_run: bool = False, root: Path | None = None) -> int:
                 cmd.append("--dry-run")
 
             logger.info("Running: project=%s key=%s content_type=%s", project_slug, key, content_type)
+            log_command("scheduler_run_command", {
+                "project": project_slug,
+                "key": key,
+                "content_type": content_type,
+                "cmd": cmd,
+                "dry_run": dry_run,
+            })
             try:
                 result = subprocess.run(cmd, cwd=_root, timeout=1800)
             except subprocess.TimeoutExpired as exc:
@@ -91,6 +100,11 @@ def run_scheduler(dry_run: bool = False, root: Path | None = None) -> int:
 
     if failures:
         send_slack_alert(failures, run_date, total, dry_run=dry_run)
+    log_action("scheduler_complete", {
+        "run_date": run_date,
+        "total": total,
+        "failures": len(failures),
+    })
 
     return 1 if failures else 0
 

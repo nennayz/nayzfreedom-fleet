@@ -1,7 +1,6 @@
 from __future__ import annotations
 import os
 from dataclasses import dataclass
-from dotenv import load_dotenv
 
 
 class MissingAPIKeyError(Exception):
@@ -25,7 +24,6 @@ class Config:
 
     @classmethod
     def from_env(cls) -> Config:
-        load_dotenv()
         anthropic_key = os.getenv("ANTHROPIC_API_KEY", "")
         if not anthropic_key:
             raise MissingAPIKeyError("ANTHROPIC_API_KEY is required")

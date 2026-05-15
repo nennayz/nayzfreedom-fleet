@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero hero-fleet">
+  <p class="eyebrow">NayzFreedom Fleet</p>
+  <h1>Captain's Deck</h1>
+  <p class="hero-copy">A clear view of the ships under your command, the missions in motion, and what deserves your attention next.</p>
+</section>
+
+<section class="ship-grid">
+  <a class="ship-card aurora-card" href="/aurora">
+    <span class="ship-kicker">Work ship</span>
+    <h2>The Aurora</h2>
+    <p>Brands, missions, publishing, and external impact.</p>
+    <strong>{{ summary.running }} active · {{ summary.completed }} completed</strong>
+  </a>
+  <a class="ship-card freedom-card" href="/freedom">
+    <span class="ship-kicker">Personal ship</span>
+    <h2>The Freedom</h2>
+    <p>Freedom Five, personal systems, and the Horizon Atlas.</p>
+    <strong>Coming next</strong>
+  </a>
+  <a class="ship-card lyra-card" href="/lyra">
+    <span class="ship-kicker">Music ship</span>
+    <h2>The Lyra</h2>
+    <p>Songs, releases, and the artistic catalog guided by Genie.</p>
+    <strong>Coming next</strong>
+  </a>
+</section>
+
+<section class="content-grid">
+  <article class="panel">
+    <div class="section-heading">
+      <p class="eyebrow">Captain's brief</p>
+      <h2>What needs attention</h2>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-card">
+        <span>Total missions</span>
+        <strong>{{ summary.total }}</strong>
+      </div>
+      <div class="stat-card">
+        <span>Running</span>
+        <strong>{{ summary.running }}</strong>
+      </div>
+      <div class="stat-card">
+        <span>Awaiting approval</span>
+        <strong>{{ summary.awaiting_approval }}</strong>
+      </div>
+      <div class="stat-card">
+        <span>Failed</span>
+        <strong>{{ summary.failed }}</strong>
+      </div>
+    </div>
+  </article>
+
+  <article class="panel">
+    <div class="section-heading">
+      <p class="eyebrow">Latest voyages</p>
+      <h2>Recent Aurora missions</h2>
+    </div>
+    {% if jobs %}
+    <div class="mission-list">
+      {% for job in jobs %}
+      <a href="/jobs/{{ job.id }}" class="mission-row">
+        <span>{{ job.id[:8] }}</span>
+        <strong>{{ job.brief[:42] }}{% if job.brief | length > 42 %}…{% endif %}</strong>
+        <em class="badge badge-{{ job.status.value }}">{{ job.status.value }}</em>
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="muted">No missions yet.</p>
+    {% endif %}
+  </article>
+</section>
+{% endblock %}

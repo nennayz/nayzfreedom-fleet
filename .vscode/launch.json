@@ -1,0 +1,65 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Pipeline: Dry Run",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/main.py",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "args": [
+        "--project",
+        "slay_hack",
+        "--brief",
+        "${input:contentBrief}",
+        "--dry-run",
+        "--unattended"
+      ]
+    },
+    {
+      "name": "Pipeline: Live",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/main.py",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "args": [
+        "--project",
+        "slay_hack",
+        "--brief",
+        "${input:contentBrief}"
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/dashboard.py",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env"
+    },
+    {
+      "name": "Pytest",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "args": [
+        "-v"
+      ]
+    }
+  ],
+  "inputs": [
+    {
+      "id": "contentBrief",
+      "type": "promptString",
+      "description": "Content brief",
+      "default": "15-second Reel about a quiet luxury morning routine"
+    }
+  ]
+}

@@ -1,6 +1,9 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Jobs</h1>
+<section class="page-header">
+  <p class="eyebrow">The Aurora</p>
+  <h1>Missions</h1>
+</section>
 {% if jobs %}
 <table>
   <thead>
@@ -16,6 +19,6 @@
   {% include "_jobs_partial.html" %}
 </table>
 {% else %}
-<p>No jobs yet.</p>
+<p>No missions yet.</p>
 {% endif %}
 {% endblock %}

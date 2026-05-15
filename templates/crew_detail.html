@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="character-hero panel">
+  <img class="character-portrait" src="{{ member.image }}" alt="{{ member.name }}">
+  <div>
+    <p class="eyebrow">{{ member.ship_role }}</p>
+    <h1>{{ member.name }}</h1>
+    <p class="hero-copy">{{ member.summary }}</p>
+    <span class="role-pill">{{ member.operational_role }}</span>
+  </div>
+</section>
+
+<section class="content-grid">
+  <article class="panel">
+    <div class="section-heading">
+      <p class="eyebrow">Character sheet</p>
+      <h2>{{ member.operational_role }}</h2>
+    </div>
+    <p><strong>Personality:</strong> {{ member.personality }}</p>
+    <p><strong>Signature quote:</strong> “{{ member.quote }}”</p>
+  </article>
+  <article class="panel">
+    <div class="section-heading">
+      <p class="eyebrow">Watch</p>
+      <h2>Strengths & watch-outs</h2>
+    </div>
+    <p><strong>Strengths:</strong> {{ member.strengths | join(", ") }}</p>
+    <p><strong>Watch-outs:</strong> {{ member.watch_outs | join(", ") }}</p>
+  </article>
+</section>
+
+<section class="content-grid">
+  <article class="panel">
+    <div class="section-heading">
+      <p class="eyebrow">Inputs</p>
+      <h2>What she needs</h2>
+    </div>
+    <div class="tag-list">{% for item in member.inputs %}<span class="tag">{{ item }}</span>{% endfor %}</div>
+  </article>
+  <article class="panel">
+    <div class="section-heading">
+      <p class="eyebrow">Outputs</p>
+      <h2>What she returns</h2>
+    </div>
+    <div class="tag-list">{% for item in member.outputs %}<span class="tag">{{ item }}</span>{% endfor %}</div>
+  </article>
+</section>
+{% endblock %}
