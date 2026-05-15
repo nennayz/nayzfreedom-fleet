@@ -14,7 +14,7 @@ def make_job_for_emma(dry_run=True):
 
 def test_emma_dry_run_writes_faq_file(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    (tmp_path / "output" / "Slay Hack Agency").mkdir(parents=True)
+    (tmp_path / "output" / "NayzFreedom Fleet").mkdir(parents=True)
     job = make_job_for_emma(dry_run=True)
     agent = EmmaAgent(make_config())
     job = agent.run(job)
@@ -25,7 +25,7 @@ def test_emma_dry_run_writes_faq_file(tmp_path, monkeypatch):
 
 def test_emma_live_writes_faq_from_claude(tmp_path, monkeypatch, mocker):
     monkeypatch.chdir(tmp_path)
-    (tmp_path / "output" / "Slay Hack Agency").mkdir(parents=True)
+    (tmp_path / "output" / "NayzFreedom Fleet").mkdir(parents=True)
     job = make_job_for_emma(dry_run=False)
     faq_content = "# FAQ\n\n**Q: Does it work?**\nA: yes bestie!"
     mocker.patch.object(EmmaAgent, "_call_claude", return_value=faq_content)

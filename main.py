@@ -20,7 +20,7 @@ _LOCK_FILE = Path("/tmp/nayz_pipeline.lock")
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Slay Hack Agency — AI Content Pipeline")
+    parser = argparse.ArgumentParser(description="NayzFreedom Fleet — AI Content Pipeline")
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--project", help="Project slug (folder name under projects/)")
     group.add_argument("--resume", metavar="JOB_ID", help="Resume an interrupted job by ID")

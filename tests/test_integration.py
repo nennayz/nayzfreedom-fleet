@@ -83,7 +83,7 @@ def test_full_dry_run_pipeline(tmp_path, monkeypatch):
     assert result.community_faq_path is not None
     assert len(result.checkpoint_log) == 4
 
-    job_file = tmp_path / "output" / "Slay Hack" / result.id / "job.json"
+    job_file = tmp_path / "output" / "NayzFreedom Fleet" / result.id / "job.json"
     assert job_file.exists()
 
     faq_file = Path(result.community_faq_path)

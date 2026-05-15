@@ -1,7 +1,7 @@
 # Agent Team Brief for Graphic Design
 
 ## Summary
-นี่คือสรุปทีม Agent ของ NayzFreedom / Slay Hack Agency เพื่อใช้ส่งต่อให้ฝ่ายกราฟิกออกแบบภาพทีมงานและสร้าง Visual Identity ของแต่ละคน
+นี่คือสรุปทีม Agent ของ NayzFreedom / NayzFreedom Fleet เพื่อใช้ส่งต่อให้ฝ่ายกราฟิกออกแบบภาพทีมงานและสร้าง Visual Identity ของแต่ละคน
 
 ทีมนี้เป็น multi-agent pipeline สำหรับการผลิตคอนเทนต์โซเชียลมีเดีย ตั้งแต่การค้นหาเทรนด์จนถึงการเผยแพร่และชุมชน
 

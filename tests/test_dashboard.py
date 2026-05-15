@@ -22,7 +22,7 @@ def _auth(user: str = "admin", pw: str = "secret") -> dict:
     return {"Authorization": f"Basic {token}"}
 
 
-def _make_pm_dict(page_name: str = "Slay Hack Agency") -> dict:
+def _make_pm_dict(page_name: str = "NayzFreedom Fleet") -> dict:
     return {
         "name": "Test PM", "page_name": page_name, "persona": "",
         "brand": {
@@ -34,7 +34,7 @@ def _make_pm_dict(page_name: str = "Slay Hack Agency") -> dict:
 
 
 def _write_job(tmp_path: Path, job_id: str, brief: str = "test brief",
-               status: str = "completed", page: str = "Slay Hack Agency",
+               status: str = "completed", page: str = "NayzFreedom Fleet",
                stage: str = "init") -> None:
     job = {
         "id": job_id, "project": "slay_hack", "pm": _make_pm_dict(page),
@@ -119,7 +119,7 @@ def test_aurora_crew_detail_unknown_member_404(client):
 def test_island_detail_renders(tmp_path, client, monkeypatch):
     (tmp_path / "projects" / "slay_hack").mkdir(parents=True)
     (tmp_path / "projects" / "slay_hack" / "pm_profile.yaml").write_text(
-        'name: "Slay"\npage_name: "Slay Hack"\npersona: "bold persona"\n'
+        'name: "Slay"\npage_name: "NayzFreedom Fleet"\npersona: "bold persona"\n'
     )
     (tmp_path / "projects" / "slay_hack" / "brand.yaml").write_text(
         'mission: "mission"\nvisual:\n  colors: ["#fff"]\n  style: "minimal"\n'
@@ -131,7 +131,7 @@ def test_island_detail_renders(tmp_path, client, monkeypatch):
     monkeypatch.chdir(tmp_path)
     resp = client.get("/aurora/islands/slay_hack", headers=_auth())
     assert resp.status_code == 200
-    assert "Slay Hack" in resp.text
+    assert "NayzFreedom Fleet" in resp.text
     assert "mission" in resp.text
     assert "Launch island mission" in resp.text
     assert "/aurora/new-mission?project=slay_hack" in resp.text
@@ -194,7 +194,7 @@ def test_job_detail_shows_brief(tmp_path, client):
     _write_job(tmp_path, "20260512_060000", brief="luxury brands are amazing")
     from models.content_job import ContentJob
     job = ContentJob.model_validate_json(
-        (tmp_path / "output" / "Slay Hack Agency" / "20260512_060000" / "job.json").read_text()
+        (tmp_path / "output" / "NayzFreedom Fleet" / "20260512_060000" / "job.json").read_text()
     )
     with patch.object(_dm, "find_job", return_value=job):
         resp = client.get("/jobs/20260512_060000", headers=_auth())
@@ -215,7 +215,7 @@ def test_job_detail_workflow_marks_current_crew_stage(tmp_path, client):
     )
     from models.content_job import ContentJob
     job = ContentJob.model_validate_json(
-        (tmp_path / "output" / "Slay Hack Agency" / "20260512_070000" / "job.json").read_text()
+        (tmp_path / "output" / "NayzFreedom Fleet" / "20260512_070000" / "job.json").read_text()
     )
     with patch.object(_dm, "find_job", return_value=job):
         resp = client.get("/jobs/20260512_070000", headers=_auth())
@@ -236,14 +236,14 @@ def test_metrics_no_data(client):
 def test_metrics_shows_data(client):
     from reporter import PlatformStats
     fake_data = {
-        "Slay Hack Agency": {
+        "NayzFreedom Fleet": {
             "facebook": PlatformStats(job_count=3, total_reach=5000, total_likes=120),
         }
     }
     with patch.object(_dm, "load_performance_all", return_value=fake_data):
         resp = client.get("/metrics", headers=_auth())
     assert resp.status_code == 200
-    assert "Slay Hack Agency" in resp.text
+    assert "NayzFreedom Fleet" in resp.text
     assert "5,000" in resp.text
 
 

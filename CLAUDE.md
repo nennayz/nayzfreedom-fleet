@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**NayzFreedom / Slay Hack Agency** is a Python-based multi-agent AI pipeline that automates social media content production — from trend research through scripting, visual creation, QA, and publishing. The system supports multiple brand pages, each managed by a dedicated Project Manager with a unique persona.
+**NayzFreedom / NayzFreedom Fleet** is a Python-based multi-agent AI pipeline that automates social media content production — from trend research through scripting, visual creation, QA, and publishing. The system supports multiple brand pages, each managed by a dedicated Project Manager with a unique persona.
 
 Primary platforms: Facebook, Instagram (Reels). Secondary: TikTok, YouTube (later phases).
 
@@ -12,7 +12,7 @@ Full design spec: [`docs/superpowers/specs/2026-05-12-slay-hack-agency-design.md
 
 ---
 
-## Agent Roster (The Slay Chain)
+## Agent Roster (Freedom Architects)
 
 | Agent | File | Role |
 |---|---|---|
@@ -90,8 +90,13 @@ python main.py --project slay_hack --brief "your brief here"
 # Resume interrupted job
 python main.py --resume 20260512_143022
 
-# Dry-run (no API calls, mock data throughout)
+# Dry-run from an interactive terminal (pauses for checkpoints).
+# Still calls Anthropic for Robin orchestration; agents/publish use mock outputs.
 python main.py --project slay_hack --brief "..." --dry-run
+
+# Dry-run from Claude/Codex/cron (auto-approves checkpoints, no stdin block)
+# Still calls Anthropic for Robin orchestration; agents/publish use mock outputs.
+python main.py --project slay_hack --brief "..." --dry-run --unattended
 
 # Run scheduler manually (dry-run — no API calls)
 python scheduler.py --dry-run
@@ -159,7 +164,7 @@ python dashboard.py --host 0.0.0.0 --port 8000
 
 ```
 output/
-└── Slay Hack Agency/
+└── NayzFreedom Fleet/
     └── 20260512_143022/
         ├── job.json          ← full ContentJob state (resume point)
         ├── ideas.md          ← Zoe's ideas

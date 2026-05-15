@@ -4,7 +4,7 @@
 
 ## Context
 
-The project began as a Python multi-agent content pipeline for SlayHack. During dashboard design, the product direction expanded into a broader operating system for Captain Nayz, covering work, personal freedom, music, and travel.
+The project began as a Python multi-agent content pipeline for NayzFreedom Fleet. During dashboard design, the product direction expanded into a broader operating system for Captain Nayz, covering work, personal freedom, music, and travel.
 
 The system needed a structure that could grow without mixing content operations, personal life systems, and artistic work into one flat project list.
 
@@ -28,7 +28,7 @@ NayzFreedom Fleet
 ## Consequences
 
 - Dashboard navigation should become ship-based.
-- Existing SlayHack content work belongs under `The Aurora`.
+- Existing NayzFreedom Fleet content work belongs under `The Aurora`.
 - Personal systems should not be forced into the content pipeline.
 - Music deserves a separate ship because it has its own creative workflow.
 

@@ -4,7 +4,7 @@ The Aurora is the ship of work, brands, content, media, and external impact.
 
 ## Current island
 
-- [[SlayHack]]
+- [[NayzFreedom Fleet]]
 
 ## Current crew
 

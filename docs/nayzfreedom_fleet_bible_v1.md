@@ -35,7 +35,7 @@ NayzFreedom Fleet
 │   ├── Robin — Chief Officer / Chief of Staff
 │   ├── Creative Crew
 │   └── Islands / Projects
-│       └── SlayHack
+│       └── NayzFreedom Fleet
 │
 ├── The Freedom
 │   ├── Nami — Steward of the Captain's personal life
@@ -127,7 +127,7 @@ Robin coordinates execution across projects and crew. She is the strategic opera
 
 ### Current islands / projects
 
-- **SlayHack**
+- **NayzFreedom Fleet**
 
 Future brands and ventures can be added as additional islands under `The Aurora`.
 
@@ -220,7 +220,7 @@ Fleet
 ```text
 NayzFreedom Fleet
 └── The Aurora
-    └── SlayHack
+    └── NayzFreedom Fleet
         └── "Quiet luxury morning routine Reel"
 ```
 

@@ -1,7 +1,7 @@
 # NayzFreedom Dashboard Blueprint v1
 
 **Status:** Implementation planning draft  
-**Purpose:** Translate the Fleet Bible into an information architecture and staged product plan for evolving the current SlayHack dashboard into the NayzFreedom Fleet command center.
+**Purpose:** Translate the Fleet Bible into an information architecture and staged product plan for evolving the current content dashboard into the NayzFreedom Fleet command center.
 
 ---
 
@@ -137,7 +137,7 @@ In the first release:
 ### Sections
 
 1. Aurora hero panel
-2. island cards (`SlayHack`, future projects)
+2. island cards (`NayzFreedom Fleet`, future projects)
 3. active mission board
 4. crew activity
 5. recent outputs
@@ -170,7 +170,7 @@ In the first release:
 
 ### First live island
 
-- SlayHack
+- NayzFreedom Fleet
 
 ---
 
@@ -490,4 +490,3 @@ Create a new dashboard shell with:
 - placeholder cards for The Freedom and The Lyra
 
 This gives the new world a real home while keeping implementation risk low.
-

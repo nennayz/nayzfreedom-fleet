@@ -8,7 +8,7 @@ from models.content_job import (
 )
 
 
-def _make_pm(page_name: str = "Slay Hack Agency") -> PMProfile:
+def _make_pm(page_name: str = "NayzFreedom Fleet") -> PMProfile:
     brand = BrandProfile(
         mission="m", visual=VisualIdentity(colors=[], style=""),
         platforms=[], tone="", target_audience="", script_style="",
@@ -17,7 +17,7 @@ def _make_pm(page_name: str = "Slay Hack Agency") -> PMProfile:
     return PMProfile(name="Test PM", page_name=page_name, persona="", brand=brand)
 
 
-def _make_job(job_id: str, page_name: str = "Slay Hack Agency") -> ContentJob:
+def _make_job(job_id: str, page_name: str = "NayzFreedom Fleet") -> ContentJob:
     return ContentJob(
         id=job_id, project="slay_hack", pm=_make_pm(page_name),
         brief="test brief", platforms=["facebook"],
@@ -53,7 +53,7 @@ def test_list_all_jobs_returns_jobs_sorted_newest_first(tmp_path):
 def test_list_all_jobs_skips_corrupt_files(tmp_path):
     valid = _make_job("20260512_060000")
     _write_job(tmp_path, valid)
-    corrupt_dir = tmp_path / "output" / "Slay Hack Agency" / "20260511_060000"
+    corrupt_dir = tmp_path / "output" / "NayzFreedom Fleet" / "20260511_060000"
     corrupt_dir.mkdir(parents=True, exist_ok=True)
     (corrupt_dir / "job.json").write_text("not valid json {{{")
 

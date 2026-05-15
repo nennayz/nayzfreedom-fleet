@@ -1,8 +1,8 @@
-# SlayHack
+# NayzFreedom Fleet
 
 ## Role in the fleet
 
-SlayHack is an island/project under The Aurora.
+NayzFreedom Fleet is an island/project under The Aurora.
 
 ## Current identity
 
@@ -14,4 +14,3 @@ SlayHack is an island/project under The Aurora.
 
 - [[Aurora Overview]]
 - [[Mission Reviews]]
-

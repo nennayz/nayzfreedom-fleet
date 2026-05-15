@@ -7,7 +7,7 @@ def test_load_slay_hack():
     pm = load_project("slay_hack")
     assert isinstance(pm, PMProfile)
     assert pm.name == "Slay"
-    assert pm.page_name == "Slay Hack"
+    assert pm.page_name == "NayzFreedom Fleet"
     assert "Quiet Luxury" in pm.persona
     assert pm.brand.nora_max_retries == 2
     assert "#D4AF37" in pm.brand.visual.colors
