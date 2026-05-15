@@ -8,6 +8,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Primary platforms: Facebook, Instagram (Reels). Secondary: TikTok, YouTube (later phases).
 
+Current identity rules:
+
+- Captain / owner identity: **Nayz**
+- Current Aurora project PM identity: **Slay**
+- Product and top-level operating system: **NayzFreedom Fleet**
+- Canonical project slug: `nayzfreedom_fleet`
+- Legacy slug: `slay_hack`, compatibility alias only
+- Do not rename PM `Slay` to `Nayz`; these are different roles.
+
 Full design spec: [`docs/superpowers/specs/2026-05-12-slay-hack-agency-design.md`](docs/superpowers/specs/2026-05-12-slay-hack-agency-design.md)
 
 ---
@@ -144,6 +153,26 @@ python dashboard.py --host 0.0.0.0 --port 8000
 #    Pipeline pauses at each checkpoint and sends a Telegram message.
 #    Reply via button or free text. Auto-approves after TELEGRAM_TIMEOUT_MINUTES if no reply.
 ```
+
+---
+
+## Dashboard / Fleet Command Center
+
+The dashboard is now the Fleet command interface, not just a raw jobs table.
+
+Primary routes:
+
+- `/` — Captain's Deck with command brief, fleet ship status, active missions, and attention signals
+- `/aurora` — The Aurora mission-control hub
+- `/aurora/islands/nayzfreedom_fleet` — current project island, PM Slay, brand profile, island command state
+- `/aurora/missions` — all missions
+- `/jobs/{job_id}` — mission detail / voyage log with mission command, current stage, progress, output readiness, timeline, and artifacts
+- `/aurora/crew` and `/aurora/crew/{slug}` — Aurora crew registry and character sheets
+- `/freedom` — planned personal ship placeholder; do not add sensitive data until privacy boundaries are stronger
+- `/lyra` — planned music ship placeholder
+- `/readiness` — private operational preflight for auth, project config, output, assets, deploy files, and privacy boundary
+
+The Freedom and Lyra should stay clearly marked as planned until their data model, privacy model, and memory boundaries are ready.
 
 ---
 
