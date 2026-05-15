@@ -9,7 +9,7 @@
     <label for="project">Project</label>
     <select name="project" id="project" required>
       {% for slug in projects %}
-      <option value="{{ slug }}">{{ slug }}</option>
+      <option value="{{ slug }}" {% if slug == selected_project %}selected{% endif %}>{{ slug }}</option>
       {% endfor %}
     </select>
   </div>

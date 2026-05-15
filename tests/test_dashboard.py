@@ -119,18 +119,36 @@ def test_aurora_crew_detail_unknown_member_404(client):
 def test_island_detail_renders(tmp_path, client, monkeypatch):
     (tmp_path / "projects" / "slay_hack").mkdir(parents=True)
     (tmp_path / "projects" / "slay_hack" / "pm_profile.yaml").write_text(
-        'name: "Slay"\npage_name: "Slay Hack"\npersona: "bold"\n'
+        'name: "Slay"\npage_name: "Slay Hack"\npersona: "bold persona"\n'
     )
     (tmp_path / "projects" / "slay_hack" / "brand.yaml").write_text(
         'mission: "mission"\nvisual:\n  colors: ["#fff"]\n  style: "minimal"\n'
         'platforms: ["instagram"]\ntone: "sassy"\ntarget_audience: "women"\n'
-        'script_style: "lowercase"\n'
+        'script_style: "lowercase"\nallowed_content_types: ["video", "image"]\n'
     )
+    _write_job(tmp_path, "20260512_060000", brief="island mission", status="completed")
+    _write_job(tmp_path, "20260512_070000", brief="attention mission", status="failed")
     monkeypatch.chdir(tmp_path)
     resp = client.get("/aurora/islands/slay_hack", headers=_auth())
     assert resp.status_code == 200
     assert "Slay Hack" in resp.text
     assert "mission" in resp.text
+    assert "Launch island mission" in resp.text
+    assert "/aurora/new-mission?project=slay_hack" in resp.text
+    assert "island mission" in resp.text
+    assert "Needs attention" in resp.text
+    assert "bold persona" in resp.text
+    assert "video" in resp.text
+    assert "image" in resp.text
+
+
+def test_new_mission_preselects_project(tmp_path, client):
+    for slug in ("alpha", "slay_hack"):
+        (tmp_path / "projects" / slug).mkdir(parents=True)
+        (tmp_path / "projects" / slug / "pm_profile.yaml").write_text("page_name: test\n")
+    resp = client.get("/aurora/new-mission?project=slay_hack", headers=_auth())
+    assert resp.status_code == 200
+    assert '<option value="slay_hack" selected>slay_hack</option>' in resp.text
 
 
 def test_placeholder_ship_pages_render(client):

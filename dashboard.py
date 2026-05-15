@@ -121,10 +121,17 @@ def island_detail(project_slug: str, request: Request, _: str = Depends(verify_a
     except Exception:
         raise HTTPException(status_code=404, detail=f"Island {project_slug!r} not found")
     jobs = [job for job in list_all_jobs(_root(request)) if job.project == project_slug]
+    summary = summarize_jobs(jobs)
     return templates.TemplateResponse(
         request,
         "island_detail.html",
-        {"project_slug": project_slug, "pm": pm, "jobs": jobs[:5]},
+        {
+            "project_slug": project_slug,
+            "pm": pm,
+            "jobs": jobs[:5],
+            "summary": summary,
+            "allowed_content_types": [content_type.value for content_type in pm.brand.allowed_content_types],
+        },
     )
 
 
@@ -144,7 +151,14 @@ def aurora_metrics(request: Request, _: str = Depends(verify_auth)):
 def aurora_new_mission(request: Request, _: str = Depends(verify_auth)):
     root = _root(request)
     projects = sorted(p.parent.name for p in root.glob("projects/*/pm_profile.yaml"))
-    return templates.TemplateResponse(request, "trigger.html", {"projects": projects})
+    selected_project = request.query_params.get("project")
+    if selected_project not in projects:
+        selected_project = projects[0] if projects else None
+    return templates.TemplateResponse(
+        request,
+        "trigger.html",
+        {"projects": projects, "selected_project": selected_project},
+    )
 
 
 @app.get("/freedom", response_class=HTMLResponse)

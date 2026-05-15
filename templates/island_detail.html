@@ -1,13 +1,38 @@
 {% extends "base.html" %}
 {% block content %}
 <section class="hero aurora-hero">
-  <p class="eyebrow">Island under The Aurora</p>
-  <h1>{{ pm.page_name }}</h1>
-  <p class="hero-copy">{{ pm.brand.mission }}</p>
-  <div class="tag-list spacious">
-    {% for platform in pm.brand.platforms %}
-    <span class="tag">{{ platform }}</span>
-    {% endfor %}
+  <div>
+    <p class="eyebrow">Island under The Aurora</p>
+    <h1>{{ pm.page_name }}</h1>
+    <p class="hero-copy">{{ pm.brand.mission }}</p>
+    <div class="hero-actions">
+      <a class="button" href="/aurora/new-mission?project={{ project_slug }}">Launch island mission</a>
+      <a class="button button-secondary" href="/aurora/missions">View all missions</a>
+    </div>
+  </div>
+  <div class="island-status-panel">
+    <span>{{ project_slug }}</span>
+    <strong>{{ summary.total }}</strong>
+    <small>total missions</small>
+  </div>
+</section>
+
+<section class="stat-grid wide">
+  <div class="stat-card">
+    <span>Total missions</span>
+    <strong>{{ summary.total }}</strong>
+  </div>
+  <div class="stat-card">
+    <span>Completed</span>
+    <strong>{{ summary.completed }}</strong>
+  </div>
+  <div class="stat-card">
+    <span>Running</span>
+    <strong>{{ summary.running }}</strong>
+  </div>
+  <div class="stat-card">
+    <span>Needs attention</span>
+    <strong>{{ summary.failed + summary.awaiting_approval }}</strong>
   </div>
 </section>
 
@@ -21,6 +46,11 @@
     <p><strong>Tone:</strong> {{ pm.brand.tone }}</p>
     <p><strong>Audience:</strong> {{ pm.brand.target_audience }}</p>
     <p><strong>Script style:</strong> {{ pm.brand.script_style }}</p>
+    <div class="tag-list spacious">
+      {% for platform in pm.brand.platforms %}
+      <span class="tag">{{ platform }}</span>
+      {% endfor %}
+    </div>
   </article>
   <article class="panel">
     <div class="section-heading">
@@ -33,6 +63,27 @@
       <span class="swatch" style="background: {{ color }}" title="{{ color }}"></span>
       {% endfor %}
     </div>
+  </article>
+</section>
+
+<section class="content-grid">
+  <article class="panel">
+    <div class="section-heading">
+      <p class="eyebrow">Content routes</p>
+      <h2>Allowed mission types</h2>
+    </div>
+    <div class="tag-list">
+      {% for content_type in allowed_content_types %}
+      <span class="tag">{{ content_type }}</span>
+      {% endfor %}
+    </div>
+  </article>
+  <article class="panel">
+    <div class="section-heading">
+      <p class="eyebrow">Captain note</p>
+      <h2>Island operating context</h2>
+    </div>
+    <p class="muted">{{ pm.persona }}</p>
   </article>
 </section>
 

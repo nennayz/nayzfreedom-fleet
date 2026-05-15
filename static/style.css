@@ -297,6 +297,29 @@ button[type="submit"]:hover { background: var(--navy-soft); }
 }
 .island-chip span { font-weight: 700; }
 .island-chip small { color: var(--muted); margin-top: 0.2rem; }
+.island-status-panel {
+  background: rgba(255,255,255,0.78);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: 0 14px 32px rgba(16,35,63,0.1);
+  min-width: 190px;
+  padding: 1rem;
+  position: relative;
+  text-align: right;
+  z-index: 1;
+}
+.island-status-panel span,
+.island-status-panel small {
+  color: var(--muted);
+  display: block;
+  font-size: 0.82rem;
+}
+.island-status-panel strong {
+  display: block;
+  font-size: 2.35rem;
+  line-height: 1;
+  margin: 0.45rem 0 0.25rem;
+}
 .role-pill {
   background: rgba(176,138,58,0.14);
   border: 1px solid rgba(176,138,58,0.24);
@@ -619,6 +642,9 @@ a:hover { color: var(--navy-soft); }
   }
   .aurora-hero {
     grid-template-columns: 1fr;
+  }
+  .island-status-panel {
+    text-align: left;
   }
   .ship-hero-art {
     height: 190px;
