@@ -1,7 +1,7 @@
 from __future__ import annotations
 from pathlib import Path
 import yaml
-from models.content_job import PMProfile, BrandProfile, VisualIdentity
+from models.content_job import BrandProfile, ContentJob, PMProfile, VisualIdentity
 
 _PROJECT_ALIASES = {
     "slay_hack": "nayzfreedom_fleet",
@@ -33,6 +33,16 @@ def load_project_page_name(project_slug: str, root: Path | None = None) -> str:
     except (FileNotFoundError, yaml.YAMLError):
         return resolved_slug
     return pm_data.get("page_name") or resolved_slug
+
+
+def normalize_job_identity(job: ContentJob, root: Path | None = None) -> ContentJob:
+    resolved_slug = resolve_project_slug(job.project)
+    job.project = resolved_slug
+
+    page_name = load_project_page_name(resolved_slug, root=root)
+    if page_name != resolved_slug:
+        job.pm.page_name = page_name
+    return job
 
 
 def load_project(project_slug: str, root: Path | None = None) -> PMProfile:

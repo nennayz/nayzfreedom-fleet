@@ -1,5 +1,5 @@
 from __future__ import annotations
-from job_store import save_job, load_recent_performance
+from job_store import find_job, load_job, load_recent_performance, save_job
 from models.content_job import (
     ContentJob, PMProfile, BrandProfile, VisualIdentity, PostPerformance
 )
@@ -53,3 +53,25 @@ def test_load_recent_performance_respects_limit(tmp_path, monkeypatch):
     result = load_recent_performance("Test", limit=3)
     # Should contain at most 3 jobs worth of data
     assert result.count("instagram") == 3
+
+
+def test_load_job_normalizes_legacy_project_identity(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    project_dir = tmp_path / "projects" / "nayzfreedom_fleet"
+    project_dir.mkdir(parents=True)
+    (project_dir / "pm_profile.yaml").write_text('page_name: "NayzFreedom Fleet"\n')
+    job = make_job()
+    job.id = "20260512_060000"
+    job.project = "slay_hack"
+    job.pm.page_name = "Slay Hack"
+    out_dir = tmp_path / "output" / "Slay Hack" / job.id
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / "job.json").write_text(job.model_dump_json())
+
+    loaded = load_job(job.id, "Slay Hack")
+    found = find_job(job.id)
+
+    assert loaded.project == "nayzfreedom_fleet"
+    assert loaded.pm.page_name == "NayzFreedom Fleet"
+    assert found.project == "nayzfreedom_fleet"
+    assert found.pm.page_name == "NayzFreedom Fleet"

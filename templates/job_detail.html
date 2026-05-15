@@ -11,7 +11,7 @@
 
 <section class="content-grid">
   <article class="panel">
-    <p><strong>Island:</strong> {{ job.project }}</p>
+    <p><strong>Island:</strong> {{ job.pm.page_name }}</p>
     <p><strong>Platforms:</strong> {{ job.platforms | join(", ") }}</p>
     <p><strong>Content Type:</strong> {{ job.content_type.value if job.content_type else "—" }}</p>
     <p><strong>Status:</strong> <span class="badge badge-{{ job.status.value }}">{{ job.status.value | status_label }}</span></p>

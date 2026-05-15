@@ -75,6 +75,21 @@ def test_list_all_jobs_aggregates_multiple_pages(tmp_path):
     assert result[0].id == "20260512_060000"
 
 
+def test_list_all_jobs_normalizes_legacy_project_identity(tmp_path):
+    legacy = _make_job("20260512_060000", "Slay Hack")
+    legacy.project = "slay_hack"
+    _write_job(tmp_path, legacy)
+    project_dir = tmp_path / "projects" / "nayzfreedom_fleet"
+    project_dir.mkdir(parents=True)
+    (project_dir / "pm_profile.yaml").write_text('page_name: "NayzFreedom Fleet"\n')
+
+    from dashboard_store import list_all_jobs
+    result = list_all_jobs(tmp_path)
+
+    assert result[0].project == "nayzfreedom_fleet"
+    assert result[0].pm.page_name == "NayzFreedom Fleet"
+
+
 def test_load_performance_all_delegates_to_collect_week_data(tmp_path):
     fake_data = {"Page A": {}}
     with patch("dashboard_store.collect_week_data", return_value=fake_data) as mock_fn:

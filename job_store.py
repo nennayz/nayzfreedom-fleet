@@ -2,6 +2,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from models.content_job import ContentJob
+from project_loader import normalize_job_identity
 
 
 def save_job(job: ContentJob) -> Path:
@@ -16,12 +17,12 @@ def load_job(job_id: str, page_name: str) -> ContentJob:
     path = Path("output") / page_name / job_id / "job.json"
     if not path.exists():
         raise FileNotFoundError(f"Job not found: {path}")
-    return ContentJob.model_validate_json(path.read_text())
+    return normalize_job_identity(ContentJob.model_validate_json(path.read_text()))
 
 
 def find_job(job_id: str) -> ContentJob:
     for path in Path("output").rglob(f"{job_id}/job.json"):
-        return ContentJob.model_validate_json(path.read_text())
+        return normalize_job_identity(ContentJob.model_validate_json(path.read_text()))
     raise FileNotFoundError(f"Job ID '{job_id}' not found in output/")
 
 

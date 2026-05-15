@@ -4,6 +4,7 @@ from datetime import date
 from pathlib import Path
 
 from models.content_job import ContentJob
+from project_loader import normalize_job_identity
 from reporter import PlatformStats, collect_week_data
 
 logger = logging.getLogger(__name__)
@@ -16,7 +17,8 @@ def list_all_jobs(root: Path) -> list[ContentJob]:
     jobs: list[ContentJob] = []
     for job_file in output_dir.glob("*/*/job.json"):
         try:
-            jobs.append(ContentJob.model_validate_json(job_file.read_text()))
+            job = ContentJob.model_validate_json(job_file.read_text())
+            jobs.append(normalize_job_identity(job, root=root))
         except Exception as exc:
             logger.warning("Skipping corrupt job file %s: %s", job_file, exc)
     return sorted(jobs, key=lambda j: j.id, reverse=True)

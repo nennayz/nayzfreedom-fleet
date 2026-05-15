@@ -199,6 +199,8 @@ def test_jobs_partial_returns_fragment(tmp_path, client):
     assert resp.status_code == 200
     assert "<html" not in resp.text
     assert "<tbody" in resp.text
+    assert "NayzFreedom Fleet" in resp.text
+    assert "nayzfreedom_fleet" not in resp.text
 
 
 def test_dashboard_refuses_start_without_env():
@@ -233,6 +235,8 @@ def test_job_detail_shows_brief(tmp_path, client):
         resp = client.get("/jobs/20260512_060000", headers=_auth())
     assert resp.status_code == 200
     assert "luxury brands are amazing" in resp.text
+    assert "NayzFreedom Fleet" in resp.text
+    assert "nayzfreedom_fleet" not in resp.text
     assert "Voyage log" in resp.text
     assert "Command the Brief" in resp.text
     assert "/aurora/crew/robin" in resp.text
