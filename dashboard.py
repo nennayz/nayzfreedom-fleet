@@ -13,7 +13,7 @@ from fastapi.templating import Jinja2Templates
 from crew_registry import CREW, WORKFLOW_STEPS, get_crew_member
 from dashboard_store import list_all_jobs, load_performance_all, summarize_jobs
 from job_store import find_job
-from project_loader import load_project
+from project_loader import list_project_slugs, load_project, project_slug_matches, resolve_project_slug
 
 DASHBOARD_USER = os.environ.get("DASHBOARD_USER")
 DASHBOARD_PASSWORD = os.environ.get("DASHBOARD_PASSWORD")
@@ -86,7 +86,7 @@ def captains_deck(request: Request, _: str = Depends(verify_auth)):
 def aurora_overview(request: Request, _: str = Depends(verify_auth)):
     root = _root(request)
     jobs = list_all_jobs(root)
-    projects = sorted(p.parent.name for p in root.glob("projects/*/pm_profile.yaml"))
+    projects = list_project_slugs(root)
     performance = load_performance_all(root)
     return templates.TemplateResponse(
         request,
@@ -120,7 +120,10 @@ def island_detail(project_slug: str, request: Request, _: str = Depends(verify_a
         pm = load_project(project_slug)
     except Exception:
         raise HTTPException(status_code=404, detail=f"Island {project_slug!r} not found")
-    jobs = [job for job in list_all_jobs(_root(request)) if job.project == project_slug]
+    jobs = [
+        job for job in list_all_jobs(_root(request))
+        if project_slug_matches(job.project, project_slug)
+    ]
     summary = summarize_jobs(jobs)
     return templates.TemplateResponse(
         request,
@@ -150,8 +153,10 @@ def aurora_metrics(request: Request, _: str = Depends(verify_auth)):
 @app.get("/aurora/new-mission", response_class=HTMLResponse)
 def aurora_new_mission(request: Request, _: str = Depends(verify_auth)):
     root = _root(request)
-    projects = sorted(p.parent.name for p in root.glob("projects/*/pm_profile.yaml"))
+    projects = list_project_slugs(root)
     selected_project = request.query_params.get("project")
+    if selected_project:
+        selected_project = resolve_project_slug(selected_project)
     if selected_project not in projects:
         selected_project = projects[0] if projects else None
     return templates.TemplateResponse(
@@ -226,7 +231,8 @@ def trigger_run(
     _: str = Depends(verify_auth),
 ):
     root = _root(request)
-    valid = {p.parent.name for p in root.glob("projects/*/pm_profile.yaml")}
+    valid = set(list_project_slugs(root))
+    project = resolve_project_slug(project)
     if project not in valid:
         raise HTTPException(status_code=400, detail="Unknown project")
     if content_type not in VALID_CONTENT_TYPES:

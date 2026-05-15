@@ -19,7 +19,7 @@ def test_roxy_dry_run_returns_strategy():
 def test_roxy_live_calls_claude(mocker, tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     (tmp_path / "projects").mkdir()
-    (tmp_path / "projects" / "slay_hack").mkdir()
+    (tmp_path / "projects" / "nayzfreedom_fleet").mkdir()
     strategy_json = ('{"hashtags":["#LipHack","#GlossyLips"],'
                      '"caption":"your new fave hack","best_post_time_utc":"13:00","best_post_time_thai":"20:00"}')
     mocker.patch.object(RoxyAgent, "_call_claude", return_value=strategy_json)
@@ -33,8 +33,8 @@ def test_roxy_live_calls_claude(mocker, tmp_path, monkeypatch):
 def test_roxy_live_populates_editorial_guidance(mocker, tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     (tmp_path / "projects").mkdir()
-    (tmp_path / "projects" / "slay_hack").mkdir()
-    (tmp_path / "projects" / "slay_hack" / "platform_specs.yaml").write_text(
+    (tmp_path / "projects" / "nayzfreedom_fleet").mkdir()
+    (tmp_path / "projects" / "nayzfreedom_fleet" / "platform_specs.yaml").write_text(
         "instagram:\n  editorial: Hook within 3 seconds.\n"
         "facebook:\n  editorial: Conversational tone.\n"
     )

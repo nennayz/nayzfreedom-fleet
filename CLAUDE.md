@@ -33,7 +33,7 @@ Each brand page is a folder under `projects/`. Adding a new page requires only 2
 
 ```
 projects/
-└── slay_hack/
+└── nayzfreedom_fleet/
     ├── pm_profile.yaml   ← page_name + PM persona
     └── brand.yaml        ← visual ID, tone, target_audience, script_style, platforms
 ```
@@ -45,7 +45,7 @@ projects/
 ## Pipeline Flow
 
 ```
-python main.py --project slay_hack --brief "..."
+python main.py --project nayzfreedom_fleet --brief "..."
 
 Robin → Mia → Zoe → [CHECKPOINT 1: pick idea]
   → Bella → Lila → [CHECKPOINT 2: review script + visual]
@@ -85,20 +85,20 @@ YOUTUBE_API_KEY=
 
 ```bash
 # Run pipeline
-python main.py --project slay_hack --brief "your brief here"
+python main.py --project nayzfreedom_fleet --brief "your brief here"
 
 # Resume interrupted job
 python main.py --resume 20260512_143022
 
 # Dry-run from an interactive terminal (pauses for checkpoints).
 # Still calls Anthropic for Robin orchestration; agents/publish use mock outputs.
-python main.py --project slay_hack --brief "..." --dry-run
+python main.py --project nayzfreedom_fleet --brief "..." --dry-run
 
 # Dry-run from Claude/Codex/cron (auto-approves checkpoints, no stdin block)
 # Still calls Anthropic for Robin orchestration; agents/publish use mock outputs.
-python main.py --project slay_hack --brief "..." --dry-run --unattended
+python main.py --project nayzfreedom_fleet --brief "..." --dry-run --unattended
 
-# Run scheduler manually (dry-run — no API calls)
+# Run scheduler manually with mock agent/publish outputs
 python scheduler.py --dry-run
 
 # Cron entry for VPS (6 AM daily, logs to /var/log/nayzfreedom.log)
@@ -140,7 +140,7 @@ python dashboard.py --host 0.0.0.0 --port 8000
 #    TELEGRAM_CHAT_ID=<your_id>
 #    TELEGRAM_TIMEOUT_MINUTES=30   # optional, default 30
 # 4. Run pipeline in attended mode (no --unattended flag):
-#    python main.py --project slay_hack --brief "..."
+#    python main.py --project nayzfreedom_fleet --brief "..."
 #    Pipeline pauses at each checkpoint and sends a Telegram message.
 #    Reply via button or free text. Auto-approves after TELEGRAM_TIMEOUT_MINUTES if no reply.
 ```

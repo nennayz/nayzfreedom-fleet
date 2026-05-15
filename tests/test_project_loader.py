@@ -3,8 +3,8 @@ from project_loader import load_project, ProjectNotFoundError, load_platform_spe
 from models.content_job import PMProfile, ContentType
 
 
-def test_load_slay_hack():
-    pm = load_project("slay_hack")
+def test_load_nayzfreedom_fleet():
+    pm = load_project("nayzfreedom_fleet")
     assert isinstance(pm, PMProfile)
     assert pm.name == "Slay"
     assert pm.page_name == "NayzFreedom Fleet"
@@ -17,15 +17,21 @@ def test_load_missing_project_raises():
     with pytest.raises(ProjectNotFoundError, match="nonexistent"):
         load_project("nonexistent")
 
-def test_load_slay_hack_allowed_content_types():
+
+def test_load_legacy_slay_hack_alias():
     pm = load_project("slay_hack")
+    assert pm.page_name == "NayzFreedom Fleet"
+
+
+def test_load_nayzfreedom_fleet_allowed_content_types():
+    pm = load_project("nayzfreedom_fleet")
     assert set(pm.brand.allowed_content_types) == {
         ContentType.VIDEO, ContentType.ARTICLE,
         ContentType.IMAGE, ContentType.INFOGRAPHIC,
     }
 
-def test_load_platform_specs_slay_hack():
-    specs = load_platform_specs("slay_hack")
+def test_load_platform_specs_nayzfreedom_fleet():
+    specs = load_platform_specs("nayzfreedom_fleet")
     assert "instagram" in specs
     assert "facebook" in specs
     assert "tiktok" in specs

@@ -3,13 +3,31 @@ from pathlib import Path
 import yaml
 from models.content_job import PMProfile, BrandProfile, VisualIdentity
 
+_PROJECT_ALIASES = {
+    "slay_hack": "nayzfreedom_fleet",
+}
+
 
 class ProjectNotFoundError(Exception):
     pass
 
 
+def resolve_project_slug(project_slug: str) -> str:
+    return _PROJECT_ALIASES.get(project_slug, project_slug)
+
+
+def project_slug_matches(left: str, right: str) -> bool:
+    return resolve_project_slug(left) == resolve_project_slug(right)
+
+
+def list_project_slugs(root: Path | None = None) -> list[str]:
+    base = (root or Path(".")) / "projects"
+    return sorted(p.parent.name for p in base.glob("*/pm_profile.yaml"))
+
+
 def load_project(project_slug: str) -> PMProfile:
-    base = Path("projects") / project_slug
+    resolved_slug = resolve_project_slug(project_slug)
+    base = Path("projects") / resolved_slug
     if not base.exists():
         raise ProjectNotFoundError(f"Project '{project_slug}' not found in projects/")
 
@@ -44,7 +62,8 @@ def load_project(project_slug: str) -> PMProfile:
 
 
 def load_platform_specs(project_slug: str) -> dict[str, str]:
-    base = Path("projects") / project_slug
+    resolved_slug = resolve_project_slug(project_slug)
+    base = Path("projects") / resolved_slug
     if not base.exists():
         raise ProjectNotFoundError(f"Project '{project_slug}' not found in projects/")
     specs_path = base / "platform_specs.yaml"

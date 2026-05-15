@@ -47,7 +47,7 @@ def test_load_state_expired(tmp_path):
     path = tmp_path / "state.json"
     path.write_text(json.dumps({
         "state": "awaiting_brief",
-        "project": "slay_hack",
+        "project": "nayzfreedom_fleet",
         "content_type": "video",
         "dry_run": False,
         "brief": None,
@@ -62,7 +62,7 @@ def test_load_state_valid(tmp_path):
     path = tmp_path / "state.json"
     data = {
         "state": "awaiting_brief",
-        "project": "slay_hack",
+        "project": "nayzfreedom_fleet",
         "content_type": "video",
         "dry_run": False,
         "brief": None,
@@ -142,7 +142,7 @@ def test_cancel_clears_state(tmp_path):
     state_file = tmp_path / "state.json"
     lock_file = tmp_path / "lock"
     tb._save_state(state_file, {
-        "state": "awaiting_brief", "project": "slay_hack",
+        "state": "awaiting_brief", "project": "nayzfreedom_fleet",
         "content_type": "video", "dry_run": False,
         "brief": None, "updated_at": time.time(),
     })
@@ -181,8 +181,8 @@ def test_pipeline_already_running(tmp_path):
 def test_full_conversation_flow(tmp_path, monkeypatch):
     """Full happy path: idle → project → content_type → dry_run → brief → confirm → spawn."""
     # Create a fake project
-    (tmp_path / "projects" / "slay_hack").mkdir(parents=True)
-    (tmp_path / "projects" / "slay_hack" / "pm_profile.yaml").write_text("name: test")
+    (tmp_path / "projects" / "nayzfreedom_fleet").mkdir(parents=True)
+    (tmp_path / "projects" / "nayzfreedom_fleet" / "pm_profile.yaml").write_text("name: test")
 
     state_file = tmp_path / "state.json"
     lock_file = tmp_path / "lock"
@@ -202,7 +202,7 @@ def test_full_conversation_flow(tmp_path, monkeypatch):
                               state_file=state_file, lock_file=lock_file)
 
         handle("hi")                    # idle → awaiting_project
-        handle("slay_hack", is_cb=True) # → awaiting_content_type
+        handle("nayzfreedom_fleet", is_cb=True) # → awaiting_content_type
         handle("video", is_cb=True)     # → awaiting_dry_run
         handle("No — real run", is_cb=True)  # → awaiting_brief
         handle("skincare mistakes")     # → awaiting_confirm
@@ -210,7 +210,7 @@ def test_full_conversation_flow(tmp_path, monkeypatch):
 
     assert len(spawned) == 1
     cmd = spawned[0]
-    assert "--project" in cmd and "slay_hack" in cmd
+    assert "--project" in cmd and "nayzfreedom_fleet" in cmd
     assert "--brief" in cmd and "skincare mistakes" in cmd
     assert "--content-type" in cmd and "video" in cmd
     assert "--dry-run" not in cmd
@@ -219,8 +219,8 @@ def test_full_conversation_flow(tmp_path, monkeypatch):
 
 def test_full_conversation_flow_dry_run(tmp_path, monkeypatch):
     """Dry-run path: Start ✅ should include --dry-run in spawned command."""
-    (tmp_path / "projects" / "slay_hack").mkdir(parents=True)
-    (tmp_path / "projects" / "slay_hack" / "pm_profile.yaml").write_text("name: test")
+    (tmp_path / "projects" / "nayzfreedom_fleet").mkdir(parents=True)
+    (tmp_path / "projects" / "nayzfreedom_fleet" / "pm_profile.yaml").write_text("name: test")
 
     state_file = tmp_path / "state.json"
     lock_file = tmp_path / "lock"
@@ -237,7 +237,7 @@ def test_full_conversation_flow_dry_run(tmp_path, monkeypatch):
                               state_file=state_file, lock_file=lock_file)
 
         handle("hi")
-        handle("slay_hack", is_cb=True)
+        handle("nayzfreedom_fleet", is_cb=True)
         handle("video", is_cb=True)
         handle("Yes — dry run", is_cb=True)   # ← dry run selected
         handle("skincare mistakes")
@@ -249,8 +249,8 @@ def test_full_conversation_flow_dry_run(tmp_path, monkeypatch):
 
 
 def test_confirm_cancel(tmp_path, monkeypatch):
-    (tmp_path / "projects" / "slay_hack").mkdir(parents=True)
-    (tmp_path / "projects" / "slay_hack" / "pm_profile.yaml").write_text("name: test")
+    (tmp_path / "projects" / "nayzfreedom_fleet").mkdir(parents=True)
+    (tmp_path / "projects" / "nayzfreedom_fleet" / "pm_profile.yaml").write_text("name: test")
 
     state_file = tmp_path / "state.json"
     lock_file = tmp_path / "lock"
@@ -266,7 +266,7 @@ def test_confirm_cancel(tmp_path, monkeypatch):
                               state_file=state_file, lock_file=lock_file)
 
         handle("hi")
-        handle("slay_hack", is_cb=True)
+        handle("nayzfreedom_fleet", is_cb=True)
         handle("video", is_cb=True)
         handle("No — real run", is_cb=True)
         handle("skincare mistakes")

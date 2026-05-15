@@ -64,9 +64,9 @@ def test_full_dry_run_pipeline(tmp_path, monkeypatch):
          patch("builtins.input", return_value="1"):
         mock_anthropic.return_value.messages.create.side_effect = mock_create
 
-        pm = load_project("slay_hack")
+        pm = load_project("nayzfreedom_fleet")
         job = ContentJob(
-            project="slay_hack", pm=pm,
+            project="nayzfreedom_fleet", pm=pm,
             brief="lipstick that lasts all day",
             platforms=["instagram", "facebook"],
             dry_run=True,

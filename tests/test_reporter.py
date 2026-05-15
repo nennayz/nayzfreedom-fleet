@@ -19,7 +19,7 @@ def _make_pm(page_name: str = "NayzFreedom Fleet") -> PMProfile:
 def _make_job(job_id: str, brief: str = "test brief", performance=None, page_name: str = "NayzFreedom Fleet") -> ContentJob:
     job = ContentJob(
         id=job_id,
-        project="slay_hack",
+        project="nayzfreedom_fleet",
         pm=_make_pm(page_name),
         brief=brief,
         platforms=["facebook"],

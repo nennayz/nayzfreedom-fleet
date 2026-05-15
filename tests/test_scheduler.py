@@ -34,9 +34,9 @@ def _make_fail_result():
 
 def test_scheduler_loads_todays_brief(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    (tmp_path / "projects" / "slay_hack").mkdir(parents=True)
+    (tmp_path / "projects" / "nayzfreedom_fleet").mkdir(parents=True)
     import yaml
-    (tmp_path / "projects" / "slay_hack" / "weekly_calendar.yaml").write_text(
+    (tmp_path / "projects" / "nayzfreedom_fleet" / "weekly_calendar.yaml").write_text(
         yaml.dump(MONDAY_CALENDAR)
     )
     monkeypatch.setattr(sched_module, "_today_name", lambda: "monday")
@@ -52,9 +52,9 @@ def test_scheduler_loads_todays_brief(tmp_path, monkeypatch):
 
 def test_scheduler_skips_missing_day(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    (tmp_path / "projects" / "slay_hack").mkdir(parents=True)
+    (tmp_path / "projects" / "nayzfreedom_fleet").mkdir(parents=True)
     import yaml
-    (tmp_path / "projects" / "slay_hack" / "weekly_calendar.yaml").write_text(
+    (tmp_path / "projects" / "nayzfreedom_fleet" / "weekly_calendar.yaml").write_text(
         yaml.dump({"monday": MONDAY_CALENDAR["monday"]})
     )
     monkeypatch.setattr(sched_module, "_today_name", lambda: "tuesday")
@@ -66,11 +66,11 @@ def test_scheduler_skips_missing_day(tmp_path, monkeypatch):
 
 def test_scheduler_skips_blank_brief(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    (tmp_path / "projects" / "slay_hack").mkdir(parents=True)
+    (tmp_path / "projects" / "nayzfreedom_fleet").mkdir(parents=True)
     import yaml
     calendar = {"monday": dict(MONDAY_CALENDAR["monday"])}
     calendar["monday"]["short_video_1"] = ""
-    (tmp_path / "projects" / "slay_hack" / "weekly_calendar.yaml").write_text(
+    (tmp_path / "projects" / "nayzfreedom_fleet" / "weekly_calendar.yaml").write_text(
         yaml.dump(calendar)
     )
     monkeypatch.setattr(sched_module, "_today_name", lambda: "monday")
@@ -81,9 +81,9 @@ def test_scheduler_skips_blank_brief(tmp_path, monkeypatch):
 
 def test_scheduler_continues_after_failure(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    (tmp_path / "projects" / "slay_hack").mkdir(parents=True)
+    (tmp_path / "projects" / "nayzfreedom_fleet").mkdir(parents=True)
     import yaml
-    (tmp_path / "projects" / "slay_hack" / "weekly_calendar.yaml").write_text(
+    (tmp_path / "projects" / "nayzfreedom_fleet" / "weekly_calendar.yaml").write_text(
         yaml.dump(MONDAY_CALENDAR)
     )
     monkeypatch.setattr(sched_module, "_today_name", lambda: "monday")
@@ -96,9 +96,9 @@ def test_scheduler_continues_after_failure(tmp_path, monkeypatch):
 
 def test_scheduler_dry_run_passes_flag(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    (tmp_path / "projects" / "slay_hack").mkdir(parents=True)
+    (tmp_path / "projects" / "nayzfreedom_fleet").mkdir(parents=True)
     import yaml
-    (tmp_path / "projects" / "slay_hack" / "weekly_calendar.yaml").write_text(
+    (tmp_path / "projects" / "nayzfreedom_fleet" / "weekly_calendar.yaml").write_text(
         yaml.dump(MONDAY_CALENDAR)
     )
     monkeypatch.setattr(sched_module, "_today_name", lambda: "monday")
@@ -110,9 +110,9 @@ def test_scheduler_dry_run_passes_flag(tmp_path, monkeypatch):
 
 def test_scheduler_exit_code_zero_on_all_success(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    (tmp_path / "projects" / "slay_hack").mkdir(parents=True)
+    (tmp_path / "projects" / "nayzfreedom_fleet").mkdir(parents=True)
     import yaml
-    (tmp_path / "projects" / "slay_hack" / "weekly_calendar.yaml").write_text(
+    (tmp_path / "projects" / "nayzfreedom_fleet" / "weekly_calendar.yaml").write_text(
         yaml.dump(MONDAY_CALENDAR)
     )
     monkeypatch.setattr(sched_module, "_today_name", lambda: "monday")
@@ -123,9 +123,9 @@ def test_scheduler_exit_code_zero_on_all_success(tmp_path, monkeypatch):
 
 def test_scheduler_timeout_continues_and_sets_exit_1(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    (tmp_path / "projects" / "slay_hack").mkdir(parents=True)
+    (tmp_path / "projects" / "nayzfreedom_fleet").mkdir(parents=True)
     import yaml
-    (tmp_path / "projects" / "slay_hack" / "weekly_calendar.yaml").write_text(
+    (tmp_path / "projects" / "nayzfreedom_fleet" / "weekly_calendar.yaml").write_text(
         yaml.dump(MONDAY_CALENDAR)
     )
     monkeypatch.setattr(sched_module, "_today_name", lambda: "monday")
@@ -142,9 +142,9 @@ def test_scheduler_timeout_continues_and_sets_exit_1(tmp_path, monkeypatch):
 
 def test_scheduler_calls_notifier_on_failure(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    (tmp_path / "projects" / "slay_hack").mkdir(parents=True)
+    (tmp_path / "projects" / "nayzfreedom_fleet").mkdir(parents=True)
     import yaml
-    (tmp_path / "projects" / "slay_hack" / "weekly_calendar.yaml").write_text(
+    (tmp_path / "projects" / "nayzfreedom_fleet" / "weekly_calendar.yaml").write_text(
         yaml.dump(MONDAY_CALENDAR)
     )
     monkeypatch.setattr(sched_module, "_today_name", lambda: "monday")
@@ -156,7 +156,7 @@ def test_scheduler_calls_notifier_on_failure(tmp_path, monkeypatch):
     failures = mock_alert.call_args.args[0]
     total = mock_alert.call_args.args[2]
     assert len(failures) == 1
-    assert failures[0]["project"] == "slay_hack"
+    assert failures[0]["project"] == "nayzfreedom_fleet"
     assert failures[0]["brief"] == "short_video_1"
     assert failures[0]["content_type"] == "video"
     assert failures[0]["exit_code"] == 1
@@ -165,9 +165,9 @@ def test_scheduler_calls_notifier_on_failure(tmp_path, monkeypatch):
 
 def test_scheduler_does_not_call_notifier_on_success(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    (tmp_path / "projects" / "slay_hack").mkdir(parents=True)
+    (tmp_path / "projects" / "nayzfreedom_fleet").mkdir(parents=True)
     import yaml
-    (tmp_path / "projects" / "slay_hack" / "weekly_calendar.yaml").write_text(
+    (tmp_path / "projects" / "nayzfreedom_fleet" / "weekly_calendar.yaml").write_text(
         yaml.dump(MONDAY_CALENDAR)
     )
     monkeypatch.setattr(sched_module, "_today_name", lambda: "monday")

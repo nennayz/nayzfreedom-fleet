@@ -69,7 +69,7 @@ def test_main_content_type_flag_sets_job_content_type(mocker, tmp_path, monkeypa
     mock_orch = mocker.patch.object(main_module.Orchestrator, "run", return_value=returned_job)
     mocker.patch.object(main_module.Config, "from_env", return_value=mocker.MagicMock())
     mocker.patch("main.load_project", return_value=make_job().pm)
-    sys.argv = ["main.py", "--project", "slay_hack", "--brief", "test brief", "--content-type", "article"]
+    sys.argv = ["main.py", "--project", "nayzfreedom_fleet", "--brief", "test brief", "--content-type", "article"]
     try:
         main_module.main()
     except SystemExit:
@@ -87,7 +87,7 @@ def test_main_unattended_flag_passed_to_orchestrator(mocker, tmp_path, monkeypat
     mock_run = mocker.patch.object(main_module.Orchestrator, "run", return_value=returned_job)
     mocker.patch.object(main_module.Config, "from_env", return_value=mocker.MagicMock())
     mocker.patch("main.load_project", return_value=make_job().pm)
-    sys.argv = ["main.py", "--project", "slay_hack", "--brief", "test brief", "--unattended"]
+    sys.argv = ["main.py", "--project", "nayzfreedom_fleet", "--brief", "test brief", "--unattended"]
     try:
         main_module.main()
     except SystemExit:

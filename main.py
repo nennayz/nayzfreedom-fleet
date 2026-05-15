@@ -13,7 +13,7 @@ from config import Config, MissingAPIKeyError
 from job_store import find_job, save_job
 from models.content_job import ContentJob, JobStatus
 from orchestrator import Orchestrator
-from project_loader import load_project, ProjectNotFoundError
+from project_loader import load_project, ProjectNotFoundError, resolve_project_slug
 from tracker import track_job
 
 _LOCK_FILE = Path("/tmp/nayz_pipeline.lock")
@@ -31,7 +31,11 @@ def main() -> None:
     parser.add_argument("--brief", help="Content brief (required with --project)")
     parser.add_argument("--platforms", default="instagram,facebook",
                         help="Comma-separated platforms (default: instagram,facebook)")
-    parser.add_argument("--dry-run", action="store_true", help="Run with mock data, no API calls")
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Use mock agent/publish outputs; Robin orchestration still calls Anthropic",
+    )
     parser.add_argument("--schedule", action="store_true",
                         help="Schedule post at Roxy's recommended time instead of immediately")
     parser.add_argument(
@@ -113,14 +117,15 @@ def main() -> None:
         if not args.brief:
             print("Error: --brief is required when using --project")
             sys.exit(1)
+        project_slug = resolve_project_slug(args.project)
         try:
-            pm = load_project(args.project)
+            pm = load_project(project_slug)
         except ProjectNotFoundError as e:
             print(f"Error: {e}")
             sys.exit(1)
         platforms = [p.strip() for p in args.platforms.split(",")]
         job = ContentJob(
-            project=args.project,
+            project=project_slug,
             pm=pm,
             brief=args.brief,
             platforms=platforms,
@@ -132,7 +137,7 @@ def main() -> None:
         save_job(job)
         log_command("start_job", {
             "job_id": job.id,
-            "project": args.project,
+            "project": project_slug,
             "brief": args.brief,
             "platforms": platforms,
             "content_type": args.content_type,

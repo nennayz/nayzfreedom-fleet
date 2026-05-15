@@ -8,6 +8,7 @@ import time
 from pathlib import Path
 
 import requests
+from project_loader import list_project_slugs
 
 logger = logging.getLogger(__name__)
 
@@ -193,7 +194,7 @@ def _handle_update(
 
     # ── State machine ───────────────────────────────────────────────────────
     if current == "idle":
-        projects = sorted(p.parent.name for p in root.glob("projects/*/pm_profile.yaml"))
+        projects = list_project_slugs(root)
         if not projects:
             _send_message(token, chat_id, "❌ No projects found.")
             return
@@ -204,7 +205,7 @@ def _handle_update(
                                   "updated_at": time.time()})
 
     elif current == "awaiting_project":
-        projects = sorted(p.parent.name for p in root.glob("projects/*/pm_profile.yaml"))
+        projects = list_project_slugs(root)
         if text not in projects:
             _send_message(token, chat_id, "Please pick a project:",
                           reply_markup=_build_keyboard(projects))
@@ -221,7 +222,7 @@ def _handle_update(
             return
         _save_state(state_file, {**state, "state": "awaiting_dry_run",
                                   "content_type": text, "updated_at": time.time()})
-        _send_message(token, chat_id, "Dry run? (no API calls — for testing)",
+        _send_message(token, chat_id, "Dry run? (mock agent/publish outputs — for testing)",
                       reply_markup=_build_keyboard(["Yes — dry run", "No — real run"]))
 
     elif current == "awaiting_dry_run":

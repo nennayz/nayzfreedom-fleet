@@ -5,10 +5,10 @@ from notifier import send_slack_alert, send_weekly_report
 
 
 FAILURES_ONE = [
-    {"project": "slay_hack", "brief": "article_1", "content_type": "article", "exit_code": 1},
+    {"project": "nayzfreedom_fleet", "brief": "article_1", "content_type": "article", "exit_code": 1},
 ]
 FAILURES_TIMEOUT = [
-    {"project": "slay_hack", "brief": "short_video_1", "content_type": "video", "exit_code": None},
+    {"project": "nayzfreedom_fleet", "brief": "short_video_1", "content_type": "video", "exit_code": None},
 ]
 FAILURES_TWO = FAILURES_ONE + FAILURES_TIMEOUT
 
@@ -18,7 +18,7 @@ def test_send_slack_alert_dry_run_prints_message(capsys, monkeypatch):
     send_slack_alert(FAILURES_ONE, "2026-05-13", total=7, dry_run=True)
     out = capsys.readouterr().out
     assert "1/7 jobs failed" in out
-    assert "slay_hack" in out
+    assert "nayzfreedom_fleet" in out
     assert "article_1" in out
     assert "article" in out
     assert "exit 1" in out
@@ -35,7 +35,7 @@ def test_send_slack_alert_posts_to_webhook(monkeypatch):
     mock_post.assert_called_once()
     assert mock_post.call_args.args[0] == "https://hooks.slack.com/fake"
     assert "1/7 jobs failed" in mock_post.call_args.kwargs["json"]["text"]
-    assert "slay_hack" in mock_post.call_args.kwargs["json"]["text"]
+    assert "nayzfreedom_fleet" in mock_post.call_args.kwargs["json"]["text"]
 
 
 def test_send_slack_alert_missing_env_skips(monkeypatch):

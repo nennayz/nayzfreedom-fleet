@@ -37,7 +37,7 @@ def _write_job(tmp_path: Path, job_id: str, brief: str = "test brief",
                status: str = "completed", page: str = "NayzFreedom Fleet",
                stage: str = "init") -> None:
     job = {
-        "id": job_id, "project": "slay_hack", "pm": _make_pm_dict(page),
+        "id": job_id, "project": "nayzfreedom_fleet", "pm": _make_pm_dict(page),
         "brief": brief, "platforms": ["facebook"], "status": status,
         "stage": stage, "dry_run": False, "performance": [], "checkpoint_log": [],
     }
@@ -77,12 +77,12 @@ def test_captains_deck_shows_recent_mission(tmp_path, client):
 
 
 def test_aurora_overview_shows_projects(tmp_path, client):
-    (tmp_path / "projects" / "slay_hack").mkdir(parents=True)
-    (tmp_path / "projects" / "slay_hack" / "pm_profile.yaml").write_text("page_name: test\n")
+    (tmp_path / "projects" / "nayzfreedom_fleet").mkdir(parents=True)
+    (tmp_path / "projects" / "nayzfreedom_fleet" / "pm_profile.yaml").write_text("page_name: test\n")
     resp = client.get("/aurora", headers=_auth())
     assert resp.status_code == 200
     assert "The Aurora" in resp.text
-    assert "slay_hack" in resp.text
+    assert "nayzfreedom_fleet" in resp.text
 
 
 def test_aurora_crew_pages_render(client):
@@ -117,11 +117,11 @@ def test_aurora_crew_detail_unknown_member_404(client):
 
 
 def test_island_detail_renders(tmp_path, client, monkeypatch):
-    (tmp_path / "projects" / "slay_hack").mkdir(parents=True)
-    (tmp_path / "projects" / "slay_hack" / "pm_profile.yaml").write_text(
+    (tmp_path / "projects" / "nayzfreedom_fleet").mkdir(parents=True)
+    (tmp_path / "projects" / "nayzfreedom_fleet" / "pm_profile.yaml").write_text(
         'name: "Slay"\npage_name: "NayzFreedom Fleet"\npersona: "bold persona"\n'
     )
-    (tmp_path / "projects" / "slay_hack" / "brand.yaml").write_text(
+    (tmp_path / "projects" / "nayzfreedom_fleet" / "brand.yaml").write_text(
         'mission: "mission"\nvisual:\n  colors: ["#fff"]\n  style: "minimal"\n'
         'platforms: ["instagram"]\ntone: "sassy"\ntarget_audience: "women"\n'
         'script_style: "lowercase"\nallowed_content_types: ["video", "image"]\n'
@@ -129,12 +129,12 @@ def test_island_detail_renders(tmp_path, client, monkeypatch):
     _write_job(tmp_path, "20260512_060000", brief="island mission", status="completed")
     _write_job(tmp_path, "20260512_070000", brief="attention mission", status="failed")
     monkeypatch.chdir(tmp_path)
-    resp = client.get("/aurora/islands/slay_hack", headers=_auth())
+    resp = client.get("/aurora/islands/nayzfreedom_fleet", headers=_auth())
     assert resp.status_code == 200
     assert "NayzFreedom Fleet" in resp.text
     assert "mission" in resp.text
     assert "Launch island mission" in resp.text
-    assert "/aurora/new-mission?project=slay_hack" in resp.text
+    assert "/aurora/new-mission?project=nayzfreedom_fleet" in resp.text
     assert "island mission" in resp.text
     assert "Needs attention" in resp.text
     assert "bold persona" in resp.text
@@ -143,12 +143,12 @@ def test_island_detail_renders(tmp_path, client, monkeypatch):
 
 
 def test_new_mission_preselects_project(tmp_path, client):
-    for slug in ("alpha", "slay_hack"):
+    for slug in ("alpha", "nayzfreedom_fleet"):
         (tmp_path / "projects" / slug).mkdir(parents=True)
         (tmp_path / "projects" / slug / "pm_profile.yaml").write_text("page_name: test\n")
-    resp = client.get("/aurora/new-mission?project=slay_hack", headers=_auth())
+    resp = client.get("/aurora/new-mission?project=nayzfreedom_fleet", headers=_auth())
     assert resp.status_code == 200
-    assert '<option value="slay_hack" selected>slay_hack</option>' in resp.text
+    assert '<option value="nayzfreedom_fleet" selected>nayzfreedom_fleet</option>' in resp.text
 
 
 def test_placeholder_ship_pages_render(client):
@@ -248,22 +248,22 @@ def test_metrics_shows_data(client):
 
 
 def test_trigger_get_shows_form(tmp_path, client):
-    (tmp_path / "projects" / "slay_hack").mkdir(parents=True)
-    (tmp_path / "projects" / "slay_hack" / "pm_profile.yaml").write_text("page_name: test\n")
+    (tmp_path / "projects" / "nayzfreedom_fleet").mkdir(parents=True)
+    (tmp_path / "projects" / "nayzfreedom_fleet" / "pm_profile.yaml").write_text("page_name: test\n")
     resp = client.get("/trigger", headers=_auth())
     assert resp.status_code == 200
     assert "<form" in resp.text
-    assert "slay_hack" in resp.text
+    assert "nayzfreedom_fleet" in resp.text
 
 
 def test_trigger_spawns_subprocess(tmp_path, client):
-    (tmp_path / "projects" / "slay_hack").mkdir(parents=True)
-    (tmp_path / "projects" / "slay_hack" / "pm_profile.yaml").write_text("page_name: test\n")
+    (tmp_path / "projects" / "nayzfreedom_fleet").mkdir(parents=True)
+    (tmp_path / "projects" / "nayzfreedom_fleet" / "pm_profile.yaml").write_text("page_name: test\n")
     mock_popen = MagicMock()
     with patch("dashboard.subprocess.Popen", mock_popen):
         resp = client.post(
             "/trigger",
-            data={"project": "slay_hack", "brief": "test brief", "content_type": "video"},
+            data={"project": "nayzfreedom_fleet", "brief": "test brief", "content_type": "video"},
             headers=_auth(),
             follow_redirects=False,
         )
@@ -273,19 +273,19 @@ def test_trigger_spawns_subprocess(tmp_path, client):
     cmd = mock_popen.call_args.args[0]
     assert "main.py" in cmd
     assert "--project" in cmd
-    assert "slay_hack" in cmd
+    assert "nayzfreedom_fleet" in cmd
     assert "--unattended" in cmd
     assert "--dry-run" not in cmd
 
 
 def test_trigger_dry_run_adds_flag(tmp_path, client):
-    (tmp_path / "projects" / "slay_hack").mkdir(parents=True)
-    (tmp_path / "projects" / "slay_hack" / "pm_profile.yaml").write_text("page_name: test\n")
+    (tmp_path / "projects" / "nayzfreedom_fleet").mkdir(parents=True)
+    (tmp_path / "projects" / "nayzfreedom_fleet" / "pm_profile.yaml").write_text("page_name: test\n")
     mock_popen = MagicMock()
     with patch("dashboard.subprocess.Popen", mock_popen):
         resp = client.post(
             "/trigger",
-            data={"project": "slay_hack", "brief": "test", "content_type": "video", "dry_run": "1"},
+            data={"project": "nayzfreedom_fleet", "brief": "test", "content_type": "video", "dry_run": "1"},
             headers=_auth(),
             follow_redirects=False,
         )
