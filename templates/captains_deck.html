@@ -6,6 +6,25 @@
   <p class="hero-copy">A clear view of the ships under your command, the missions in motion, and what deserves your attention next.</p>
 </section>
 
+<section class="command-brief">
+  <div>
+    <p class="eyebrow">Captain's brief</p>
+    <h2>{{ command_brief.state }}</h2>
+    <p>{{ command_brief.action }}</p>
+  </div>
+  <div class="brief-panel">
+    <span>Next best action</span>
+    <strong>{{ command_brief.detail }}</strong>
+    {% if attention_jobs %}
+    <a href="/jobs/{{ attention_jobs[0].id }}">Open priority mission</a>
+    {% elif active_jobs %}
+    <a href="/jobs/{{ active_jobs[0].id }}">Monitor active mission</a>
+    {% else %}
+    <a href="/aurora/new-mission">Launch new mission</a>
+    {% endif %}
+  </div>
+</section>
+
 <section class="ship-grid">
   <a class="ship-card aurora-card" href="/aurora">
     <span class="ship-kicker">Work ship</span>
@@ -33,13 +52,7 @@
       <p class="eyebrow">Captain's brief</p>
       <h2>Command priority</h2>
     </div>
-    {% if attention_jobs %}
-    <p class="priority-line">Review {{ attention_jobs | length }} mission{% if attention_jobs | length != 1 %}s{% endif %} before launching new work.</p>
-    {% elif active_jobs %}
-    <p class="priority-line">Monitor {{ active_jobs | length }} active mission{% if active_jobs | length != 1 %}s{% endif %}; no blockers are currently flagged.</p>
-    {% else %}
-    <p class="priority-line">The Aurora is clear. Launch a mission when the next brief is ready.</p>
-    {% endif %}
+    <p class="priority-line">{{ command_brief.action }}</p>
     <div class="stat-grid">
       <div class="stat-card">
         <span>Total missions</span>

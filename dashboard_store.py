@@ -38,6 +38,39 @@ def summarize_jobs(jobs: list[ContentJob]) -> dict[str, int]:
     }
 
 
+def command_brief(jobs: list[ContentJob]) -> dict[str, str]:
+    summary = summarize_jobs(jobs)
+    if summary["failed"]:
+        return {
+            "state": "Needs Captain",
+            "action": "Review failed missions before launching new work.",
+            "detail": f"{summary['failed']} mission{'s' if summary['failed'] != 1 else ''} failed.",
+        }
+    if summary["awaiting_approval"]:
+        return {
+            "state": "Needs Captain",
+            "action": "Approve or redirect waiting missions.",
+            "detail": f"{summary['awaiting_approval']} mission{'s' if summary['awaiting_approval'] != 1 else ''} awaiting approval.",
+        }
+    if summary["running"]:
+        return {
+            "state": "In Motion",
+            "action": "Monitor active missions; no blockers are flagged.",
+            "detail": f"{summary['running']} mission{'s' if summary['running'] != 1 else ''} currently running.",
+        }
+    if summary["total"]:
+        return {
+            "state": "Clear",
+            "action": "Launch the next Aurora mission when the brief is ready.",
+            "detail": "No active blockers or running missions.",
+        }
+    return {
+        "state": "Ready",
+        "action": "Launch the first Aurora mission when the brief is ready.",
+        "detail": "No missions have been logged yet.",
+    }
+
+
 def attention_jobs(jobs: list[ContentJob], limit: int = 5) -> list[ContentJob]:
     priority = {"failed": 0, "awaiting_approval": 1}
     items = [

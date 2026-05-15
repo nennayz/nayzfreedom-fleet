@@ -14,6 +14,7 @@ from crew_registry import CREW, WORKFLOW_STEPS, get_crew_member
 from dashboard_store import (
     active_jobs,
     attention_jobs,
+    command_brief,
     list_all_jobs,
     load_performance_all,
     summarize_jobs,
@@ -101,6 +102,7 @@ def captains_deck(request: Request, _: str = Depends(verify_auth)):
     summary = summarize_jobs(jobs)
     signals = attention_jobs(jobs)
     active = active_jobs(jobs)
+    brief = command_brief(jobs)
     return templates.TemplateResponse(
         request,
         "captains_deck.html",
@@ -109,6 +111,7 @@ def captains_deck(request: Request, _: str = Depends(verify_auth)):
             "summary": summary,
             "attention_jobs": signals,
             "active_jobs": active,
+            "command_brief": brief,
             "performance": performance,
         },
     )

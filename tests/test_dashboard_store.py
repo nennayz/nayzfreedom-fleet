@@ -117,6 +117,29 @@ def test_summarize_jobs_counts_statuses():
     }
 
 
+def test_command_brief_prioritizes_failed_missions():
+    from dashboard_store import command_brief
+    failed = _make_job("20260512_060000")
+    failed.status = JobStatus.FAILED
+    approval = _make_job("20260513_060000")
+    approval.status = JobStatus.AWAITING_APPROVAL
+
+    result = command_brief([approval, failed])
+
+    assert result["state"] == "Needs Captain"
+    assert result["action"] == "Review failed missions before launching new work."
+    assert result["detail"] == "1 mission failed."
+
+
+def test_command_brief_handles_empty_deck():
+    from dashboard_store import command_brief
+
+    result = command_brief([])
+
+    assert result["state"] == "Ready"
+    assert result["action"] == "Launch the first Aurora mission when the brief is ready."
+
+
 def test_attention_jobs_prioritizes_failed_then_approval():
     from dashboard_store import attention_jobs
     failed = _make_job("20260512_060000")

@@ -66,6 +66,9 @@ def test_captains_deck_empty(client):
     resp = client.get("/", headers=_auth())
     assert resp.status_code == 200
     assert "Captain's Deck" in resp.text
+    assert "Needs Captain" not in resp.text
+    assert "Launch the first Aurora mission when the brief is ready." in resp.text
+    assert "Next best action" in resp.text
     assert "No missions yet" in resp.text
 
 
@@ -84,7 +87,8 @@ def test_captains_deck_surfaces_attention_and_active_missions(tmp_path, client):
 
     assert resp.status_code == 200
     assert "Command priority" in resp.text
-    assert "Review 1 mission before launching new work." in resp.text
+    assert "Review failed missions before launching new work." in resp.text
+    assert "Open priority mission" in resp.text
     assert "Needs attention" in resp.text
     assert "needs review" in resp.text
     assert "Active missions" in resp.text

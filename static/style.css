@@ -187,6 +187,53 @@ button[type="submit"]:hover { background: var(--navy-soft); }
   color: var(--navy);
 }
 
+.command-brief {
+  align-items: stretch;
+  background: var(--navy);
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+  color: #fff;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.7fr);
+  margin-bottom: 1.5rem;
+  padding: 1.25rem;
+}
+.command-brief .eyebrow {
+  color: var(--gold-soft);
+}
+.command-brief h2 {
+  font-size: 1.35rem;
+  margin-bottom: 0.45rem;
+}
+.command-brief p {
+  color: rgba(255,255,255,0.78);
+  line-height: 1.5;
+  margin-bottom: 0;
+}
+.brief-panel {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.16);
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 1rem;
+}
+.brief-panel span {
+  color: rgba(255,255,255,0.7);
+  font-size: 0.82rem;
+}
+.brief-panel strong {
+  font-size: 1rem;
+}
+.brief-panel a {
+  color: #fff;
+  font-weight: 700;
+  margin-top: 0.25rem;
+  text-decoration-color: rgba(255,255,255,0.45);
+}
+
 .ship-grid,
 .content-grid,
 .stat-grid,
@@ -641,6 +688,7 @@ a:hover { color: var(--navy-soft); }
     width: 100%;
   }
   .ship-grid,
+  .command-brief,
   .content-grid,
   .stat-grid,
   .domain-grid,
