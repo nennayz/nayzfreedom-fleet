@@ -14,11 +14,12 @@
 #   4. Creates a venv and installs requirements
 #   5. Copies .env.example → /opt/nayzfreedom/.env (you fill in keys after)
 #   6. Installs systemd units for dashboard, scheduler, reporter
-#   7. Enables and starts the dashboard service
+#   7. Creates dashboard auth defaults if missing
+#   8. Enables and starts dashboard, then conditionally enables bot/timers
 
 set -euo pipefail
 
-REPO_URL="git@github.com:nennayz/nayzfreedom-fleet.git"
+REPO_URL="${REPO_URL:-https://github.com/nennayz/nayzfreedom-fleet.git}"
 INSTALL_DIR="/opt/nayzfreedom"
 SERVICE_USER="nayzfreedom"
 PYTHON="python3"
@@ -28,7 +29,7 @@ echo "=== NayzFreedom VPS Setup ==="
 # ── 1. System deps ──────────────────────────────────────────────────────────
 echo "[1/6] Installing system packages..."
 apt-get update -q
-apt-get install -y -q python3 python3-venv python3-pip git
+apt-get install -y -q python3 python3-venv python3-pip git curl
 
 # ── 2. Create service user ───────────────────────────────────────────────────
 echo "[2/6] Creating system user '$SERVICE_USER'..."
@@ -42,7 +43,8 @@ if [ -d "$INSTALL_DIR/.git" ]; then
     echo "  Repo already exists — pulling latest..."
     sudo -u "$SERVICE_USER" git -C "$INSTALL_DIR" pull
 else
-    # If using SSH key auth, copy your deploy key first:
+    # For private repos, run with REPO_URL=git@github.com:nennayz/nayzfreedom-fleet.git
+    # and copy your deploy key first:
     #   ssh-keygen -t ed25519 -C "nayzfreedom-deploy" -f /home/nayzfreedom/.ssh/id_ed25519
     #   cat /home/nayzfreedom/.ssh/id_ed25519.pub  → add as Deploy Key on GitHub
     sudo -u "$SERVICE_USER" git clone "$REPO_URL" "$INSTALL_DIR"
@@ -60,13 +62,22 @@ if [ ! -f "$INSTALL_DIR/.env" ]; then
     cp "$INSTALL_DIR/.env.example" "$INSTALL_DIR/.env"
     chown "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR/.env"
     chmod 600 "$INSTALL_DIR/.env"
-    echo ""
-    echo "  *** ACTION REQUIRED ***"
-    echo "  Edit $INSTALL_DIR/.env and fill in your API keys before starting."
-    echo "  nano $INSTALL_DIR/.env"
-    echo ""
 else
     echo "  .env already exists — skipping."
+fi
+
+if ! grep -q '^DASHBOARD_USER=.\+' "$INSTALL_DIR/.env"; then
+    sed -i 's/^DASHBOARD_USER=.*/DASHBOARD_USER=admin/' "$INSTALL_DIR/.env"
+fi
+if ! grep -q '^DASHBOARD_PASSWORD=.\+' "$INSTALL_DIR/.env"; then
+    DASHBOARD_PASSWORD="$($PYTHON -c 'import secrets; print(secrets.token_urlsafe(24))')"
+    sed -i "s#^DASHBOARD_PASSWORD=.*#DASHBOARD_PASSWORD=$DASHBOARD_PASSWORD#" "$INSTALL_DIR/.env"
+    echo ""
+    echo "  Dashboard login created:"
+    echo "  DASHBOARD_USER=admin"
+    echo "  DASHBOARD_PASSWORD=$DASHBOARD_PASSWORD"
+    echo "  Store this password now."
+    echo ""
 fi
 
 # ── 6. Install + enable systemd units ────────────────────────────────────────
@@ -87,23 +98,35 @@ systemctl daemon-reload
 
 # Dashboard runs persistently
 systemctl enable --now nayzfreedom-dashboard.service
-systemctl enable --now nayzfreedom-bot.service
+sleep 2
+curl -fsS http://127.0.0.1:8000/healthz >/dev/null
 
-# Scheduler + reporter run via timers
-systemctl enable --now nayzfreedom-scheduler.timer
-systemctl enable --now nayzfreedom-reporter.timer
+if grep -q '^TELEGRAM_BOT_TOKEN=.\+' "$INSTALL_DIR/.env" && grep -q '^TELEGRAM_CHAT_ID=.\+' "$INSTALL_DIR/.env"; then
+    systemctl enable --now nayzfreedom-bot.service
+else
+    systemctl disable --now nayzfreedom-bot.service 2>/dev/null || true
+    echo "  Telegram bot not started: TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID is empty."
+fi
+
+if grep -q '^ANTHROPIC_API_KEY=.\+' "$INSTALL_DIR/.env"; then
+    systemctl enable --now nayzfreedom-scheduler.timer
+    systemctl enable --now nayzfreedom-reporter.timer
+else
+    systemctl disable --now nayzfreedom-scheduler.timer nayzfreedom-reporter.timer 2>/dev/null || true
+    echo "  Scheduler/reporter timers not started: ANTHROPIC_API_KEY is empty."
+fi
 
 echo ""
 echo "=== Setup complete ==="
 echo ""
 echo "Next steps:"
 echo "  1. Fill in API keys:  nano $INSTALL_DIR/.env"
-echo "  2. Restart dashboard: systemctl restart nayzfreedom-dashboard"
+echo "  2. Restart services:  systemctl restart nayzfreedom-dashboard"
 echo "  3. Check dashboard:   systemctl status nayzfreedom-dashboard"
 echo "  4. View logs:         journalctl -u nayzfreedom-dashboard -f"
 echo "     Bot logs:          journalctl -u nayzfreedom-bot -f"
-echo "  5. Dashboard URL:     http://<your-server-ip>:8000"
-echo "     (Set DASHBOARD_USER / DASHBOARD_PASSWORD in .env for auth)"
+echo "  5. Health check:      curl http://127.0.0.1:8000/healthz"
+echo "  6. Dashboard URL:     http://<your-server-ip>:8000"
 echo ""
 echo "Timers scheduled:"
 echo "  Scheduler: daily at 06:00 UTC"
