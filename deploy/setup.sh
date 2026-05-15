@@ -3,7 +3,7 @@
 # Run once on a fresh Ubuntu/Debian server as root (or with sudo).
 #
 # Usage:
-#   curl -sO https://raw.githubusercontent.com/nennayz/slayhack/main/deploy/setup.sh
+#   curl -sO https://raw.githubusercontent.com/nennayz/nayzfreedom-fleet/main/deploy/setup.sh
 #   chmod +x setup.sh
 #   sudo ./setup.sh
 #
@@ -18,7 +18,7 @@
 
 set -euo pipefail
 
-REPO_URL="git@github.com:nennayz/slayhack.git"
+REPO_URL="git@github.com:nennayz/nayzfreedom-fleet.git"
 INSTALL_DIR="/opt/nayzfreedom"
 SERVICE_USER="nayzfreedom"
 PYTHON="python3"
