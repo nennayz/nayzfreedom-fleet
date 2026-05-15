@@ -152,7 +152,7 @@ def test_aurora_crew_detail_unknown_member_404(client):
 def test_island_detail_renders(tmp_path, client, monkeypatch):
     (tmp_path / "projects" / "nayzfreedom_fleet").mkdir(parents=True)
     (tmp_path / "projects" / "nayzfreedom_fleet" / "pm_profile.yaml").write_text(
-        'name: "Slay"\npage_name: "NayzFreedom Fleet"\npersona: "bold persona"\n'
+        'name: "Nayz"\npage_name: "NayzFreedom Fleet"\npersona: "bold persona"\n'
     )
     (tmp_path / "projects" / "nayzfreedom_fleet" / "brand.yaml").write_text(
         'mission: "mission"\nvisual:\n  colors: ["#fff"]\n  style: "minimal"\n'
