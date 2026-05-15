@@ -77,7 +77,7 @@ def test_send_and_wait_writes_lock_on_send_failure(tmp_path):
 - [ ] **Step 2: Run tests to verify they fail**
 
 ```bash
-cd /Users/nennayz/Documents/NayzFreedom/code/slayhack
+cd /Users/nennayz/Documents/NayzFreedom/code/nayzfreedom-fleet
 python3 -m pytest tests/test_telegram_checkpoint.py::test_send_and_wait_writes_lock tests/test_telegram_checkpoint.py::test_send_and_wait_writes_lock_on_send_failure -v
 ```
 Expected: FAIL with `AttributeError: module 'telegram_checkpoint' has no attribute '_LOCK_FILE'`

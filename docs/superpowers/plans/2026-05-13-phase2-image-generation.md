@@ -103,7 +103,7 @@ from pathlib import Path
 - [ ] **Step 2: Run tests to verify they fail**
 
 ```bash
-/Users/nennayz/Documents/NayzFreedom/code/slayhack/.venv/bin/python3 -m pytest tests/test_lila.py::test_lila_live_image_calls_openai tests/test_lila.py::test_lila_live_infographic_calls_openai tests/test_lila.py::test_lila_live_image_openai_error_raises_runtime -v
+/Users/nennayz/Documents/NayzFreedom/code/nayzfreedom-fleet/.venv/bin/python3 -m pytest tests/test_lila.py::test_lila_live_image_calls_openai tests/test_lila.py::test_lila_live_infographic_calls_openai tests/test_lila.py::test_lila_live_image_openai_error_raises_runtime -v
 ```
 
 Expected: 3 FAILED — `test_lila_live_image_calls_openai` and `test_lila_live_infographic_calls_openai` fail because `_generate_image` raises `NotImplementedError`; `test_lila_live_image_openai_error_raises_runtime` fails because `NotImplementedError` is raised instead of `RuntimeError`.
@@ -169,7 +169,7 @@ with:
 - [ ] **Step 5: Run the three new tests to verify they pass**
 
 ```bash
-/Users/nennayz/Documents/NayzFreedom/code/slayhack/.venv/bin/python3 -m pytest tests/test_lila.py::test_lila_live_image_calls_openai tests/test_lila.py::test_lila_live_infographic_calls_openai tests/test_lila.py::test_lila_live_image_openai_error_raises_runtime -v
+/Users/nennayz/Documents/NayzFreedom/code/nayzfreedom-fleet/.venv/bin/python3 -m pytest tests/test_lila.py::test_lila_live_image_calls_openai tests/test_lila.py::test_lila_live_infographic_calls_openai tests/test_lila.py::test_lila_live_image_openai_error_raises_runtime -v
 ```
 
 Expected: 3 PASSED
@@ -177,7 +177,7 @@ Expected: 3 PASSED
 - [ ] **Step 6: Run the full test suite to verify no regressions**
 
 ```bash
-/Users/nennayz/Documents/NayzFreedom/code/slayhack/.venv/bin/python3 -m pytest -v
+/Users/nennayz/Documents/NayzFreedom/code/nayzfreedom-fleet/.venv/bin/python3 -m pytest -v
 ```
 
 Expected: all tests pass (was 72 before this task; will be 73 after adding one net new test)

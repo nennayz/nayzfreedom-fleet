@@ -79,7 +79,7 @@ def test_load_slay_hack_allowed_content_types():
 - [ ] **Step 2: Run tests to verify they fail**
 
 ```bash
-cd /Users/nennayz/Documents/NayzFreedom/code/slayhack && \
+cd /Users/nennayz/Documents/NayzFreedom/code/nayzfreedom-fleet && \
   .venv/bin/pytest tests/test_models.py::test_content_type_values \
                    tests/test_models.py::test_brand_profile_allowed_content_types_default \
                    tests/test_models.py::test_brand_profile_allowed_content_types_custom \
@@ -175,7 +175,7 @@ allowed_content_types:
 - [ ] **Step 7: Run tests to verify they pass**
 
 ```bash
-cd /Users/nennayz/Documents/NayzFreedom/code/slayhack && \
+cd /Users/nennayz/Documents/NayzFreedom/code/nayzfreedom-fleet && \
   .venv/bin/pytest tests/test_models.py::test_content_type_values \
                    tests/test_models.py::test_brand_profile_allowed_content_types_default \
                    tests/test_models.py::test_brand_profile_allowed_content_types_custom \
@@ -187,7 +187,7 @@ Expected: 4 passed.
 - [ ] **Step 8: Run full test suite to verify no regressions**
 
 ```bash
-cd /Users/nennayz/Documents/NayzFreedom/code/slayhack && .venv/bin/pytest -v
+cd /Users/nennayz/Documents/NayzFreedom/code/nayzfreedom-fleet && .venv/bin/pytest -v
 ```
 
 Expected: all tests pass.
@@ -248,7 +248,7 @@ def test_zoe_dry_run_ideas_have_content_type():
 - [ ] **Step 2: Run tests to verify they fail**
 
 ```bash
-cd /Users/nennayz/Documents/NayzFreedom/code/slayhack && \
+cd /Users/nennayz/Documents/NayzFreedom/code/nayzfreedom-fleet && \
   .venv/bin/pytest tests/test_models.py::test_idea_model \
                    tests/test_models.py::test_idea_content_type_required \
                    tests/test_zoe.py::test_zoe_dry_run_ideas_have_content_type -v
@@ -329,7 +329,7 @@ Also update `run_live` — the JSON prompt must now ask Claude for `content_type
 - [ ] **Step 5: Run tests to verify they pass**
 
 ```bash
-cd /Users/nennayz/Documents/NayzFreedom/code/slayhack && \
+cd /Users/nennayz/Documents/NayzFreedom/code/nayzfreedom-fleet && \
   .venv/bin/pytest tests/test_models.py::test_idea_model \
                    tests/test_models.py::test_idea_content_type_required \
                    tests/test_zoe.py::test_zoe_dry_run_ideas_have_content_type -v
@@ -363,7 +363,7 @@ from models.content_job import Idea, ContentType
 - [ ] **Step 7: Run full test suite**
 
 ```bash
-cd /Users/nennayz/Documents/NayzFreedom/code/slayhack && .venv/bin/pytest -v
+cd /Users/nennayz/Documents/NayzFreedom/code/nayzfreedom-fleet && .venv/bin/pytest -v
 ```
 
 Expected: all tests pass.
@@ -456,7 +456,7 @@ def test_bella_output_json_roundtrip_infographic():
 - [ ] **Step 2: Run tests to verify they fail**
 
 ```bash
-cd /Users/nennayz/Documents/NayzFreedom/code/slayhack && \
+cd /Users/nennayz/Documents/NayzFreedom/code/nayzfreedom-fleet && \
   .venv/bin/pytest tests/test_models.py::test_script_has_type_discriminator \
                    tests/test_models.py::test_article_model \
                    tests/test_models.py::test_image_caption_model \
@@ -511,7 +511,7 @@ BellaOutput = Annotated[
 - [ ] **Step 4: Run tests to verify they pass**
 
 ```bash
-cd /Users/nennayz/Documents/NayzFreedom/code/slayhack && \
+cd /Users/nennayz/Documents/NayzFreedom/code/nayzfreedom-fleet && \
   .venv/bin/pytest tests/test_models.py::test_script_has_type_discriminator \
                    tests/test_models.py::test_article_model \
                    tests/test_models.py::test_image_caption_model \
@@ -527,7 +527,7 @@ Expected: 8 passed.
 - [ ] **Step 5: Run full test suite**
 
 ```bash
-cd /Users/nennayz/Documents/NayzFreedom/code/slayhack && .venv/bin/pytest -v
+cd /Users/nennayz/Documents/NayzFreedom/code/nayzfreedom-fleet && .venv/bin/pytest -v
 ```
 
 Expected: all tests pass. Note: existing tests that use `Script(hook=..., body=..., ...)` are still valid because `type` has a default value.
@@ -577,7 +577,7 @@ def test_content_job_bella_output_article_roundtrip():
 - [ ] **Step 2: Run tests to verify they fail**
 
 ```bash
-cd /Users/nennayz/Documents/NayzFreedom/code/slayhack && \
+cd /Users/nennayz/Documents/NayzFreedom/code/nayzfreedom-fleet && \
   .venv/bin/pytest tests/test_models.py::test_content_job_has_content_type_and_bella_output \
                    tests/test_models.py::test_content_job_bella_output_set_and_roundtrip \
                    tests/test_models.py::test_content_job_bella_output_article_roundtrip -v
@@ -601,7 +601,7 @@ Also add `Article` and `BellaOutput` to the imports at the top of `test_models.p
 - [ ] **Step 4: Run tests to verify they pass**
 
 ```bash
-cd /Users/nennayz/Documents/NayzFreedom/code/slayhack && \
+cd /Users/nennayz/Documents/NayzFreedom/code/nayzfreedom-fleet && \
   .venv/bin/pytest tests/test_models.py::test_content_job_has_content_type_and_bella_output \
                    tests/test_models.py::test_content_job_bella_output_set_and_roundtrip \
                    tests/test_models.py::test_content_job_bella_output_article_roundtrip -v
@@ -612,7 +612,7 @@ Expected: 3 passed.
 - [ ] **Step 5: Run full test suite**
 
 ```bash
-cd /Users/nennayz/Documents/NayzFreedom/code/slayhack && .venv/bin/pytest -v
+cd /Users/nennayz/Documents/NayzFreedom/code/nayzfreedom-fleet && .venv/bin/pytest -v
 ```
 
 Expected: all tests pass.
@@ -702,7 +702,7 @@ def test_roxy_dry_run_strategy_has_editorial_guidance():
 - [ ] **Step 2: Run tests to verify they fail**
 
 ```bash
-cd /Users/nennayz/Documents/NayzFreedom/code/slayhack && \
+cd /Users/nennayz/Documents/NayzFreedom/code/nayzfreedom-fleet && \
   .venv/bin/pytest tests/test_models.py::test_growth_strategy_editorial_guidance_default \
                    tests/test_models.py::test_growth_strategy_editorial_guidance_custom \
                    tests/test_project_loader.py::test_load_platform_specs_slay_hack \
@@ -783,7 +783,7 @@ Note: the dry-run strategy has a hardcoded `editorial_guidance` so that tests do
 - [ ] **Step 7: Run tests to verify they pass**
 
 ```bash
-cd /Users/nennayz/Documents/NayzFreedom/code/slayhack && \
+cd /Users/nennayz/Documents/NayzFreedom/code/nayzfreedom-fleet && \
   .venv/bin/pytest tests/test_models.py::test_growth_strategy_editorial_guidance_default \
                    tests/test_models.py::test_growth_strategy_editorial_guidance_custom \
                    tests/test_project_loader.py::test_load_platform_specs_slay_hack \
@@ -796,7 +796,7 @@ Expected: 5 passed.
 - [ ] **Step 8: Run full test suite**
 
 ```bash
-cd /Users/nennayz/Documents/NayzFreedom/code/slayhack && .venv/bin/pytest -v
+cd /Users/nennayz/Documents/NayzFreedom/code/nayzfreedom-fleet && .venv/bin/pytest -v
 ```
 
 Expected: all tests pass.
