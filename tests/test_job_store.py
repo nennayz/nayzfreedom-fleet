@@ -59,7 +59,7 @@ def test_load_job_normalizes_legacy_project_identity(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     project_dir = tmp_path / "projects" / "nayzfreedom_fleet"
     project_dir.mkdir(parents=True)
-    (project_dir / "pm_profile.yaml").write_text('page_name: "SlayHack"\n')
+    (project_dir / "pm_profile.yaml").write_text('page_name: "Slayhack"\n')
     job = make_job()
     job.id = "20260512_060000"
     job.project = "slay_hack"
@@ -72,6 +72,6 @@ def test_load_job_normalizes_legacy_project_identity(tmp_path, monkeypatch):
     found = find_job(job.id)
 
     assert loaded.project == "nayzfreedom_fleet"
-    assert loaded.pm.page_name == "SlayHack"
+    assert loaded.pm.page_name == "Slayhack"
     assert found.project == "nayzfreedom_fleet"
-    assert found.pm.page_name == "SlayHack"
+    assert found.pm.page_name == "Slayhack"

@@ -8,7 +8,7 @@ from models.content_job import (
 )
 
 
-def _make_pm(page_name: str = "SlayHack") -> PMProfile:
+def _make_pm(page_name: str = "Slayhack") -> PMProfile:
     brand = BrandProfile(
         mission="m", visual=VisualIdentity(colors=[], style=""), platforms=[],
         tone="", target_audience="", script_style="", nora_max_retries=2,
@@ -16,7 +16,7 @@ def _make_pm(page_name: str = "SlayHack") -> PMProfile:
     return PMProfile(name="Test PM", page_name=page_name, persona="", brand=brand)
 
 
-def _make_job(job_id: str, brief: str = "test brief", performance=None, page_name: str = "SlayHack") -> ContentJob:
+def _make_job(job_id: str, brief: str = "test brief", performance=None, page_name: str = "Slayhack") -> ContentJob:
     job = ContentJob(
         id=job_id,
         project="nayzfreedom_fleet",
@@ -55,9 +55,9 @@ def test_reporter_aggregates_jobs_in_window(tmp_path):
     from reporter import collect_week_data
     data = collect_week_data(tmp_path, TODAY)
 
-    assert "SlayHack" in data
-    assert data["SlayHack"]["facebook"].job_count == 1
-    assert data["SlayHack"]["facebook"].total_reach == 1000
+    assert "Slayhack" in data
+    assert data["Slayhack"]["facebook"].job_count == 1
+    assert data["Slayhack"]["facebook"].total_reach == 1000
 
 
 def test_reporter_aggregates_metrics_by_platform(tmp_path):
@@ -73,7 +73,7 @@ def test_reporter_aggregates_metrics_by_platform(tmp_path):
     from reporter import collect_week_data
     data = collect_week_data(tmp_path, TODAY)
 
-    stats = data["SlayHack"]["facebook"]
+    stats = data["Slayhack"]["facebook"]
     assert stats.job_count == 2
     assert stats.total_reach == 3000
     assert stats.total_likes == 150
@@ -94,7 +94,7 @@ def test_reporter_identifies_top_job_by_reach(tmp_path):
     from reporter import collect_week_data
     data = collect_week_data(tmp_path, TODAY)
 
-    stats = data["SlayHack"]["facebook"]
+    stats = data["Slayhack"]["facebook"]
     assert stats.top_job_id == "20260512_060000"
     assert stats.top_job_brief == "high reach post"
     assert stats.top_job_reach == 3000
@@ -115,7 +115,7 @@ def test_reporter_uses_latest_snapshot_per_platform(tmp_path):
     from reporter import collect_week_data
     data = collect_week_data(tmp_path, TODAY)
 
-    stats = data["SlayHack"]["facebook"]
+    stats = data["Slayhack"]["facebook"]
     assert stats.total_reach == 800  # only the newer snapshot counted
 
 
@@ -142,7 +142,7 @@ def test_reporter_skips_jobs_with_no_performance(tmp_path):
 
 
 def test_reporter_skips_corrupt_job_file(tmp_path):
-    page_dir = tmp_path / "output" / "SlayHack" / IN_WINDOW_ID
+    page_dir = tmp_path / "output" / "Slayhack" / IN_WINDOW_ID
     page_dir.mkdir(parents=True)
     (page_dir / "job.json").write_text("not valid json {{{")
 
@@ -161,7 +161,7 @@ def test_reporter_top_job_set_when_only_one_job(tmp_path):
     from reporter import collect_week_data
     data = collect_week_data(tmp_path, TODAY)
 
-    stats = data["SlayHack"]["facebook"]
+    stats = data["Slayhack"]["facebook"]
     assert stats.top_job_id == IN_WINDOW_ID
     assert stats.top_job_brief == "only post"
 
@@ -179,7 +179,7 @@ def test_reporter_top_job_tiebreaker_earlier_id_wins(tmp_path):
     from reporter import collect_week_data
     data = collect_week_data(tmp_path, TODAY)
 
-    assert data["SlayHack"]["facebook"].top_job_id == "20260511_060000"
+    assert data["Slayhack"]["facebook"].top_job_id == "20260511_060000"
 
 
 def test_reporter_aggregates_multi_platform_job(tmp_path):
@@ -192,8 +192,8 @@ def test_reporter_aggregates_multi_platform_job(tmp_path):
     from reporter import collect_week_data
     data = collect_week_data(tmp_path, TODAY)
 
-    assert data["SlayHack"]["facebook"].total_reach == 1000
-    assert data["SlayHack"]["instagram"].total_reach == 2000
+    assert data["Slayhack"]["facebook"].total_reach == 1000
+    assert data["Slayhack"]["instagram"].total_reach == 2000
 
 
 def test_reporter_output_dir_missing_returns_empty(tmp_path):
@@ -219,7 +219,7 @@ def test_reporter_none_recorded_at_snapshot_not_preferred_over_dated(tmp_path):
     from reporter import collect_week_data
     data = collect_week_data(tmp_path, TODAY)
 
-    assert data["SlayHack"]["facebook"].total_reach == 800
+    assert data["Slayhack"]["facebook"].total_reach == 800
 
 
 def test_reporter_writes_markdown_file(tmp_path):
@@ -233,7 +233,7 @@ def test_reporter_writes_markdown_file(tmp_path):
         from reporter import run_reporter
         run_reporter(dry_run=True, root=tmp_path)
 
-    report_path = tmp_path / "output" / "SlayHack" / f"weekly_report_{date.today()}.md"
+    report_path = tmp_path / "output" / "Slayhack" / f"weekly_report_{date.today()}.md"
     assert report_path.exists()
     content = report_path.read_text()
     assert "Weekly Report" in content
