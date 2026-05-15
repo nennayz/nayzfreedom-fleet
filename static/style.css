@@ -423,6 +423,38 @@ button[type="submit"]:hover { background: var(--navy-soft); }
   color: var(--ink);
   font-size: 1rem;
 }
+.readiness-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 1.5rem;
+}
+.readiness-card {
+  background: rgba(255,255,255,0.82);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+  padding: 1.1rem;
+}
+.readiness-card span {
+  color: var(--muted);
+  display: block;
+  font-size: 0.82rem;
+}
+.readiness-card strong {
+  display: block;
+  font-size: 1.25rem;
+  margin: 0.35rem 0 0.45rem;
+}
+.readiness-card p {
+  color: var(--muted);
+  line-height: 1.5;
+  margin-bottom: 0;
+}
+.readiness-ready { border-top: 5px solid #2f9b83; }
+.readiness-waiting,
+.readiness-planned { border-top: 5px solid var(--gold); }
+.readiness-missing { border-top: 5px solid #c94b55; }
 
 .page-header { margin-bottom: 1rem; }
 .muted { color: var(--muted); }
@@ -790,6 +822,7 @@ a:hover { color: var(--navy-soft); }
   .content-grid,
   .stat-grid,
   .output-grid,
+  .readiness-grid,
   .domain-grid,
   .crew-chain,
   .crew-grid {

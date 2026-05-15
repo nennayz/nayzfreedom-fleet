@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero hero-fleet compact-hero">
+  <p class="eyebrow">Fleet operations</p>
+  <h1>Readiness</h1>
+  <p class="hero-copy">A private preflight view for the dashboard, deploy files, project config, and the boundaries that must be respected before deeper personal systems go online.</p>
+</section>
+
+<section class="readiness-grid">
+  {% for check in checks %}
+  <article class="readiness-card readiness-{{ check.state | lower }}">
+    <span>{{ check.label }}</span>
+    <strong>{{ check.state }}</strong>
+    <p>{{ check.detail }}</p>
+  </article>
+  {% endfor %}
+</section>
+
+<section class="panel">
+  <div class="section-heading">
+    <p class="eyebrow">Production rule</p>
+    <h2>Before public access</h2>
+  </div>
+  <p class="muted">Use HTTPS, strong credentials, a dedicated service user, firewall rules, backups for stateful folders, and a stricter privacy model before serious Freedom data is stored online.</p>
+</section>
+{% endblock %}

@@ -212,6 +212,36 @@ def test_placeholder_ship_pages_render(client):
     assert "Song voyage" in lyra.text
 
 
+def test_readiness_page_renders_private_preflight(tmp_path, client):
+    (tmp_path / "projects" / "nayzfreedom_fleet").mkdir(parents=True)
+    (tmp_path / "projects" / "nayzfreedom_fleet" / "pm_profile.yaml").write_text("page_name: test\n")
+    (tmp_path / "deploy").mkdir()
+    for name in (
+        "nayzfreedom-dashboard.service",
+        "nayzfreedom-bot.service",
+        "nayzfreedom-scheduler.service",
+        "nayzfreedom-scheduler.timer",
+        "nayzfreedom-reporter.service",
+        "nayzfreedom-reporter.timer",
+        "setup.sh",
+        "update.sh",
+    ):
+        (tmp_path / "deploy" / name).write_text("unit")
+    (tmp_path / "static" / "ships").mkdir(parents=True)
+    (tmp_path / "static" / "style.css").write_text("css")
+    (tmp_path / "static" / "htmx.min.js").write_text("htmx")
+    (tmp_path / "static" / "ships" / "aurora-hero.png").write_bytes(b"png")
+
+    resp = client.get("/readiness", headers=_auth())
+
+    assert resp.status_code == 200
+    assert "Readiness" in resp.text
+    assert "Dashboard auth" in resp.text
+    assert "Project config" in resp.text
+    assert "Deploy files" in resp.text
+    assert "Privacy boundary" in resp.text
+
+
 def test_jobs_partial_returns_fragment(tmp_path, client):
     _write_job(tmp_path, "20260512_060000")
     resp = client.get("/jobs/partial", headers=_auth())

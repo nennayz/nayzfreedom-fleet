@@ -170,6 +170,62 @@ def _mission_outputs(job, faq_content: str | None) -> list[dict[str, str]]:
     ]
 
 
+def _readiness_checks(root: Path) -> list[dict[str, str]]:
+    deploy_dir = root / "deploy"
+    required_deploy_files = [
+        "nayzfreedom-dashboard.service",
+        "nayzfreedom-bot.service",
+        "nayzfreedom-scheduler.service",
+        "nayzfreedom-scheduler.timer",
+        "nayzfreedom-reporter.service",
+        "nayzfreedom-reporter.timer",
+        "setup.sh",
+        "update.sh",
+    ]
+    missing_deploy = [name for name in required_deploy_files if not (deploy_dir / name).exists()]
+    projects = list_project_slugs(root)
+    output_dir = root / "output"
+    static_required = [
+        root / "static" / "style.css",
+        root / "static" / "htmx.min.js",
+        root / "static" / "ships" / "aurora-hero.png",
+    ]
+    missing_static = [path.name for path in static_required if not path.exists()]
+
+    return [
+        {
+            "label": "Dashboard auth",
+            "state": "Ready" if DASHBOARD_USER and DASHBOARD_PASSWORD else "Missing",
+            "detail": "Basic Auth environment variables are configured.",
+        },
+        {
+            "label": "Project config",
+            "state": "Ready" if projects else "Missing",
+            "detail": f"{len(projects)} project profile{'s' if len(projects) != 1 else ''} configured.",
+        },
+        {
+            "label": "Mission output",
+            "state": "Ready" if output_dir.exists() else "Waiting",
+            "detail": "Output directory exists." if output_dir.exists() else "No output directory yet; first mission will create it.",
+        },
+        {
+            "label": "Static assets",
+            "state": "Ready" if not missing_static else "Missing",
+            "detail": "Dashboard CSS, HTMX, and Aurora hero assets are present." if not missing_static else f"Missing: {', '.join(missing_static)}.",
+        },
+        {
+            "label": "Deploy files",
+            "state": "Ready" if not missing_deploy else "Missing",
+            "detail": "Systemd services, timers, setup, and update scripts are present." if not missing_deploy else f"Missing: {', '.join(missing_deploy)}.",
+        },
+        {
+            "label": "Privacy boundary",
+            "state": "Planned",
+            "detail": "Keep The Freedom private until stronger auth and memory boundaries are implemented.",
+        },
+    ]
+
+
 @app.get("/", response_class=HTMLResponse)
 def captains_deck(request: Request, _: str = Depends(verify_auth)):
     jobs = list_all_jobs(_root(request))
@@ -299,6 +355,12 @@ def freedom_overview(request: Request, _: str = Depends(verify_auth)):
 @app.get("/lyra", response_class=HTMLResponse)
 def lyra_overview(request: Request, _: str = Depends(verify_auth)):
     return templates.TemplateResponse(request, "lyra.html", {})
+
+
+@app.get("/readiness", response_class=HTMLResponse)
+def readiness(request: Request, _: str = Depends(verify_auth)):
+    checks = _readiness_checks(_root(request))
+    return templates.TemplateResponse(request, "readiness.html", {"checks": checks})
 
 
 @app.get("/jobs", response_class=HTMLResponse)
