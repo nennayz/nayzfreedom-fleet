@@ -257,11 +257,15 @@ def _write_ops_incident(root: Path, user: str, title: str, severity: str, note: 
 
     path = _ops_incident_path(root)
     path.parent.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    incident_id = hashlib.sha256(f"{timestamp}:{user}:{title}".encode()).hexdigest()[:12]
     record = {
-        "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "id": incident_id,
+        "timestamp": timestamp,
         "user": user,
         "title": title,
         "severity": severity,
+        "status": "open",
         "note": note,
     }
     with path.open("a") as fh:
@@ -269,24 +273,63 @@ def _write_ops_incident(root: Path, user: str, title: str, severity: str, note: 
     return record
 
 
-def _recent_ops_incidents(root: Path, limit: int = 6) -> list[dict[str, str]]:
+def _load_ops_incidents(root: Path) -> list[dict[str, str]]:
     path = _ops_incident_path(root)
     if not path.exists():
         return []
     rows = []
-    for line in path.read_text().splitlines()[-limit:]:
+    for index, line in enumerate(path.read_text().splitlines()):
         try:
             item = json.loads(line)
         except json.JSONDecodeError:
             continue
+        incident_id = str(item.get("id") or hashlib.sha256(f"legacy:{index}:{line}".encode()).hexdigest()[:12])
         rows.append({
+            "id": incident_id,
             "timestamp": str(item.get("timestamp", "")),
             "user": str(item.get("user", "")),
             "title": str(item.get("title", "")),
             "severity": str(item.get("severity", "info")),
+            "status": str(item.get("status", "open")),
             "note": _sanitize_ops_detail(item.get("note", "")),
         })
+    return rows
+
+
+def _recent_ops_incidents(root: Path, limit: int = 6) -> list[dict[str, str]]:
+    rows = _load_ops_incidents(root)[-limit:]
     return list(reversed(rows))
+
+
+def _incident_summary(root: Path) -> dict[str, int]:
+    rows = _load_ops_incidents(root)
+    return {
+        "open": sum(row["status"] == "open" for row in rows),
+        "investigating": sum(row["status"] == "investigating" for row in rows),
+        "resolved": sum(row["status"] == "resolved" for row in rows),
+    }
+
+
+def _update_ops_incident_status(root: Path, incident_id: str, status: str, user: str) -> dict[str, str]:
+    if status not in {"open", "investigating", "resolved"}:
+        raise ValueError("Invalid incident status")
+    path = _ops_incident_path(root)
+    rows = _load_ops_incidents(root)
+    found = None
+    for row in rows:
+        if row["id"] == incident_id:
+            row["status"] = status
+            row["updated_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            row["updated_by"] = user
+            found = row
+            break
+    if found is None:
+        raise ValueError("Incident not found")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w") as fh:
+        for row in rows:
+            fh.write(json.dumps(row, sort_keys=True) + "\n")
+    return found
 
 
 def _ops_log_status(root: Path) -> dict[str, object]:
@@ -473,6 +516,7 @@ def _ops_snapshot(root: Path, smoke_results: list[dict[str, str]] | None = None)
         "ops_audit": _recent_ops_audit(root),
         "ops_log": _ops_log_status(root),
         "ops_incidents": _recent_ops_incidents(root),
+        "incident_summary": _incident_summary(root),
         "incident_result": None,
     }
 
@@ -901,6 +945,28 @@ def ops_incident(
         return templates.TemplateResponse(request, "ops.html", snapshot, status_code=400)
     snapshot = _ops_snapshot(root)
     snapshot["incident_result"] = {"state": "Ready", "detail": f"Saved incident: {incident['title']}"}
+    return templates.TemplateResponse(request, "ops.html", snapshot)
+
+
+@app.post("/ops/incidents/{incident_id}/status", response_class=HTMLResponse)
+def ops_incident_status(
+    incident_id: str,
+    request: Request,
+    status: str = Form(...),
+    user: str = Depends(verify_auth),
+):
+    root = _root(request)
+    snapshot = _ops_snapshot(root)
+    try:
+        incident = _update_ops_incident_status(root, incident_id, status, user)
+    except ValueError as exc:
+        snapshot["incident_result"] = {"state": "Failed", "detail": str(exc)}
+        return templates.TemplateResponse(request, "ops.html", snapshot, status_code=400)
+    snapshot = _ops_snapshot(root)
+    snapshot["incident_result"] = {
+        "state": "Ready",
+        "detail": f"Marked incident {incident['title']} as {incident['status']}",
+    }
     return templates.TemplateResponse(request, "ops.html", snapshot)
 
 

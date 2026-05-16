@@ -456,6 +456,8 @@ def test_ops_incident_note_saves_and_displays(tmp_path, client, monkeypatch):
     assert record["user"] == "admin"
     assert record["severity"] == "warning"
     assert record["title"] == "Backup checked"
+    assert record["status"] == "open"
+    assert "Open 1" in resp.text
 
 
 def test_ops_incident_note_requires_title_and_note(tmp_path, client, monkeypatch):
@@ -476,6 +478,53 @@ def test_ops_incident_note_requires_title_and_note(tmp_path, client, monkeypatch
     assert "Incident title is required" in resp.text
 
 
+def test_ops_incident_status_updates_existing_note(tmp_path, client, monkeypatch):
+    monkeypatch.setattr(
+        _dm,
+        "_ops_unit_status",
+        lambda: [{"name": "nayzfreedom-dashboard.service", "state": "Ready", "detail": "active"}],
+    )
+    monkeypatch.setattr(_dm, "_latest_backup_status", lambda: {"state": "Ready", "detail": "backup-ok"})
+    record = _dm._write_ops_incident(
+        tmp_path,
+        "admin",
+        "Queue issue",
+        "critical",
+        "Instagram queue checked.",
+    )
+
+    resp = client.post(
+        f"/ops/incidents/{record['id']}/status",
+        data={"status": "investigating"},
+        headers=_auth(),
+    )
+
+    assert resp.status_code == 200
+    assert "Marked incident Queue issue as investigating" in resp.text
+    assert "Investigating 1" in resp.text
+    row = json.loads((tmp_path / "logs" / "ops_incidents.jsonl").read_text().splitlines()[-1])
+    assert row["status"] == "investigating"
+    assert row["updated_by"] == "admin"
+
+
+def test_ops_incident_status_rejects_unknown_id(tmp_path, client, monkeypatch):
+    monkeypatch.setattr(
+        _dm,
+        "_ops_unit_status",
+        lambda: [{"name": "nayzfreedom-dashboard.service", "state": "Ready", "detail": "active"}],
+    )
+    monkeypatch.setattr(_dm, "_latest_backup_status", lambda: {"state": "Ready", "detail": "backup-ok"})
+
+    resp = client.post(
+        "/ops/incidents/missing/status",
+        data={"status": "resolved"},
+        headers=_auth(),
+    )
+
+    assert resp.status_code == 400
+    assert "Incident not found" in resp.text
+
+
 def test_ops_incident_sanitizes_secret(tmp_path, monkeypatch):
     monkeypatch.setenv("META_APP_SECRET", "secret-value")
 
@@ -488,6 +537,7 @@ def test_ops_incident_sanitizes_secret(tmp_path, monkeypatch):
     )
 
     assert record["severity"] == "critical"
+    assert record["status"] == "open"
     assert "secret-value" not in (tmp_path / "logs" / "ops_incidents.jsonl").read_text()
     rows = _dm._recent_ops_incidents(tmp_path)
     assert rows[0]["title"] == "Secret check"

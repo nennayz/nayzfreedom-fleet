@@ -556,6 +556,9 @@ button[type="submit"]:hover { background: var(--navy-soft); }
   color: var(--muted);
   overflow-wrap: anywhere;
 }
+.ops-row .inline-actions {
+  grid-column: 1 / -1;
+}
 .ops-action-result {
   align-items: center;
   border-top: 1px solid var(--line);
