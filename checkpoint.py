@@ -67,7 +67,11 @@ def pause(
         print()
         decision = input("Your choice (or type freely): ").strip()
     else:
-        decision = _UNATTENDED_DECISIONS.get(stage, "approved")
+        if stage == "idea_selection" and options:
+            first = options[0].split(":", 1)[0].strip()
+            decision = first if first.isdigit() else "1"
+        else:
+            decision = _UNATTENDED_DECISIONS.get(stage, "approved")
         print(f"  [unattended] auto-decision: {decision}")
 
     job.checkpoint_log.append(

@@ -116,7 +116,12 @@ class Orchestrator:
             # For idea_selection, always build options from job.ideas so
             # Telegram shows numbered buttons even when Robin omits them.
             if stage == "idea_selection" and job.ideas:
-                options = [f"{i.number}: {i.title}" for i in job.ideas]
+                option_ideas = job.ideas
+                if self._unattended and job.content_type:
+                    matching = [i for i in job.ideas if i.content_type == job.content_type]
+                    if matching:
+                        option_ideas = matching
+                options = [f"{i.number}: {i.title}" for i in option_ideas]
             log_action("request_checkpoint", {
                 "job_id": job.id,
                 "stage": stage,

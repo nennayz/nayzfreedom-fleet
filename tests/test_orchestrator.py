@@ -94,6 +94,29 @@ def test_orchestrator_sets_content_type_at_idea_selection(mocker, tmp_path, monk
     assert job.selected_idea.number == 2
 
 
+def test_orchestrator_unattended_selects_matching_content_type(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "output").mkdir()
+
+    orch = Orchestrator(make_config())
+    orch._unattended = True
+    job = make_job(dry_run=True)
+    job.content_type = ContentType.ARTICLE
+    job.ideas = [
+        Idea(number=1, title="Video idea", hook="h", angle="Tutorial", content_type=ContentType.VIDEO),
+        Idea(number=2, title="Article idea", hook="h2", angle="Editorial", content_type=ContentType.ARTICLE),
+    ]
+
+    orch._dispatch(
+        "request_checkpoint",
+        {"stage": "idea_selection", "summary": "pick one", "options": []},
+        job,
+    )
+
+    assert job.selected_idea.number == 2
+    assert job.content_type == ContentType.ARTICLE
+
+
 def test_orchestrator_raises_on_unexpected_stop_reason(mocker, tmp_path, monkeypatch):
     import pytest
     monkeypatch.chdir(tmp_path)

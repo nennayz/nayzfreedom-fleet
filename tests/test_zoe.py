@@ -40,6 +40,20 @@ def test_zoe_live_calls_claude(mocker):
     assert job.ideas[0].content_type == ContentType.VIDEO
 
 
+def test_zoe_live_limits_allowed_type_when_preset(mocker):
+    captured = {}
+    def fake_call(system, user, **kwargs):
+        captured["user"] = user
+        return '[{"number":1,"title":"Article","hook":"h","angle":"a","content_type":"article"}]'
+    mocker.patch.object(ZoeAgent, "_call_claude", side_effect=fake_call)
+    job = make_job(dry_run=False)
+    job.content_type = ContentType.ARTICLE
+    job.trend_data = {"trends": [], "trending_sounds": [], "formats": []}
+    agent = ZoeAgent(make_config())
+    agent.run(job)
+    assert "Allowed content types: article" in captured["user"]
+
+
 def test_zoe_dry_run_ideas_have_content_type():
     job = make_job(dry_run=True)
     job.trend_data = {"trends": [], "trending_sounds": [], "formats": []}

@@ -175,3 +175,22 @@ def test_scheduler_does_not_call_notifier_on_success(tmp_path, monkeypatch):
          patch("scheduler.send_slack_alert") as mock_alert:
         sched_module.run_scheduler(dry_run=False, root=tmp_path)
     mock_alert.assert_not_called()
+
+
+def test_scheduler_skips_production_video_jobs_without_google_credentials(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "projects" / "nayzfreedom_fleet").mkdir(parents=True)
+    import yaml
+    (tmp_path / "projects" / "nayzfreedom_fleet" / "weekly_calendar.yaml").write_text(
+        yaml.dump(MONDAY_CALENDAR)
+    )
+    monkeypatch.setattr(sched_module, "_ROOT", tmp_path)
+    monkeypatch.setattr(sched_module, "_today_name", lambda: "monday")
+    monkeypatch.delenv("GOOGLE_CLOUD_PROJECT", raising=False)
+    monkeypatch.delenv("GOOGLE_APPLICATION_CREDENTIALS", raising=False)
+    with patch("scheduler.subprocess.run", return_value=_make_ok_result()) as mock_run:
+        exit_code = sched_module.run_scheduler(dry_run=False)
+    assert exit_code == 0
+    assert mock_run.call_count == 4
+    for c in mock_run.call_args_list:
+        assert "video" not in c.args[0]

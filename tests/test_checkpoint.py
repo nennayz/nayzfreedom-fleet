@@ -38,6 +38,12 @@ def test_pause_unattended_idea_selection_returns_1():
     assert job.checkpoint_log[0].decision == "1"
 
 
+def test_pause_unattended_idea_selection_uses_first_option_number():
+    job = make_job()
+    result = pause("idea_selection", "Pick an idea.", ["3: Article idea", "5: Other"], job, unattended=True)
+    assert result.decision == "3"
+
+
 def test_pause_unattended_other_stages_returns_approved():
     job = make_job()
     for stage in ("content_review", "qa_review", "final_approval"):

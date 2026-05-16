@@ -1,5 +1,6 @@
 from __future__ import annotations
 import logging
+import os
 import subprocess
 import sys
 from datetime import datetime
@@ -33,6 +34,15 @@ def _today_name() -> str:
     return datetime.now().strftime("%A").lower()
 
 
+def _video_generation_available() -> bool:
+    if not os.getenv("GOOGLE_CLOUD_PROJECT"):
+        return False
+    credentials = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "")
+    if credentials:
+        return Path(credentials).expanduser().exists()
+    return (Path.home() / ".config/gcloud/application_default_credentials.json").exists()
+
+
 def run_scheduler(dry_run: bool = False, root: Path | None = None) -> int:
     _root = root if root is not None else _ROOT
     calendars = sorted(_root.glob("projects/*/weekly_calendar.yaml"))
@@ -63,6 +73,14 @@ def run_scheduler(dry_run: bool = False, root: Path | None = None) -> int:
                 continue
 
             content_type = _KEY_TO_CONTENT_TYPE[key]
+            if root is None and not dry_run and content_type == "video" and not _video_generation_available():
+                logger.warning(
+                    "Skipping video job because Google video credentials are not configured: "
+                    "project=%s key=%s",
+                    project_slug,
+                    key,
+                )
+                continue
             total += 1
             cmd = [
                 sys.executable, "main.py",

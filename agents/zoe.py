@@ -43,6 +43,9 @@ class ZoeAgent(BaseAgent):
 
     def run_live(self, job: ContentJob, **kwargs) -> ContentJob:
         trends_str = json.dumps(job.trend_data, ensure_ascii=False)
+        allowed_types = [job.content_type.value] if job.content_type else [
+            t.value for t in job.pm.brand.allowed_content_types
+        ]
         system = (
             TEAM_IDENTITY +
             f"You are Zoe, a content ideation specialist for {job.pm.page_name}. "
@@ -51,7 +54,7 @@ class ZoeAgent(BaseAgent):
         )
         user = (
             f"Brief: {job.brief}\nPlatforms: {', '.join(job.platforms)}\n"
-            f"Allowed content types: {', '.join(t.value for t in job.pm.brand.allowed_content_types)}\n"
+            f"Allowed content types: {', '.join(allowed_types)}\n"
             f"Trends: {trends_str}\n\n"
             "Generate 5-7 content ideas. Return a JSON array of objects with keys: "
             "number (int), title (str), hook (str, max 10 words), angle (str), "
