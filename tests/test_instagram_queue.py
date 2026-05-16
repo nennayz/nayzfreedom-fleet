@@ -45,6 +45,14 @@ def test_instagram_queue_publishes_due_job(mocker, tmp_path, monkeypatch):
     assert saved["publish_result"]["facebook"]["status"] == "scheduled"
     assert saved["publish_result"]["instagram"]["status"] == "published"
     assert saved["status"] == "completed"
+    history = json.loads((tmp_path / "logs" / "instagram_queue_history.jsonl").read_text().splitlines()[-1])
+    assert history["processed"] == 1
+    assert history["published"] == 1
+    assert history["retrying"] == 0
+    assert history["failed"] == 0
+    assert history["jobs"] == [{"job_id": job_id, "status": "published"}]
+    work_activity = (tmp_path / "logs" / "work_activity.jsonl").read_text()
+    assert "Instagram queue run completed" in work_activity
 
 
 def test_instagram_queue_skips_future_job(mocker, tmp_path, monkeypatch):
@@ -57,6 +65,9 @@ def test_instagram_queue_skips_future_job(mocker, tmp_path, monkeypatch):
 
     assert exit_code == 0
     mock_run.assert_not_called()
+    history = json.loads((tmp_path / "logs" / "instagram_queue_history.jsonl").read_text().splitlines()[-1])
+    assert history["processed"] == 0
+    assert history["published"] == 0
 
 
 def test_instagram_queue_marks_failure_for_retry(mocker, tmp_path, monkeypatch):
@@ -88,6 +99,10 @@ def test_instagram_queue_marks_failure_for_retry(mocker, tmp_path, monkeypatch):
     assert ig_result["next_retry_unix"] == 1000
     assert "secret-token" not in ig_result["error"]
     assert "<redacted>" in ig_result["error"]
+    history = json.loads((tmp_path / "logs" / "instagram_queue_history.jsonl").read_text().splitlines()[-1])
+    assert history["processed"] == 1
+    assert history["retrying"] == 1
+    assert history["failed"] == 0
 
 
 def test_instagram_queue_fails_after_max_retries(mocker, tmp_path, monkeypatch):
@@ -117,3 +132,6 @@ def test_instagram_queue_fails_after_max_retries(mocker, tmp_path, monkeypatch):
     assert saved["status"] == "failed"
     assert ig_result["status"] == "failed"
     assert ig_result["retry_count"] == 3
+    history = json.loads((tmp_path / "logs" / "instagram_queue_history.jsonl").read_text().splitlines()[-1])
+    assert history["processed"] == 1
+    assert history["failed"] == 1

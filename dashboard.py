@@ -83,7 +83,7 @@ OPS_ACTIONS = {
         "verb": "start",
     },
     "instagram_queue": {
-        "label": "Run Instagram queue now",
+        "label": "Run due Instagram queue now",
         "unit": "nayzfreedom-instagram-queue.service",
         "verb": "start",
     },
@@ -249,6 +249,10 @@ def _ops_report_path(root: Path) -> Path:
     return root / "logs" / "ops_reports.jsonl"
 
 
+def _instagram_queue_history_path(root: Path) -> Path:
+    return root / "logs" / "instagram_queue_history.jsonl"
+
+
 def _write_ops_audit(root: Path, user: str, action: str, result: dict[str, str]) -> None:
     path = _ops_log_path(root)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -384,6 +388,29 @@ def _recent_ops_reports(root: Path, limit: int = 5) -> list[dict[str, str]]:
             "title": _sanitize_ops_detail(item.get("title", "Slayhack weekly Ops report")),
             "line_count": str(item.get("line_count", "")),
             "report": _sanitize_ops_report_summary(item.get("report", "")),
+        })
+    return list(reversed(rows))
+
+
+def _recent_instagram_queue_history(root: Path, limit: int = 5) -> list[dict[str, object]]:
+    path = _instagram_queue_history_path(root)
+    if not path.exists():
+        return []
+    rows: list[dict[str, object]] = []
+    for line in path.read_text(encoding="utf-8").splitlines()[-limit:]:
+        try:
+            item = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        rows.append({
+            "timestamp": str(item.get("timestamp", "")),
+            "state": "Failed" if int(item.get("failed") or 0) else "Missing" if int(item.get("retrying") or 0) else "Ready",
+            "processed": int(item.get("processed") or 0),
+            "published": int(item.get("published") or 0),
+            "retrying": int(item.get("retrying") or 0),
+            "failed": int(item.get("failed") or 0),
+            "dry_run": bool(item.get("dry_run")),
+            "jobs": item.get("jobs", []) if isinstance(item.get("jobs"), list) else [],
         })
     return list(reversed(rows))
 
@@ -867,15 +894,75 @@ def _ops_publish_failure_triage(root: Path, jobs, limit: int = 12) -> dict[str, 
     }
 
 
+def _ops_now_utc() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _parse_ops_time(value: object) -> datetime | None:
+    if value in (None, ""):
+        return None
+    if isinstance(value, (int, float)):
+        return datetime.fromtimestamp(int(value), tz=timezone.utc)
+    text = str(value).strip()
+    if not text:
+        return None
+    if text.isdigit():
+        return datetime.fromtimestamp(int(text), tz=timezone.utc)
+    try:
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+
+
+def _instagram_due_time(instagram: dict[str, object]) -> datetime | None:
+    if instagram.get("status") == "retrying":
+        return _parse_ops_time(instagram.get("next_retry_unix")) or _parse_ops_time(instagram.get("next_retry_at"))
+    return _parse_ops_time(instagram.get("scheduled_publish_time")) or _parse_ops_time(instagram.get("due_at"))
+
+
+def _ops_time_distance(due_at: datetime | None, now: datetime) -> str:
+    if due_at is None:
+        return "due time unknown"
+    seconds = int((due_at - now).total_seconds())
+    magnitude = abs(seconds)
+    if magnitude < 60:
+        return "due now" if seconds <= 0 else "in less than 1m"
+    minutes = magnitude // 60
+    if minutes < 60:
+        label = f"{minutes}m"
+    else:
+        hours = minutes // 60
+        remaining_minutes = minutes % 60
+        label = f"{hours}h" if not remaining_minutes else f"{hours}h {remaining_minutes}m"
+    return f"in {label}" if seconds > 0 else f"{label} overdue"
+
+
+def _caption_preview(job) -> str:
+    growth = getattr(job, "growth_strategy", None)
+    caption = getattr(growth, "caption", "") if growth else ""
+    if not caption and isinstance(growth, dict):
+        caption = str(growth.get("caption", ""))
+    if not caption:
+        bella = getattr(job, "bella_output", None)
+        caption = getattr(bella, "caption", "") if bella else ""
+    return _sanitize_ops_detail(caption or job.brief)[:140]
+
+
 def _ops_publish_summary(jobs) -> dict[str, object]:
     counts = {
         "facebook_scheduled": 0,
         "instagram_pending": 0,
+        "instagram_due_now": 0,
+        "instagram_future": 0,
+        "instagram_stale": 0,
         "instagram_retrying": 0,
         "instagram_failed": 0,
         "instagram_published": 0,
     }
     queue_rows = []
+    now = _ops_now_utc()
+    stale_after = timedelta(minutes=15)
     for job in jobs:
         result = job.publish_result or {}
         facebook = result.get("facebook") if isinstance(result, dict) else None
@@ -887,27 +974,53 @@ def _ops_publish_summary(jobs) -> dict[str, object]:
         status = str(instagram.get("status", "unknown"))
         if status == "pending_queue":
             counts["instagram_pending"] += 1
+            due_at_dt = _instagram_due_time(instagram)
+            if due_at_dt and now - due_at_dt > stale_after:
+                row_status = "stale"
+                row_state = "Failed"
+                counts["instagram_stale"] += 1
+            elif due_at_dt and due_at_dt <= now:
+                row_status = "due now"
+                row_state = "Missing"
+                counts["instagram_due_now"] += 1
+            else:
+                row_status = "future"
+                row_state = "Ready"
+                counts["instagram_future"] += 1
         elif status == "retrying":
             counts["instagram_retrying"] += 1
+            due_at_dt = _instagram_due_time(instagram)
+            row_status = "retrying"
+            row_state = "Missing"
         elif status == "failed":
             counts["instagram_failed"] += 1
+            due_at_dt = _instagram_due_time(instagram)
+            row_status = "failed"
+            row_state = "Failed"
         elif status == "published":
             counts["instagram_published"] += 1
-        if status in {"pending_queue", "retrying", "failed"}:
-            detail = (
-                instagram.get("next_retry_at")
-                or instagram.get("due_at")
-                or instagram.get("error")
-                or instagram.get("reason")
-                or ""
-            )
+            due_at_dt = _instagram_due_time(instagram) or _parse_ops_time(instagram.get("published_at"))
+            row_status = "published"
+            row_state = "Ready"
+        else:
+            continue
+        if status in {"pending_queue", "retrying", "failed", "published"}:
+            due_at_text = due_at_dt.strftime("%Y-%m-%dT%H:%M:%SZ") if due_at_dt else ""
+            retry_count = int(instagram.get("retry_count") or 0)
             queue_rows.append({
                 "job_id": job.id,
-                "status": status,
-                "state": "Failed" if status == "failed" else "Missing" if status == "retrying" else "Ready",
-                "detail": _sanitize_ops_detail(detail),
+                "status": row_status,
+                "raw_status": status,
+                "state": row_state,
+                "due_at": due_at_text,
+                "time_remaining": _ops_time_distance(due_at_dt, now),
+                "retry_count": retry_count,
+                "caption": _caption_preview(job),
+                "detail": _sanitize_ops_detail(instagram.get("error") or instagram.get("reason") or ""),
             })
-    return {"counts": counts, "queue": queue_rows[:6]}
+    order = {"failed": 0, "stale": 1, "due now": 2, "retrying": 3, "future": 4, "published": 5}
+    queue_rows = sorted(queue_rows, key=lambda item: (order.get(str(item["status"]), 9), str(item.get("due_at") or "")))
+    return {"counts": counts, "queue": queue_rows[:12]}
 
 
 def _workflow_owner_summary(jobs) -> list[dict[str, str]]:
@@ -1060,6 +1173,7 @@ def _ops_snapshot(root: Path, smoke_results: list[dict[str, str]] | None = None)
         "publish_errors": _ops_publish_errors(jobs),
         "publish_failure_triage": _ops_publish_failure_triage(root, jobs),
         "publish_summary": publish_summary,
+        "instagram_queue_history": _recent_instagram_queue_history(root),
         "smoke_results": smoke_results,
         "action_buttons": _ops_action_buttons(),
         "action_result": None,
