@@ -139,6 +139,7 @@ class ContentJob(BaseModel):
     video_path: Optional[str] = None
     video_package: Optional[dict] = None
     generation_request: Optional[dict] = None
+    generation_result: Optional[dict] = None
     qa_result: Optional[QAResult] = None
     nora_retry_count: int = 0
     growth_strategy: Optional[GrowthStrategy] = None

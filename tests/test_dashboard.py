@@ -313,6 +313,102 @@ def test_mark_video_package_mission_ready_for_generation(tmp_path, client):
     assert "Mark ready for generation" not in detail.text
 
 
+def test_generation_queue_shows_ready_video_mission(tmp_path, client):
+    _write_slay_hack_project(tmp_path)
+    short_video_ticket_id = _slay_hack_ticket_id(tmp_path, "short-video-1")
+    created = client.post(
+        f"/aurora/workflow/video-packages/{short_video_ticket_id}/create-mission",
+        headers=_auth(),
+        follow_redirects=False,
+    )
+    job_id = created.headers["location"].split("/")[-1]
+    client.post(f"/jobs/{job_id}/ready-for-generation", headers=_auth(), follow_redirects=False)
+
+    resp = client.get("/aurora/generation", headers=_auth())
+
+    assert resp.status_code == 200
+    assert "Generation queue" in resp.text
+    assert "Ready" in resp.text
+    assert "Run generation dry-run" in resp.text
+    assert f"/jobs/{job_id}/run-generation-dry-run" in resp.text
+    assert "veo3" in resp.text
+
+
+def test_generation_dry_run_writes_artifact_and_updates_job(tmp_path, client):
+    _write_slay_hack_project(tmp_path)
+    short_video_ticket_id = _slay_hack_ticket_id(tmp_path, "short-video-1")
+    created = client.post(
+        f"/aurora/workflow/video-packages/{short_video_ticket_id}/create-mission",
+        headers=_auth(),
+        follow_redirects=False,
+    )
+    job_id = created.headers["location"].split("/")[-1]
+    client.post(f"/jobs/{job_id}/ready-for-generation", headers=_auth(), follow_redirects=False)
+
+    resp = client.post(f"/jobs/{job_id}/run-generation-dry-run", headers=_auth(), follow_redirects=False)
+
+    assert resp.status_code == 303
+    assert resp.headers["location"] == f"/jobs/{job_id}"
+    job_path = next((tmp_path / "output" / "Slay Hack").glob("*/job.json"))
+    data = json.loads(job_path.read_text())
+    assert data["stage"] == "generation_dry_run"
+    assert data["generation_request"]["status"] == "dry_run_completed"
+    assert data["generation_request"]["attempt"] == 1
+    assert data["generation_result"]["status"] == "dry_run_completed"
+    assert data["generation_result"]["mode"] == "dry_run"
+    assert data["generation_result"]["output_path"].endswith("/video_generation_dry_run.json")
+    artifact_path = job_path.parent / "video_generation_dry_run.json"
+    artifact = json.loads(artifact_path.read_text())
+    assert artifact["job_id"] == job_id
+    assert artifact["status"] == "dry_run_completed"
+    assert artifact["message"] == "Dry run only; no external generation API was called."
+
+    detail = client.get(f"/jobs/{job_id}", headers=_auth())
+
+    assert detail.status_code == 200
+    assert "dry run completed" in detail.text
+    assert "Dry run only; no external generation API was called." in detail.text
+    assert "Rerun generation dry-run" in detail.text
+    assert "Generation dry-run artifact is saved." in detail.text
+    assert "Roxy and Emma can package caption, hashtags, FAQ, and publish prep after the real video is attached." in detail.text
+
+
+def test_generation_dry_run_can_rerun_and_increments_attempt(tmp_path, client):
+    _write_slay_hack_project(tmp_path)
+    short_video_ticket_id = _slay_hack_ticket_id(tmp_path, "short-video-1")
+    created = client.post(
+        f"/aurora/workflow/video-packages/{short_video_ticket_id}/create-mission",
+        headers=_auth(),
+        follow_redirects=False,
+    )
+    job_id = created.headers["location"].split("/")[-1]
+    client.post(f"/jobs/{job_id}/ready-for-generation", headers=_auth(), follow_redirects=False)
+    client.post(f"/jobs/{job_id}/run-generation-dry-run", headers=_auth(), follow_redirects=False)
+
+    resp = client.post(f"/jobs/{job_id}/run-generation-dry-run", headers=_auth(), follow_redirects=False)
+
+    assert resp.status_code == 303
+    job_path = next((tmp_path / "output" / "Slay Hack").glob("*/job.json"))
+    data = json.loads(job_path.read_text())
+    assert data["generation_request"]["attempt"] == 2
+    assert data["generation_result"]["attempt"] == 2
+    artifact = json.loads((job_path.parent / "video_generation_dry_run.json").read_text())
+    assert artifact["attempt"] == 2
+
+
+def test_generation_dry_run_rejects_mission_without_video_package(tmp_path, client):
+    _write_job(tmp_path, "20260512_060000", brief="not video", status="running", page="Slay Hack")
+
+    resp = client.post(
+        "/jobs/20260512_060000/run-generation-dry-run",
+        headers=_auth(),
+        follow_redirects=False,
+    )
+
+    assert resp.status_code == 400
+    assert "No video package is attached" in resp.text
+
+
 def test_aurora_crew_pages_render(client):
     crew = client.get("/aurora/crew", headers=_auth())
     detail = client.get("/aurora/crew/robin", headers=_auth())

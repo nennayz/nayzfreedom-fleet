@@ -733,6 +733,28 @@ button[type="submit"]:hover { background: var(--navy-soft); }
 .ops-row .inline-actions {
   grid-column: 1 / -1;
 }
+.generation-row {
+  grid-template-columns: auto minmax(220px, 0.7fr) minmax(0, 1fr);
+}
+.generation-row form,
+.generation-row .generation-action,
+.generation-result {
+  grid-column: 1 / -1;
+}
+.generation-result {
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 0.8rem;
+  padding-top: 0.8rem;
+}
+.generation-result p {
+  margin: 0;
+}
+.generation-result small {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
 .ops-action-result {
   align-items: center;
   border-top: 1px solid var(--line);

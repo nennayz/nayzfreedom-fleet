@@ -944,8 +944,11 @@ def _mission_outputs(job, faq_content: str | None) -> list[dict[str, str]]:
     visual_required = content_type != "article"
     video_package = getattr(job, "video_package", None) or {}
     generation_request = getattr(job, "generation_request", None) or {}
+    generation_result = getattr(job, "generation_result", None) or {}
     video_package_ready = bool(video_package)
     generation_status = str(generation_request.get("status", "")) if isinstance(generation_request, dict) else ""
+    generation_result_status = str(generation_result.get("status", "")) if isinstance(generation_result, dict) else ""
+    generation_ready = generation_status in {"dry_run_completed", "completed"} or generation_result_status in {"dry_run_completed", "completed"}
     growth_ready = job.growth_strategy is not None
     community_ready = bool(faq_content)
     publish_ready = job.publish_result is not None
@@ -968,8 +971,18 @@ def _mission_outputs(job, faq_content: str | None) -> list[dict[str, str]]:
         },
         {
             "label": "Nora QA",
-            "state": "Ready" if generation_status == "ready_for_generation" else "Waiting" if video_package_ready else "Not needed",
-            "detail": "Nora approved the package for generation." if generation_status == "ready_for_generation" else "Waiting for Nora to mark ready for generation." if video_package_ready else "No video generation gate is needed yet.",
+            "state": "Ready" if generation_status in {"ready_for_generation", "dry_run_completed", "completed"} else "Waiting" if video_package_ready else "Not needed",
+            "detail": "Nora approved the package for generation." if generation_status in {"ready_for_generation", "dry_run_completed", "completed"} else "Waiting for Nora to mark ready for generation." if video_package_ready else "No video generation gate is needed yet.",
+        },
+        {
+            "label": "Generation",
+            "state": "Ready" if generation_ready else "Waiting" if video_package_ready else "Not needed",
+            "detail": "Generation dry-run artifact is saved." if generation_result_status == "dry_run_completed" else "Generated video artifact is recorded." if generation_ready else "Waiting for the generation runner.",
+        },
+        {
+            "label": "Publish packaging",
+            "state": "Ready" if generation_ready else "Waiting" if video_package_ready else "Not needed",
+            "detail": "Roxy and Emma can package caption, hashtags, FAQ, and publish prep after the real video is attached." if generation_ready else "Waiting for generation status.",
         },
         {
             "label": "Growth",
@@ -1278,6 +1291,123 @@ def _generation_request_for_package(package: VideoProductionPackage) -> dict[str
         "prompt_count": len(package.prompt_package),
         "asset_count": len(package.asset_checklist),
     }
+
+
+def _generation_status_label(value: str) -> str:
+    labels = {
+        "nora_review": "Nora review",
+        "ready_for_generation": "Ready",
+        "dry_run_completed": "Dry-run complete",
+        "completed": "Complete",
+        "failed": "Failed",
+    }
+    return labels.get(value, value.replace("_", " ").title() if value else "Unknown")
+
+
+def _generation_state(value: str) -> str:
+    if value in {"ready_for_generation", "dry_run_completed", "completed"}:
+        return "ready"
+    if value == "failed":
+        return "failed"
+    return "missing"
+
+
+def _generation_artifact_path(root: Path, job: ContentJob) -> Path:
+    return root / "output" / job.pm.page_name / job.id / "video_generation_dry_run.json"
+
+
+def _generation_artifact_display_path(job: ContentJob) -> str:
+    return f"output/{job.pm.page_name}/{job.id}/video_generation_dry_run.json"
+
+
+def _generation_queue(root: Path) -> list[dict[str, object]]:
+    rows = []
+    for job in list_all_jobs(root):
+        request = getattr(job, "generation_request", None)
+        if not isinstance(request, dict):
+            continue
+        status = str(request.get("status", ""))
+        result = getattr(job, "generation_result", None)
+        rows.append(
+            {
+                "job": job,
+                "status": status,
+                "status_label": _generation_status_label(status),
+                "state": _generation_state(status),
+                "tool_hint": request.get("tool_hint", "generation"),
+                "scene_count": request.get("scene_count", 0),
+                "asset_count": request.get("asset_count", 0),
+                "attempt": request.get("attempt", 0),
+                "next_action": request.get("next_action", "Review generation package."),
+                "result": result if isinstance(result, dict) else None,
+                "can_run": status in {"ready_for_generation", "failed", "dry_run_completed"},
+            }
+        )
+    order = {"ready_for_generation": 0, "failed": 1, "dry_run_completed": 2, "nora_review": 3, "completed": 4}
+    rows.sort(key=lambda item: (order.get(str(item["status"]), 9), str(item["job"].id)), reverse=False)
+    return rows
+
+
+def _run_generation_dry_run(root: Path, job: ContentJob) -> ContentJob:
+    package = getattr(job, "video_package", None)
+    if not isinstance(package, dict):
+        raise ValueError("No video package is attached to this mission")
+    prompts = package.get("prompt_package") or []
+    scenes = package.get("scenes") or []
+    if not prompts or not scenes:
+        raise ValueError("Video package needs scenes and prompts before generation")
+    generation_request = dict(job.generation_request or {})
+    status = str(generation_request.get("status", ""))
+    if status not in {"ready_for_generation", "failed", "dry_run_completed"}:
+        raise ValueError("Generation is not ready to run yet")
+
+    attempt = int(generation_request.get("attempt", 0) or 0) + 1
+    created_at = datetime.now(timezone.utc).isoformat()
+    artifact_payload = {
+        "job_id": job.id,
+        "mode": "dry_run",
+        "status": "dry_run_completed",
+        "tool": generation_request.get("tool", "video_generation"),
+        "tool_hint": generation_request.get("tool_hint", "veo3"),
+        "attempt": attempt,
+        "scene_count": len(scenes),
+        "prompt_count": len(prompts),
+        "asset_count": len(package.get("asset_checklist") or []),
+        "total_duration_seconds": package.get("total_duration_seconds"),
+        "prompts": prompts,
+        "created_at": created_at,
+        "message": "Dry run only; no external generation API was called.",
+    }
+    artifact_path = _generation_artifact_path(root, job)
+    artifact_path.parent.mkdir(parents=True, exist_ok=True)
+    artifact_path.write_text(json.dumps(artifact_payload, indent=2))
+
+    generation_request.update(
+        {
+            "status": "dry_run_completed",
+            "attempt": attempt,
+            "last_run_at": created_at,
+            "next_action": "Roxy and Emma can package caption, hashtags, FAQ, and publish prep after the real video is attached.",
+        }
+    )
+    job.generation_request = generation_request
+    job.generation_result = {
+        "status": "dry_run_completed",
+        "mode": "dry_run",
+        "tool": generation_request.get("tool", "video_generation"),
+        "tool_hint": generation_request.get("tool_hint", "veo3"),
+        "attempt": attempt,
+        "scene_count": len(scenes),
+        "prompt_count": len(prompts),
+        "asset_count": len(package.get("asset_checklist") or []),
+        "output_path": _generation_artifact_display_path(job),
+        "created_at": created_at,
+        "message": "Dry run only; no external generation API was called.",
+    }
+    job.stage = "generation_dry_run"
+    job.status = JobStatus.AWAITING_APPROVAL
+    _save_job_at_root(root, job)
+    return job
 
 
 def _safe_job_suffix(value: str) -> str:
@@ -1641,6 +1771,21 @@ def aurora_workflow(request: Request, _: str = Depends(verify_auth)):
     return templates.TemplateResponse(request, "aurora_workflow.html", _aurora_workflow_snapshot(_root(request)))
 
 
+@app.get("/aurora/generation", response_class=HTMLResponse)
+def aurora_generation(request: Request, _: str = Depends(verify_auth)):
+    rows = _generation_queue(_root(request))
+    return templates.TemplateResponse(
+        request,
+        "aurora_generation.html",
+        {
+            "generation_jobs": rows,
+            "ready_count": sum(1 for item in rows if item["status"] == "ready_for_generation"),
+            "dry_run_count": sum(1 for item in rows if item["status"] == "dry_run_completed"),
+            "failed_count": sum(1 for item in rows if item["status"] == "failed"),
+        },
+    )
+
+
 @app.post("/aurora/workflow/video-packages/{ticket_id}/create-mission")
 def create_video_package_mission(ticket_id: str, request: Request, _: str = Depends(verify_auth)):
     root = _root(request)
@@ -1866,6 +2011,7 @@ def job_detail(job_id: str, request: Request, _: str = Depends(verify_auth)):
     mission_outputs = _mission_outputs(job, faq_content)
     video_package = getattr(job, "video_package", None)
     generation_request = getattr(job, "generation_request", None)
+    generation_result = getattr(job, "generation_result", None)
     return templates.TemplateResponse(
         request,
         "job_detail.html",
@@ -1879,6 +2025,7 @@ def job_detail(job_id: str, request: Request, _: str = Depends(verify_auth)):
             "mission_outputs": mission_outputs,
             "video_package": video_package,
             "generation_request": generation_request,
+            "generation_result": generation_result,
         },
     )
 
@@ -1906,6 +2053,20 @@ def ready_for_generation(job_id: str, request: Request, _: str = Depends(verify_
     job.stage = "nora_done"
     job.status = JobStatus.AWAITING_APPROVAL
     _save_job_at_root(root, job)
+    return RedirectResponse(f"/jobs/{job_id}", status_code=303)
+
+
+@app.post("/jobs/{job_id}/run-generation-dry-run")
+def run_generation_dry_run(job_id: str, request: Request, _: str = Depends(verify_auth)):
+    root = _root(request)
+    try:
+        job = _find_job_at_root(root, job_id)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Job {job_id!r} not found")
+    try:
+        _run_generation_dry_run(root, job)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
     return RedirectResponse(f"/jobs/{job_id}", status_code=303)
 
 
