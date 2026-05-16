@@ -214,7 +214,12 @@ def test_aurora_workflow_page_renders_daily_slate(tmp_path, client):
     assert "Minimum met" in resp.text
     assert "Production tickets" in resp.text
     assert "Long story episode" in resp.text
+    assert "Video Producer owns production" in resp.text
+    assert "Slay decides" in resp.text
+    assert "primary youtube" in resp.text
     assert "9 storyboard scenes" in resp.text
+    assert "2 acceptance checks" in resp.text
+    assert "4 asset needs" in resp.text
     assert "Engagement review" in resp.text
     assert "Cross-team requests" in resp.text
 

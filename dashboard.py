@@ -1065,11 +1065,54 @@ def _owner_for_ticket(ticket_type: ProductionTicketType, pm_name: str) -> str:
     return {
         ProductionTicketType.ARTICLE: "Bella",
         ProductionTicketType.INFOGRAPHIC: "Lila",
-        ProductionTicketType.SHORT_VIDEO: "Lila",
-        ProductionTicketType.LONG_VIDEO: "Lila",
+        ProductionTicketType.SHORT_VIDEO: "Video Producer",
+        ProductionTicketType.LONG_VIDEO: "Video Producer",
         ProductionTicketType.COMMUNITY_POST: "Emma",
         ProductionTicketType.DISTRIBUTION_PACK: "Roxy",
     }.get(ticket_type, pm_name)
+
+
+def _acceptance_criteria_for_ticket(ticket_type: ProductionTicketType) -> list[str]:
+    criteria = {
+        ProductionTicketType.ARTICLE: [
+            "Headline, body, and CTA are ready for Facebook.",
+            "The angle is not a duplicate of a recent Slay Hack post.",
+        ],
+        ProductionTicketType.INFOGRAPHIC: [
+            "4:5 visual structure, copy blocks, and prompt direction are ready.",
+            "The save/share value is clear before QA.",
+        ],
+        ProductionTicketType.SHORT_VIDEO: [
+            "15-40 second scene plan has hook, payoff, CTA, and primary platform.",
+            "Bella/Lila handoff needs are clear before generation.",
+        ],
+        ProductionTicketType.LONG_VIDEO: [
+            "60-180 second storyboard is complete before generation.",
+            "Scene timing, tool hint, asset list, and CTA are ready for QA.",
+        ],
+        ProductionTicketType.COMMUNITY_POST: [
+            "Prompt and moderation angle are ready.",
+        ],
+        ProductionTicketType.DISTRIBUTION_PACK: [
+            "Caption, hashtag, timing, and platform CTA are ready.",
+        ],
+    }
+    return criteria.get(ticket_type, [])
+
+
+def _asset_requirements_for_ticket(ticket_type: ProductionTicketType) -> list[str]:
+    if ticket_type == ProductionTicketType.LONG_VIDEO:
+        return [
+            "Storyboard scenes",
+            "Veo3 prompt package",
+            "Hero object reference",
+            "Scene 8 infographic card",
+        ]
+    if ticket_type == ProductionTicketType.SHORT_VIDEO:
+        return ["Short-form scene beats", "Hero object reference", "Visual prompt package"]
+    if ticket_type == ProductionTicketType.INFOGRAPHIC:
+        return ["4:5 layout brief", "Copy blocks", "Visual prompt package"]
+    return []
 
 
 def _storyboard_for_long_video(title: str) -> list[StoryboardScene]:
@@ -1119,7 +1162,12 @@ def _calendar_slate(root: Path, project_slug: str = "slay_hack") -> CalendarSlat
     tickets = []
     for key, title in day_items.items():
         ticket_type = _ticket_type_from_calendar_key(str(key))
-        storyboard = _storyboard_for_long_video(str(title)) if ticket_type == ProductionTicketType.LONG_VIDEO else []
+        platforms = _platforms_for_ticket(ticket_type)
+        storyboard = (
+            _storyboard_for_long_video(str(title))
+            if ticket_type == ProductionTicketType.LONG_VIDEO
+            else []
+        )
         tickets.append(
             ProductionTicket(
                 ticket_id=f"{day_key}-{str(key).replace('_', '-')}",
@@ -1130,9 +1178,13 @@ def _calendar_slate(root: Path, project_slug: str = "slay_hack") -> CalendarSlat
                 title=str(title),
                 objective="daily content floor",
                 owner=_owner_for_ticket(ticket_type, pm.name),
-                platforms=_platforms_for_ticket(ticket_type),
+                platforms=platforms,
+                platform_primary=platforms[0],
+                decision_owner=pm.name,
+                acceptance_criteria=_acceptance_criteria_for_ticket(ticket_type),
+                asset_requirements=_asset_requirements_for_ticket(ticket_type),
                 due_date=date.today(),
-                format_name="Veo3 storyboard" if ticket_type == ProductionTicketType.LONG_VIDEO else None,
+                format_name="Veo3 storyboard package" if ticket_type == ProductionTicketType.LONG_VIDEO else None,
                 storyboard=storyboard,
             )
         )
@@ -1180,9 +1232,14 @@ def _ticket_rows(slate: CalendarSlate | None) -> list[dict[str, object]]:
             "ticket_type": ticket.ticket_type.value.replace("_", " "),
             "title": ticket.title,
             "owner": ticket.owner,
+            "decision_owner": ticket.decision_owner,
+            "priority": ticket.priority,
+            "platform_primary": ticket.platform_primary,
             "status": ticket.status.value,
             "platforms": ", ".join(ticket.platforms),
             "storyboard_count": len(ticket.storyboard),
+            "acceptance_count": len(ticket.acceptance_criteria),
+            "asset_count": len(ticket.asset_requirements),
         }
         for ticket in slate.tickets
     ]
@@ -1259,7 +1316,7 @@ def _cross_team_requests() -> list[CrossTeamRequest]:
             request_id="central-market-scan",
             project="slay_hack",
             from_role="Slay",
-            to_role="Market Analyst",
+            to_role="Market & Monetization Analyst",
             question="Validate audience, competitor, monetization, and viral potential before scaling a new content pillar.",
         ),
         CrossTeamRequest(

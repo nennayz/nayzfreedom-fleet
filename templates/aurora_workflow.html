@@ -92,7 +92,12 @@
     <div class="ops-row">
       <span class="badge badge-ops-ready">{{ ticket.ticket_type }}</span>
       <strong>{{ ticket.title }}</strong>
-      <small>{{ ticket.owner }} - {{ ticket.platforms }} - {{ ticket.status }}{% if ticket.storyboard_count %} - {{ ticket.storyboard_count }} storyboard scenes{% endif %}</small>
+      <small>
+        {{ ticket.owner }} owns production - {{ ticket.decision_owner }} decides - primary {{ ticket.platform_primary }} - priority {{ ticket.priority }} - {{ ticket.status }}
+        {% if ticket.storyboard_count %} - {{ ticket.storyboard_count }} storyboard scenes{% endif %}
+        {% if ticket.acceptance_count %} - {{ ticket.acceptance_count }} acceptance checks{% endif %}
+        {% if ticket.asset_count %} - {{ ticket.asset_count }} asset needs{% endif %}
+      </small>
     </div>
     {% else %}
     <p class="muted">No production tickets planned.</p>
