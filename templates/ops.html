@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-header ops-header">
+  <div>
+    <p class="eyebrow">Production</p>
+    <h1>Ops</h1>
+  </div>
+  <form class="inline-form" method="post" action="/ops/smoke-test">
+    <button type="submit">Run smoke test</button>
+  </form>
+</section>
+
+<section class="stat-grid wide">
+  <article class="stat-card">
+    <span>Total jobs</span>
+    <strong>{{ summary.total }}</strong>
+  </article>
+  <article class="stat-card">
+    <span>Completed</span>
+    <strong>{{ summary.completed }}</strong>
+  </article>
+  <article class="stat-card">
+    <span>Failed</span>
+    <strong>{{ summary.failed }}</strong>
+  </article>
+  <article class="stat-card">
+    <span>Running</span>
+    <strong>{{ summary.running }}</strong>
+  </article>
+</section>
+
+{% if smoke_results %}
+<section class="panel">
+  <div class="section-heading">
+    <p class="eyebrow">Smoke</p>
+    <h2>Latest smoke test</h2>
+  </div>
+  <div class="ops-list">
+    {% for item in smoke_results %}
+    <div class="ops-row">
+      <span class="badge badge-ops-{{ item.state | lower }}">{{ item.state }}</span>
+      <strong>{{ item.name }}</strong>
+      <small>{{ item.detail }}</small>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<section class="content-grid">
+  <article class="panel">
+    <div class="section-heading">
+      <p class="eyebrow">Systemd</p>
+      <h2>Services and timers</h2>
+    </div>
+    <div class="ops-list">
+      {% for unit in units %}
+      <div class="ops-row">
+        <span class="badge badge-ops-{{ unit.state | lower }}">{{ unit.state }}</span>
+        <strong>{{ unit.name }}</strong>
+        <small>{{ unit.detail }}</small>
+      </div>
+      {% endfor %}
+    </div>
+  </article>
+
+  <article class="panel">
+    <div class="section-heading">
+      <p class="eyebrow">Backup</p>
+      <h2>Latest state archive</h2>
+    </div>
+    <div class="ops-row">
+      <span class="badge badge-ops-{{ backup.state | lower }}">{{ backup.state }}</span>
+      <strong>Backup archive</strong>
+      <small>{{ backup.detail }}</small>
+    </div>
+  </article>
+</section>
+
+<section class="content-grid">
+  <article class="panel">
+    <div class="section-heading">
+      <p class="eyebrow">Jobs</p>
+      <h2>Latest missions</h2>
+    </div>
+    <div class="mission-list">
+      {% for job in latest_jobs %}
+      <a class="mission-row" href="/jobs/{{ job.id }}">
+        <span>{{ job.id[:8] }}</span>
+        <strong>{{ job.brief[:70] }}{% if job.brief | length > 70 %}...{% endif %}</strong>
+        <em class="badge badge-{{ job.status.value }}">{{ job.status.value | status_label }}</em>
+      </a>
+      {% else %}
+      <p class="muted">No missions yet.</p>
+      {% endfor %}
+    </div>
+  </article>
+
+  <article class="panel">
+    <div class="section-heading">
+      <p class="eyebrow">Publish</p>
+      <h2>Recent errors</h2>
+    </div>
+    <div class="ops-list">
+      {% for item in publish_errors %}
+      <a class="ops-row" href="/jobs/{{ item.job_id }}">
+        <span class="badge badge-publish-failed">{{ item.platform }}</span>
+        <strong>{{ item.job_id }}</strong>
+        <small>{{ item.detail }}</small>
+      </a>
+      {% else %}
+      <p class="muted">No recent publish errors.</p>
+      {% endfor %}
+    </div>
+  </article>
+</section>
+{% endblock %}

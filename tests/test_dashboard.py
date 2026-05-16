@@ -285,6 +285,54 @@ def test_readiness_page_renders_private_preflight(tmp_path, client):
     assert "Privacy boundary" in resp.text
 
 
+def test_ops_page_renders_status_and_errors(tmp_path, client, monkeypatch):
+    _write_job(
+        tmp_path,
+        "20260512_060000",
+        brief="publish failed",
+        status="failed",
+        publish_result={"facebook": {"status": "failed", "error": "bad token"}},
+    )
+    monkeypatch.setattr(
+        _dm,
+        "_ops_unit_status",
+        lambda: [{"name": "nayzfreedom-dashboard.service", "state": "Ready", "detail": "active"}],
+    )
+    monkeypatch.setattr(_dm, "_latest_backup_status", lambda: {"state": "Ready", "detail": "backup-ok"})
+
+    resp = client.get("/ops", headers=_auth())
+
+    assert resp.status_code == 200
+    assert "Ops" in resp.text
+    assert "Services and timers" in resp.text
+    assert "nayzfreedom-dashboard.service" in resp.text
+    assert "backup-ok" in resp.text
+    assert "publish failed" in resp.text
+    assert "bad token" in resp.text
+    assert "Run smoke test" in resp.text
+
+
+def test_ops_smoke_test_renders_results(tmp_path, client, monkeypatch):
+    monkeypatch.setattr(
+        _dm,
+        "_ops_unit_status",
+        lambda: [{"name": "nayzfreedom-dashboard.service", "state": "Ready", "detail": "active"}],
+    )
+    monkeypatch.setattr(_dm, "_latest_backup_status", lambda: {"state": "Ready", "detail": "backup-ok"})
+    monkeypatch.setattr(
+        _dm,
+        "_ops_smoke_results",
+        lambda root: [{"name": "Health URL", "state": "Ready", "detail": "HTTP 200"}],
+    )
+
+    resp = client.post("/ops/smoke-test", headers=_auth())
+
+    assert resp.status_code == 200
+    assert "Latest smoke test" in resp.text
+    assert "Health URL" in resp.text
+    assert "HTTP 200" in resp.text
+
+
 def test_jobs_partial_returns_fragment(tmp_path, client):
     _write_job(tmp_path, "20260512_060000")
     resp = client.get("/jobs/partial", headers=_auth())
