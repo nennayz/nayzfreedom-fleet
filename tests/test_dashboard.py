@@ -316,6 +316,8 @@ def test_ops_page_renders_status_and_errors(tmp_path, client, monkeypatch):
     assert "Restart dashboard" in resp.text
     assert "Recent Ops actions" in resp.text
     assert "ops_actions.jsonl" in resp.text
+    assert "Add Ops note" in resp.text
+    assert "Recent notes" in resp.text
 
 
 def test_ops_smoke_test_renders_results(tmp_path, client, monkeypatch):
@@ -429,6 +431,67 @@ def test_ops_log_status_counts_entries_and_archives(tmp_path):
     assert result["line_count"] == 2
     assert result["archive_count"] == 1
     assert "2 entries" in result["detail"]
+
+
+def test_ops_incident_note_saves_and_displays(tmp_path, client, monkeypatch):
+    monkeypatch.setattr(
+        _dm,
+        "_ops_unit_status",
+        lambda: [{"name": "nayzfreedom-dashboard.service", "state": "Ready", "detail": "active"}],
+    )
+    monkeypatch.setattr(_dm, "_latest_backup_status", lambda: {"state": "Ready", "detail": "backup-ok"})
+
+    resp = client.post(
+        "/ops/incidents",
+        data={"title": "Backup checked", "severity": "warning", "note": "Reviewed restore smoke output."},
+        headers=_auth(),
+    )
+
+    assert resp.status_code == 200
+    assert "Saved incident: Backup checked" in resp.text
+    assert "Backup checked" in resp.text
+    assert "Reviewed restore smoke output." in resp.text
+    path = tmp_path / "logs" / "ops_incidents.jsonl"
+    record = json.loads(path.read_text().splitlines()[-1])
+    assert record["user"] == "admin"
+    assert record["severity"] == "warning"
+    assert record["title"] == "Backup checked"
+
+
+def test_ops_incident_note_requires_title_and_note(tmp_path, client, monkeypatch):
+    monkeypatch.setattr(
+        _dm,
+        "_ops_unit_status",
+        lambda: [{"name": "nayzfreedom-dashboard.service", "state": "Ready", "detail": "active"}],
+    )
+    monkeypatch.setattr(_dm, "_latest_backup_status", lambda: {"state": "Ready", "detail": "backup-ok"})
+
+    resp = client.post(
+        "/ops/incidents",
+        data={"title": "", "severity": "critical", "note": ""},
+        headers=_auth(),
+    )
+
+    assert resp.status_code == 400
+    assert "Incident title is required" in resp.text
+
+
+def test_ops_incident_sanitizes_secret(tmp_path, monkeypatch):
+    monkeypatch.setenv("META_APP_SECRET", "secret-value")
+
+    record = _dm._write_ops_incident(
+        tmp_path,
+        "admin",
+        "Secret check",
+        "critical",
+        "contains secret-value",
+    )
+
+    assert record["severity"] == "critical"
+    assert "secret-value" not in (tmp_path / "logs" / "ops_incidents.jsonl").read_text()
+    rows = _dm._recent_ops_incidents(tmp_path)
+    assert rows[0]["title"] == "Secret check"
+    assert "<redacted>" in rows[0]["note"]
 
 
 def test_latest_backup_status_handles_permission_denied(monkeypatch, tmp_path):

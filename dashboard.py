@@ -206,6 +206,10 @@ def _ops_log_path(root: Path) -> Path:
     return root / "logs" / "ops_actions.jsonl"
 
 
+def _ops_incident_path(root: Path) -> Path:
+    return root / "logs" / "ops_incidents.jsonl"
+
+
 def _write_ops_audit(root: Path, user: str, action: str, result: dict[str, str]) -> None:
     path = _ops_log_path(root)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -238,6 +242,49 @@ def _recent_ops_audit(root: Path, limit: int = 8) -> list[dict[str, str]]:
             "state": str(item.get("result_state", "unknown")),
             "name": str(item.get("result_name", "")),
             "detail": _sanitize_ops_detail(item.get("detail", "")),
+        })
+    return list(reversed(rows))
+
+
+def _write_ops_incident(root: Path, user: str, title: str, severity: str, note: str) -> dict[str, str]:
+    title = _sanitize_ops_detail(title).strip()[:120]
+    note = _sanitize_ops_detail(note).strip()[:1000]
+    severity = severity if severity in {"info", "warning", "critical"} else "info"
+    if not title:
+        raise ValueError("Incident title is required")
+    if not note:
+        raise ValueError("Incident note is required")
+
+    path = _ops_incident_path(root)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    record = {
+        "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "user": user,
+        "title": title,
+        "severity": severity,
+        "note": note,
+    }
+    with path.open("a") as fh:
+        fh.write(json.dumps(record, sort_keys=True) + "\n")
+    return record
+
+
+def _recent_ops_incidents(root: Path, limit: int = 6) -> list[dict[str, str]]:
+    path = _ops_incident_path(root)
+    if not path.exists():
+        return []
+    rows = []
+    for line in path.read_text().splitlines()[-limit:]:
+        try:
+            item = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        rows.append({
+            "timestamp": str(item.get("timestamp", "")),
+            "user": str(item.get("user", "")),
+            "title": str(item.get("title", "")),
+            "severity": str(item.get("severity", "info")),
+            "note": _sanitize_ops_detail(item.get("note", "")),
         })
     return list(reversed(rows))
 
@@ -425,6 +472,8 @@ def _ops_snapshot(root: Path, smoke_results: list[dict[str, str]] | None = None)
         "action_result": None,
         "ops_audit": _recent_ops_audit(root),
         "ops_log": _ops_log_status(root),
+        "ops_incidents": _recent_ops_incidents(root),
+        "incident_result": None,
     }
 
 
@@ -832,6 +881,26 @@ def ops_action(action: str, request: Request, user: str = Depends(verify_auth)):
     _write_ops_audit(root, user, action, action_result)
     snapshot = _ops_snapshot(root)
     snapshot["action_result"] = action_result
+    return templates.TemplateResponse(request, "ops.html", snapshot)
+
+
+@app.post("/ops/incidents", response_class=HTMLResponse)
+def ops_incident(
+    request: Request,
+    title: str = Form(""),
+    severity: str = Form("info"),
+    note: str = Form(""),
+    user: str = Depends(verify_auth),
+):
+    root = _root(request)
+    snapshot = _ops_snapshot(root)
+    try:
+        incident = _write_ops_incident(root, user, title, severity, note)
+    except ValueError as exc:
+        snapshot["incident_result"] = {"state": "Failed", "detail": str(exc)}
+        return templates.TemplateResponse(request, "ops.html", snapshot, status_code=400)
+    snapshot = _ops_snapshot(root)
+    snapshot["incident_result"] = {"state": "Ready", "detail": f"Saved incident: {incident['title']}"}
     return templates.TemplateResponse(request, "ops.html", snapshot)
 
 
