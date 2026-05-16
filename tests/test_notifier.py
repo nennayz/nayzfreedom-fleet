@@ -40,6 +40,8 @@ def test_send_slack_alert_posts_to_webhook(monkeypatch):
 
 def test_send_slack_alert_missing_env_skips(monkeypatch):
     monkeypatch.delenv("SLACK_WEBHOOK_URL", raising=False)
+    monkeypatch.delenv("TELEGRAM_BOT_TOKEN", raising=False)
+    monkeypatch.delenv("TELEGRAM_CHAT_ID", raising=False)
     mock_post = MagicMock()
     with patch("notifier.requests.post", mock_post):
         send_slack_alert(FAILURES_ONE, "2026-05-13", total=7, dry_run=False)
@@ -100,6 +102,8 @@ def test_send_weekly_report_posts_to_webhook(monkeypatch):
 
 def test_send_weekly_report_missing_env_skips(monkeypatch):
     monkeypatch.delenv("SLACK_WEBHOOK_URL", raising=False)
+    monkeypatch.delenv("TELEGRAM_BOT_TOKEN", raising=False)
+    monkeypatch.delenv("TELEGRAM_CHAT_ID", raising=False)
     mock_post = MagicMock()
     with patch("notifier.requests.post", mock_post):
         send_weekly_report([":bar_chart: Weekly Report"], dry_run=False)
@@ -120,3 +124,33 @@ def test_send_weekly_report_request_exception_does_not_raise(monkeypatch):
     monkeypatch.setenv("SLACK_WEBHOOK_URL", "https://hooks.slack.com/fake")
     with patch("notifier.requests.post", side_effect=Exception("network error")):
         send_weekly_report([":bar_chart: Weekly Report"], dry_run=False)  # must not raise
+
+
+def test_send_slack_alert_uses_telegram_fallback(monkeypatch):
+    monkeypatch.delenv("SLACK_WEBHOOK_URL", raising=False)
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "telegram-token")
+    monkeypatch.setenv("TELEGRAM_CHAT_ID", "123456")
+    mock_post = MagicMock()
+    mock_post.return_value.__enter__ = lambda s: mock_post.return_value
+    mock_post.return_value.__exit__ = MagicMock(return_value=False)
+    mock_post.return_value.status_code = 200
+    with patch("notifier.requests.post", mock_post):
+        send_slack_alert(FAILURES_ONE, "2026-05-13", total=7, dry_run=False)
+    mock_post.assert_called_once()
+    assert mock_post.call_args.args[0] == "https://api.telegram.org/bottelegram-token/sendMessage"
+    assert "1/7 jobs failed" in mock_post.call_args.kwargs["json"]["text"]
+
+
+def test_send_weekly_report_uses_telegram_fallback(monkeypatch):
+    monkeypatch.delenv("SLACK_WEBHOOK_URL", raising=False)
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "telegram-token")
+    monkeypatch.setenv("TELEGRAM_CHAT_ID", "123456")
+    mock_post = MagicMock()
+    mock_post.return_value.__enter__ = lambda s: mock_post.return_value
+    mock_post.return_value.__exit__ = MagicMock(return_value=False)
+    mock_post.return_value.status_code = 200
+    with patch("notifier.requests.post", mock_post):
+        send_weekly_report([":bar_chart: Weekly Report"], dry_run=False)
+    mock_post.assert_called_once()
+    assert mock_post.call_args.args[0] == "https://api.telegram.org/bottelegram-token/sendMessage"
+    assert ":bar_chart: Weekly Report" in mock_post.call_args.kwargs["json"]["text"]

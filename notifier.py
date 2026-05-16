@@ -1,10 +1,65 @@
-"""notifier.py — sends Slack alerts for failed scheduler jobs."""
+"""notifier.py — sends scheduler and report alerts."""
 from __future__ import annotations
 
 import os
 import sys
 
 import requests
+
+
+def _post_slack(message: str, missing_label: str) -> bool:
+    url = os.environ.get("SLACK_WEBHOOK_URL")
+    if not url:
+        return False
+
+    try:
+        with requests.post(url, json={"text": message}, timeout=10) as resp:
+            if not (200 <= resp.status_code < 300):
+                print(
+                    f"WARNING: Slack {missing_label} webhook returned status {resp.status_code}.",
+                    file=sys.stderr,
+                )
+    except Exception as exc:  # noqa: BLE001
+        print(f"WARNING: Failed to send Slack {missing_label}: {exc}", file=sys.stderr)
+    return True
+
+
+def _post_telegram(message: str, missing_label: str) -> bool:
+    token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+    chat_id = os.environ.get("TELEGRAM_CHAT_ID", "")
+    if not token or not chat_id:
+        return False
+
+    try:
+        with requests.post(
+            f"https://api.telegram.org/bot{token}/sendMessage",
+            json={
+                "chat_id": chat_id,
+                "text": message,
+                "disable_web_page_preview": True,
+            },
+            timeout=10,
+        ) as resp:
+            if not (200 <= resp.status_code < 300):
+                print(
+                    f"WARNING: Telegram {missing_label} returned status {resp.status_code}.",
+                    file=sys.stderr,
+                )
+    except Exception:  # noqa: BLE001
+        print(f"WARNING: Failed to send Telegram {missing_label}.", file=sys.stderr)
+    return True
+
+
+def _send_alert(message: str, missing_label: str) -> None:
+    if _post_slack(message, missing_label):
+        return
+    if _post_telegram(message, missing_label):
+        return
+    print(
+        f"WARNING: SLACK_WEBHOOK_URL or TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID not set — "
+        f"skipping {missing_label}.",
+        file=sys.stderr,
+    )
 
 
 def send_slack_alert(
@@ -34,20 +89,7 @@ def send_slack_alert(
         print(message)
         return
 
-    url = os.environ.get("SLACK_WEBHOOK_URL")
-    if not url:
-        print("WARNING: SLACK_WEBHOOK_URL not set — skipping Slack alert.", file=sys.stderr)
-        return
-
-    try:
-        with requests.post(url, json={"text": message}, timeout=10) as resp:
-            if not (200 <= resp.status_code < 300):
-                print(
-                    f"WARNING: Slack webhook returned status {resp.status_code}.",
-                    file=sys.stderr,
-                )
-    except Exception as exc:  # noqa: BLE001
-        print(f"WARNING: Failed to send Slack alert: {exc}", file=sys.stderr)
+    _send_alert(message, "scheduler alert")
 
 
 def send_weekly_report(lines: list[str], dry_run: bool = False) -> None:
@@ -63,17 +105,4 @@ def send_weekly_report(lines: list[str], dry_run: bool = False) -> None:
         print(message)
         return
 
-    url = os.environ.get("SLACK_WEBHOOK_URL")
-    if not url:
-        print("WARNING: SLACK_WEBHOOK_URL not set — skipping weekly report.", file=sys.stderr)
-        return
-
-    try:
-        with requests.post(url, json={"text": message}, timeout=10) as resp:
-            if not (200 <= resp.status_code < 300):
-                print(
-                    f"WARNING: Slack weekly report webhook returned status {resp.status_code}.",
-                    file=sys.stderr,
-                )
-    except Exception as exc:  # noqa: BLE001
-        print(f"WARNING: Failed to send weekly report: {exc}", file=sys.stderr)
+    _send_alert(message, "weekly report")

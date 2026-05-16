@@ -7,6 +7,7 @@ INSTALL_DIR="${INSTALL_DIR:-/opt/nayzfreedom}"
 BACKUP_ROOT="${BACKUP_ROOT:-/opt/nayzfreedom-backups}"
 TRAEFIK_CONFIG="${TRAEFIK_CONFIG:-/docker/traefik-fmcv/dynamic/nayzfreedom.yml}"
 RETENTION="${RETENTION:-7}"
+GOOGLE_DRIVE_BACKUP_FOLDER_ID="${GOOGLE_DRIVE_BACKUP_FOLDER_ID:-}"
 
 stamp="$(date -u +%Y%m%dT%H%M%SZ)"
 backup_dir="$BACKUP_ROOT/$stamp"
@@ -25,6 +26,16 @@ fi
 
 sha256sum "$backup_dir/state.tgz" > "$backup_dir/state.tgz.sha256"
 chmod -R go-rwx "$backup_dir"
+
+if [ -n "$GOOGLE_DRIVE_BACKUP_FOLDER_ID" ]; then
+    "$INSTALL_DIR/.venv/bin/python" "$INSTALL_DIR/google_drive.py" \
+        "$backup_dir/state.tgz" \
+        --folder-id "$GOOGLE_DRIVE_BACKUP_FOLDER_ID" \
+        --name "nayzfreedom-$stamp-state.tgz" \
+        --mime-type "application/gzip" >/tmp/nayzfreedom-drive-backup.json
+    chmod 600 /tmp/nayzfreedom-drive-backup.json
+    echo "drive_backup=uploaded"
+fi
 
 find "$BACKUP_ROOT" -mindepth 1 -maxdepth 1 -type d | sort | head -n "-$RETENTION" | xargs -r rm -rf
 

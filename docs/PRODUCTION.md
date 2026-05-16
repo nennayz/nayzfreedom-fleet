@@ -119,6 +119,19 @@ systemctl start nayzfreedom-backup.service
 journalctl -u nayzfreedom-backup.service -n 50 --no-pager
 ```
 
+For off-server Google Drive backup, set these in `/opt/nayzfreedom/.env`:
+
+```text
+GOOGLE_APPLICATION_CREDENTIALS=/opt/nayzfreedom/secrets/google-service-account.json
+GOOGLE_DRIVE_BACKUP_FOLDER_ID=<drive-folder-id>
+```
+
+The service account must have write access to the target Drive folder.
+
+## Alerts
+
+Scheduler failure alerts and weekly reports use `SLACK_WEBHOOK_URL` first. If Slack is not set, they fall back to Telegram when both `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` are present.
+
 ## Monitoring
 
 The health-check timer runs every 5 minutes and fails when:
