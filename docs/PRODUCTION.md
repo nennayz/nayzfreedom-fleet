@@ -11,6 +11,7 @@ This runbook covers the current production deployment for the Slayhack dashboard
 - Dashboard service: `nayzfreedom-dashboard.service`
 - Bot service: `nayzfreedom-bot.service`
 - Timers: `nayzfreedom-scheduler.timer`, `nayzfreedom-reporter.timer`
+- Instagram queue timer: `nayzfreedom-instagram-queue.timer`
 - Backup timer: `nayzfreedom-backup.timer`
 - Health-check timer: `nayzfreedom-healthcheck.timer`
 - Traefik dynamic config: `/docker/traefik-fmcv/dynamic/nayzfreedom.yml`
@@ -38,6 +39,7 @@ systemctl is-active nayzfreedom-dashboard.service
 systemctl is-active nayzfreedom-bot.service
 systemctl is-active nayzfreedom-scheduler.timer
 systemctl is-active nayzfreedom-reporter.timer
+systemctl is-active nayzfreedom-instagram-queue.timer
 systemctl is-active nayzfreedom-backup.timer
 systemctl is-active nayzfreedom-healthcheck.timer
 curl -fsS https://fleet.nayzfreedom.cloud/healthz
@@ -59,6 +61,7 @@ Dashboard service: active
 Bot service: active
 Scheduler timer: active
 Reporter timer: active
+Instagram queue timer: active
 Backup timer: active
 Health-check timer: active
 Traefik config: present
@@ -88,6 +91,7 @@ After rollback, create a fix-forward commit locally and deploy normally.
 journalctl -u nayzfreedom-dashboard.service -n 100 --no-pager
 journalctl -u nayzfreedom-bot.service -n 100 --no-pager
 journalctl -u nayzfreedom-scheduler.service -n 100 --no-pager
+journalctl -u nayzfreedom-instagram-queue.service -n 100 --no-pager
 journalctl -u nayzfreedom-reporter.service -n 100 --no-pager
 journalctl -u nayzfreedom-backup.service -n 100 --no-pager
 journalctl -u nayzfreedom-healthcheck.service -n 100 --no-pager

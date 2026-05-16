@@ -763,6 +763,11 @@ tr:hover { background: rgba(125, 226, 209, 0.12); }
 .badge-failed { background: #f8d7da; color: #842029; }
 .badge-pending { background: #eceff3; color: #45505f; }
 .badge-awaiting_approval { background: #dce8ff; color: #214f98; }
+.badge-publish-scheduled { background: #dce8ff; color: #214f98; }
+.badge-publish-published { background: #d9f2e4; color: #17603e; }
+.badge-publish-pending_queue { background: #fff0bf; color: #7a5700; }
+.badge-publish-failed { background: #f8d7da; color: #842029; }
+.badge-publish-skipped { background: #eceff3; color: #45505f; }
 
 details { margin: 1rem 0; }
 summary { cursor: pointer; font-weight: 600; padding: 0.5rem 0; }

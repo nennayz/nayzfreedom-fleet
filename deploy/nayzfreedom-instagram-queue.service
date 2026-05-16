@@ -1,0 +1,12 @@
+[Unit]
+Description=Slayhack Instagram publish queue (one-shot)
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=nayzfreedom
+WorkingDirectory=/opt/nayzfreedom
+EnvironmentFile=/opt/nayzfreedom/.env
+ExecStart=/opt/nayzfreedom/.venv/bin/python instagram_queue.py
+StandardOutput=journal
+StandardError=journal

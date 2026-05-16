@@ -50,6 +50,13 @@
     <p><strong>Platforms:</strong> {{ job.platforms | join(", ") }}</p>
     <p><strong>Content Type:</strong> {{ job.content_type.value if job.content_type else "—" }}</p>
     <p><strong>Status:</strong> <span class="badge badge-{{ job.status.value }}">{{ job.status.value | status_label }}</span></p>
+    {% if job.publish_result %}
+    <p><strong>Publish:</strong>
+      {% for item in publish_status_items(job) %}
+      <span class="badge badge-publish-{{ item.status }}">{{ item.label }}</span>
+      {% endfor %}
+    </p>
+    {% endif %}
   </article>
   <article class="panel">
     <div class="section-heading">

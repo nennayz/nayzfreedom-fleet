@@ -287,28 +287,30 @@ def test_publish_live_ig_reels_schedule_publishes_without_scheduled_field(mocker
     vid_file = tmp_path / "video.mp4"
     vid_file.write_bytes(b"MP4")
     mock_post = mocker.patch("agents.publish.requests.post")
-    mock_get = mocker.patch("agents.publish.requests.get")
-    init_resp = mocker.MagicMock()
-    init_resp.raise_for_status = mocker.MagicMock()
-    init_resp.json.return_value = {"id": "container-3", "uri": "https://rupload.facebook.com/upload-456"}
-    upload_resp = mocker.MagicMock()
-    upload_resp.raise_for_status = mocker.MagicMock()
-    status_resp = mocker.MagicMock()
-    status_resp.raise_for_status = mocker.MagicMock()
-    status_resp.json.return_value = {"status_code": "FINISHED"}
-    mock_get.return_value = status_resp
-    publish_resp = mocker.MagicMock()
-    publish_resp.raise_for_status = mocker.MagicMock()
-    publish_resp.json.return_value = {"id": "reel-2"}
-    mock_post.side_effect = [init_resp, upload_resp, publish_resp]
     agent = PublishAgent(make_publish_config())
     job = make_video_job(dry_run=False, video_path=str(vid_file))
     job.platforms = ["instagram"]
     job = agent.run(job, schedule=True)
-    init_data = mock_post.call_args_list[0][1]["data"]
-    assert "scheduled_publish_time" not in init_data
-    assert job.publish_result["instagram"]["status"] == "published"
-    assert "published immediately" in job.publish_result["instagram"]["schedule_note"]
+    mock_post.assert_not_called()
+    assert job.publish_result["instagram"]["status"] == "pending_queue"
+    assert "due_at" in job.publish_result["instagram"]
+    assert "just-in-time publish" in job.publish_result["instagram"]["reason"]
+
+
+def test_publish_meta_error_includes_sanitized_body(mocker):
+    mock_post = mocker.patch("agents.publish.requests.post")
+    resp = mocker.MagicMock()
+    resp.raise_for_status.side_effect = Exception("400 Client Error")
+    resp.text = '{"error":{"message":"bad token access_token=secret-token"}}'
+    mock_post.return_value = resp
+    agent = PublishAgent(make_publish_config())
+    job = make_article_job(dry_run=False)
+    job.platforms = ["facebook"]
+    job = agent.run(job)
+    error = job.publish_result["facebook"]["error"]
+    assert "body=" in error
+    assert "access_token=<redacted>" in error
+    assert "secret-token" not in error
 
 
 def test_publish_tiktok_image_skips_with_reason(tmp_path, monkeypatch):
