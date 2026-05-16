@@ -29,6 +29,17 @@ def test_production_summary_systemd_units_exist():
     assert "00:15:00 UTC" in timer.read_text()
 
 
+def test_log_retention_systemd_units_exist():
+    root = Path(__file__).resolve().parents[1]
+    service = root / "deploy" / "nayzfreedom-log-retention.service"
+    timer = root / "deploy" / "nayzfreedom-log-retention.timer"
+    assert service.exists()
+    assert timer.exists()
+    assert "ops_retention.py" in service.read_text()
+    assert "00:30:00 UTC" in timer.read_text()
+    assert "nayzfreedom-log-retention.timer" in (root / "deploy" / "healthcheck.sh").read_text()
+
+
 def test_ops_sudoers_limits_allowed_commands():
     root = Path(__file__).resolve().parents[1]
     sudoers = root / "deploy" / "nayzfreedom-ops.sudoers"

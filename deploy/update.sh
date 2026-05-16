@@ -26,9 +26,15 @@ if [ -f "$INSTALL_DIR/deploy/nayzfreedom-ops.sudoers" ]; then
     cp "$INSTALL_DIR/deploy/nayzfreedom-ops.sudoers" /etc/sudoers.d/nayzfreedom-ops
     chmod 440 /etc/sudoers.d/nayzfreedom-ops
 fi
+for unit in \
+    nayzfreedom-log-retention.service \
+    nayzfreedom-log-retention.timer; do
+    cp "$INSTALL_DIR/deploy/$unit" "/etc/systemd/system/$unit"
+done
 
 echo "[3/3] Restarting services..."
 systemctl daemon-reload
+systemctl enable --now nayzfreedom-log-retention.timer
 systemctl restart nayzfreedom-dashboard.service
 systemctl status nayzfreedom-dashboard.service --no-pager
 systemctl restart nayzfreedom-bot.service

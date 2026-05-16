@@ -315,6 +315,7 @@ def test_ops_page_renders_status_and_errors(tmp_path, client, monkeypatch):
     assert "Run production summary now" in resp.text
     assert "Restart dashboard" in resp.text
     assert "Recent Ops actions" in resp.text
+    assert "ops_actions.jsonl" in resp.text
 
 
 def test_ops_smoke_test_renders_results(tmp_path, client, monkeypatch):
@@ -413,6 +414,21 @@ def test_ops_audit_sanitizes_and_reads_recent_entries(tmp_path, monkeypatch):
     assert rows[0]["action"] == "backup"
     assert rows[0]["state"] == "Ready"
     assert "<redacted>" in rows[0]["detail"]
+
+
+def test_ops_log_status_counts_entries_and_archives(tmp_path):
+    log_dir = tmp_path / "logs"
+    archive_dir = log_dir / "archive"
+    archive_dir.mkdir(parents=True)
+    (log_dir / "ops_actions.jsonl").write_text("{}\n{}\n")
+    (archive_dir / "ops_actions-20260516T000000Z.jsonl").write_text("{}\n")
+
+    result = _dm._ops_log_status(tmp_path)
+
+    assert result["state"] == "Ready"
+    assert result["line_count"] == 2
+    assert result["archive_count"] == 1
+    assert "2 entries" in result["detail"]
 
 
 def test_latest_backup_status_handles_permission_denied(monkeypatch, tmp_path):

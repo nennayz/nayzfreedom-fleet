@@ -73,6 +73,11 @@
     <p class="eyebrow">Audit</p>
     <h2>Recent Ops actions</h2>
   </div>
+  <div class="ops-action-result">
+    <span class="badge badge-ops-{{ ops_log.state | lower }}">{{ ops_log.state }}</span>
+    <strong>ops_actions.jsonl</strong>
+    <small>{{ ops_log.detail }}</small>
+  </div>
   <div class="ops-list">
     {% for item in ops_audit %}
     <div class="ops-row">
