@@ -68,6 +68,59 @@
 </section>
 {% endif %}
 
+<section class="content-grid">
+  <article class="panel">
+    <div class="section-heading">
+      <p class="eyebrow">Incident</p>
+      <h2>Add Ops note</h2>
+    </div>
+    <form class="inline-form ops-note-form" method="post" action="/ops/incidents">
+      <div>
+        <label for="incident-title">Title</label>
+        <input id="incident-title" name="title" maxlength="120" required>
+      </div>
+      <div>
+        <label for="incident-severity">Severity</label>
+        <select id="incident-severity" name="severity">
+          <option value="info">Info</option>
+          <option value="warning">Warning</option>
+          <option value="critical">Critical</option>
+        </select>
+      </div>
+      <div>
+        <label for="incident-note">Note</label>
+        <textarea id="incident-note" name="note" rows="4" maxlength="1000" required></textarea>
+      </div>
+      <button type="submit">Save incident note</button>
+    </form>
+    {% if incident_result %}
+    <div class="ops-action-result">
+      <span class="badge badge-ops-{{ incident_result.state | lower }}">{{ incident_result.state }}</span>
+      <strong>Incident note</strong>
+      <small>{{ incident_result.detail }}</small>
+    </div>
+    {% endif %}
+  </article>
+
+  <article class="panel">
+    <div class="section-heading">
+      <p class="eyebrow">Incident</p>
+      <h2>Recent notes</h2>
+    </div>
+    <div class="ops-list">
+      {% for item in ops_incidents %}
+      <div class="ops-row">
+        <span class="badge badge-ops-{{ 'failed' if item.severity == 'critical' else 'missing' if item.severity == 'warning' else 'ready' }}">{{ item.severity }}</span>
+        <strong>{{ item.title }}</strong>
+        <small>{{ item.timestamp }} - {{ item.user }} - {{ item.note }}</small>
+      </div>
+      {% else %}
+      <p class="muted">No incident notes yet.</p>
+      {% endfor %}
+    </div>
+  </article>
+</section>
+
 <section class="panel">
   <div class="section-heading">
     <p class="eyebrow">Audit</p>
