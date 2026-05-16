@@ -44,11 +44,11 @@ def build_summary(root: Path) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Send a daily Slayhack production summary.")
-    parser.add_argument("--root", default=".", help="Project root containing output/")
+    parser.add_argument("--root", default=None, help="Project root containing output/")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
 
-    root = Path(args.root).resolve()
+    root = Path(args.root).resolve() if args.root else Path(__file__).resolve().parent
     load_dotenv(root / ".env")
     send_healthcheck_alert(build_summary(root), dry_run=args.dry_run)
 
