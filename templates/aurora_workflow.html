@@ -27,6 +27,27 @@
   </div>
 </section>
 
+<section class="panel">
+  <div class="section-heading">
+    <p class="eyebrow">Operating lanes</p>
+    <h2>How work moves without overlap</h2>
+  </div>
+  <div class="workflow-lane-grid">
+    {% for lane in workflow_lanes %}
+    <article class="workflow-lane">
+      <span>{{ lane.mission_type }}</span>
+      <strong>{{ lane.label }}</strong>
+      <em>{{ lane.owner }}</em>
+      <ol>
+        {% for step in lane.steps %}
+        <li>{{ step }}</li>
+        {% endfor %}
+      </ol>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+
 <section class="content-grid">
   <article class="panel">
     <div class="section-heading">

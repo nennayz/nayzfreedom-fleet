@@ -1223,6 +1223,55 @@ def _mission_type_cards() -> list[dict[str, str]]:
     ]
 
 
+def _workflow_lanes() -> list[dict[str, object]]:
+    return [
+        {
+            "label": "Discovery",
+            "mission_type": MissionType.NEW_PROJECT_DISCOVERY.value,
+            "owner": "Robin",
+            "steps": [
+                "Mia scans signals",
+                "Market & Monetization validates business potential",
+                "Archivist checks duplicates",
+                "Nora reviews feasibility",
+            ],
+        },
+        {
+            "label": "Planning",
+            "mission_type": MissionType.CONTENT_CALENDAR_PLAN.value,
+            "owner": "Slay",
+            "steps": [
+                "PM sets daily goals",
+                "Zoe proposes angles",
+                "Robin creates tickets",
+                "Nora checks coverage",
+            ],
+        },
+        {
+            "label": "Production",
+            "mission_type": MissionType.PRODUCTION_BATCH.value,
+            "owner": "Video Producer",
+            "steps": [
+                "Bella writes words",
+                "Lila builds visual direction",
+                "Video Producer prepares scene timing and Veo3 package",
+                "Roxy and Emma package release support",
+            ],
+        },
+        {
+            "label": "Learning",
+            "mission_type": MissionType.PERFORMANCE_REVIEW.value,
+            "owner": "Growth Analyst",
+            "steps": [
+                "Growth Analyst reads metrics",
+                "Roxy interprets packaging",
+                "PM chooses scale, repair, or lesson",
+                "Archivist records learning",
+            ],
+        },
+    ]
+
+
 def _ticket_rows(slate: CalendarSlate | None) -> list[dict[str, object]]:
     if slate is None:
         return []
@@ -1335,6 +1384,7 @@ def _aurora_workflow_snapshot(root: Path) -> dict[str, object]:
     counts = slate.counts_by_type() if slate else {}
     return {
         "mission_types": _mission_type_cards(),
+        "workflow_lanes": _workflow_lanes(),
         "slate": slate,
         "slate_counts": {
             "articles": counts.get(ProductionTicketType.ARTICLE, 0),

@@ -209,6 +209,12 @@ def test_aurora_workflow_page_renders_daily_slate(tmp_path, client):
     assert "Operating workflow" in resp.text
     assert "New project discovery" in resp.text
     assert "Content calendar plan" in resp.text
+    assert "Operating lanes" in resp.text
+    assert "Discovery" in resp.text
+    assert "Planning" in resp.text
+    assert "Production" in resp.text
+    assert "Learning" in resp.text
+    assert "Video Producer prepares scene timing and Veo3 package" in resp.text
     assert "PM daily slate" in resp.text
     assert "Slay Hack" in resp.text
     assert "Minimum met" in resp.text
@@ -230,6 +236,8 @@ def test_aurora_crew_pages_render(client):
     assert crew.status_code == 200
     assert "Crew" in crew.text
     assert "Robin" in crew.text
+    assert "Vera Reel" in crew.text
+    assert "Video Producer" in crew.text
     assert "Mission command" in crew.text
     assert "Captain&#39;s Bridge" in crew.text
     assert detail.status_code == 200

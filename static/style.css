@@ -558,6 +558,43 @@ button[type="submit"]:hover { background: var(--navy-soft); }
   color: var(--muted);
   line-height: 1.45;
 }
+.workflow-lane-grid {
+  display: grid;
+  gap: 0.85rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.workflow-lane {
+  background: rgba(31,143,154,0.06);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.9rem;
+}
+.workflow-lane span {
+  color: var(--gold);
+  font-size: 0.72rem;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+  text-transform: uppercase;
+}
+.workflow-lane strong {
+  color: var(--ink);
+  font-size: 1.05rem;
+}
+.workflow-lane em {
+  color: #1f8f9a;
+  font-style: normal;
+  font-weight: 800;
+}
+.workflow-lane ol {
+  color: var(--muted);
+  display: grid;
+  gap: 0.3rem;
+  line-height: 1.45;
+  margin: 0.2rem 0 0;
+  padding-left: 1.1rem;
+}
 .workflow-stats {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   margin: 1rem 0;
@@ -1007,6 +1044,11 @@ a:hover { color: var(--navy-soft); }
   }
   .aurora-crew-strip img {
     width: 100%;
+  }
+  .workflow-card-grid,
+  .workflow-lane-grid,
+  .workflow-stats {
+    grid-template-columns: 1fr;
   }
   .character-hero {
     grid-template-columns: 1fr;
