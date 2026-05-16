@@ -1,4 +1,4 @@
-from agents.publish import PublishAgent
+from agents.publish import PublishAgent, has_publish_failures
 from config import Config
 from models.content_job import ContentType, ImageCaption, Article, Script, GrowthStrategy
 
@@ -61,6 +61,12 @@ def test_publish_dry_run_sets_result():
     job = agent.run(job)
     assert job.publish_result == {"dry_run": True, "platforms": job.platforms}
     assert job.stage == "publish_done"
+
+
+def test_has_publish_failures_detects_failed_platform():
+    assert has_publish_failures({"facebook": {"status": "failed"}}) is True
+    assert has_publish_failures({"facebook": {"status": "published"}}) is False
+    assert has_publish_failures(None) is False
 
 
 def test_publish_live_fb_image_calls_photos_endpoint(mocker, tmp_path, monkeypatch):

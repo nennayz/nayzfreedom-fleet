@@ -16,6 +16,13 @@ _YOUTUBE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 logger = logging.getLogger(__name__)
 
 
+def has_publish_failures(result: dict | None) -> bool:
+    if not result:
+        return False
+    platform_results = [v for v in result.values() if isinstance(v, dict)]
+    return any(item.get("status") == "failed" for item in platform_results)
+
+
 class PublishAgent(BaseAgent):
     def run_dry(self, job: ContentJob, **kwargs) -> ContentJob:
         job.publish_result = {"dry_run": True, "platforms": job.platforms}

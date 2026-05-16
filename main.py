@@ -158,6 +158,7 @@ def main() -> None:
         print(f"\nJob complete! Output saved to: {out_dir}")
     else:
         print(f"\nJob ended with status: {result.status}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

@@ -132,3 +132,16 @@ def test_orchestrator_raises_on_unexpected_stop_reason(mocker, tmp_path, monkeyp
     with pytest.raises(RuntimeError, match="max_tokens"):
         orch.run(job)
     assert job.status == JobStatus.FAILED
+
+
+def test_orchestrator_marks_publish_failures_failed(mocker, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "output").mkdir()
+
+    mocker.patch("orchestrator.anthropic.Anthropic").return_value.messages.create.return_value = _make_end_turn_response()
+    orch = Orchestrator(make_config())
+    job = make_job(dry_run=True)
+    job.publish_result = {"facebook": {"status": "failed", "error": "blocked"}}
+    result = orch.run(job)
+
+    assert result.status == JobStatus.FAILED

@@ -9,7 +9,7 @@ from agents.lila import LilaAgent
 from agents.nora import NoraAgent
 from agents.roxy import RoxyAgent
 from agents.emma import EmmaAgent
-from agents.publish import PublishAgent
+from agents.publish import PublishAgent, has_publish_failures
 from checkpoint import pause
 from config import Config
 from job_store import save_job, load_recent_performance
@@ -84,7 +84,7 @@ class Orchestrator:
             )
 
             if response.stop_reason == "end_turn":
-                job.status = JobStatus.COMPLETED
+                job.status = JobStatus.FAILED if has_publish_failures(job.publish_result) else JobStatus.COMPLETED
                 save_job(job)
                 log_action("orchestrator_complete", {"job_id": job.id, "status": job.status.value})
                 return job
