@@ -650,7 +650,80 @@ def _publish_failure_category(platform: str, error: str) -> str:
     return "unknown"
 
 
-def _ops_publish_failure_triage(jobs, limit: int = 12) -> dict[str, object]:
+def _content_type_value(job) -> str:
+    return str(getattr(job.content_type, "value", job.content_type) or "unknown")
+
+
+def _media_readiness(root: Path, job) -> dict[str, str]:
+    content_type = _content_type_value(job)
+    if content_type == "article":
+        return {
+            "state": "Ready",
+            "label": "Media not required",
+            "detail": "Facebook feed article uses message-only payload.",
+        }
+    media_field = "video_path" if content_type == "video" else "image_path"
+    media = getattr(job, media_field, None)
+    if not media:
+        return {
+            "state": "Failed",
+            "label": "Media missing",
+            "detail": f"{media_field} is empty for {content_type}.",
+        }
+    media_path = Path(str(media))
+    resolved = media_path if media_path.is_absolute() else root / media_path
+    if not resolved.exists():
+        return {
+            "state": "Failed",
+            "label": "Media file missing",
+            "detail": str(media)[:180],
+        }
+    size = resolved.stat().st_size
+    if size <= 0:
+        return {
+            "state": "Failed",
+            "label": "Media empty",
+            "detail": str(media)[:180],
+        }
+    return {
+        "state": "Ready",
+        "label": "Media ready",
+        "detail": f"{size / 1024 / 1024:.1f} MB - {str(media)[:150]}",
+    }
+
+
+def _caption_readiness(job) -> dict[str, str]:
+    strategy = job.growth_strategy
+    caption = getattr(strategy, "caption", "") if strategy else ""
+    best_time = getattr(strategy, "best_post_time_utc", "") if strategy else ""
+    if not str(caption).strip():
+        return {
+            "state": "Failed",
+            "label": "Caption missing",
+            "detail": "growth_strategy.caption is empty.",
+        }
+    detail = f"{len(str(caption).strip())} chars"
+    if best_time:
+        detail = f"{detail} - best time {best_time}"
+    return {"state": "Ready", "label": "Caption ready", "detail": detail}
+
+
+def _retry_recommendation(job, platform: str, category: str, media: dict[str, str], caption: dict[str, str]) -> str:
+    content_type = _content_type_value(job)
+    if media["state"] != "Ready":
+        return "Fix media path before retry."
+    if caption["state"] != "Ready":
+        return "Add caption before retry."
+    if platform == "instagram" and content_type != "video" and category == "meta bad request":
+        return "Payload is locally ready; inspect Meta body or switch IG image upload to public image_url if source upload is rejected."
+    if platform == "facebook" and content_type == "article" and category == "meta bad request":
+        return "Payload is locally ready; inspect Meta body, page permission, or scheduled feed constraints."
+    if category == "auth or permission":
+        return "Check token scope, page role, and connected account before retry."
+    return "Payload is locally ready; retry only after checking external API cause."
+
+
+def _ops_publish_failure_triage(root: Path, jobs, limit: int = 12) -> dict[str, object]:
     rows: list[dict[str, str]] = []
     groups: dict[str, dict[str, object]] = {}
     for job in jobs:
@@ -662,6 +735,8 @@ def _ops_publish_failure_triage(jobs, limit: int = 12) -> dict[str, object]:
                 continue
             error = _sanitize_ops_detail(value.get("error") or value.get("reason") or "failed")
             category = _publish_failure_category(str(platform), error)
+            media = _media_readiness(root, job)
+            caption = _caption_readiness(job)
             key = f"{platform}:{category}"
             group = groups.setdefault(
                 key,
@@ -680,6 +755,9 @@ def _ops_publish_failure_triage(jobs, limit: int = 12) -> dict[str, object]:
                     "platform": str(platform),
                     "category": category,
                     "detail": error[:240],
+                    "media": media,
+                    "caption": caption,
+                    "recommendation": _retry_recommendation(job, str(platform), category, media, caption),
                     "retry_path": f"/ops/publish-failures/{job.id}/{platform}/retry",
                 }
             )
@@ -881,7 +959,7 @@ def _ops_snapshot(root: Path, smoke_results: list[dict[str, str]] | None = None)
         "summary": summary,
         "latest_jobs": jobs[:5],
         "publish_errors": _ops_publish_errors(jobs),
-        "publish_failure_triage": _ops_publish_failure_triage(jobs),
+        "publish_failure_triage": _ops_publish_failure_triage(root, jobs),
         "publish_summary": publish_summary,
         "smoke_results": smoke_results,
         "action_buttons": _ops_action_buttons(),

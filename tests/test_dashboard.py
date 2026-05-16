@@ -839,11 +839,50 @@ def test_ops_page_renders_status_and_errors(tmp_path, client, monkeypatch):
     assert "Retry lane" in resp.text
     assert "facebook - auth or permission" in resp.text
     assert "/ops/publish-failures/20260512_060000/facebook/retry" in resp.text
+    assert "Media missing" in resp.text
+    assert "Caption missing" in resp.text
     assert "Crew ownership" in resp.text
     assert "Hygiene checks" in resp.text
     assert "System resources" in resp.text
     assert "Service events" in resp.text
     assert "Restore smoke history" in resp.text
+
+
+def test_ops_publish_failure_triage_shows_media_and_caption_readiness(tmp_path, client, monkeypatch):
+    media_path = tmp_path / "output" / "Slayhack" / "20260512_070000" / "image.png"
+    _write_job(
+        tmp_path,
+        "20260512_070000",
+        brief="image publish failed",
+        status="failed",
+        publish_result={"instagram": {"status": "failed", "error": "400 Client Error: Bad Request"}},
+    )
+    media_path.write_bytes(b"image-bytes")
+    job_path = tmp_path / "output" / "Slayhack" / "20260512_070000" / "job.json"
+    data = json.loads(job_path.read_text())
+    data["content_type"] = "infographic"
+    data["image_path"] = "output/Slayhack/20260512_070000/image.png"
+    data["growth_strategy"] = {
+        "hashtags": ["#slayhack"],
+        "caption": "Ready caption",
+        "best_post_time_utc": "14:00",
+        "best_post_time_thai": "21:00",
+        "editorial_guidance": {},
+    }
+    job_path.write_text(json.dumps(data))
+    monkeypatch.setattr(
+        _dm,
+        "_ops_unit_status",
+        lambda: [{"name": "nayzfreedom-dashboard.service", "state": "Ready", "detail": "active"}],
+    )
+    monkeypatch.setattr(_dm, "_latest_backup_status", lambda: {"state": "Ready", "detail": "backup-ok"})
+
+    resp = client.get("/ops", headers=_auth())
+
+    assert resp.status_code == 200
+    assert "Media ready" in resp.text
+    assert "Caption ready" in resp.text
+    assert "switch IG image upload to public image_url" in resp.text
 
 
 def test_ops_smoke_test_renders_results(tmp_path, client, monkeypatch):
