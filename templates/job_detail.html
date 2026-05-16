@@ -142,7 +142,15 @@
       <div class="generation-result">
         <span class="badge badge-ops-ready">{{ generation_result.status | replace("_", " ") }}</span>
         <p>{{ generation_result.message }}</p>
-        <small>{{ generation_result.output_path }} · attempt {{ generation_result.attempt }}</small>
+        <small>
+          {{ generation_result.output_path }}
+          {% if generation_result.attempt %} · attempt {{ generation_result.attempt }}{% endif %}
+          {% if generation_result.provider %} · {{ generation_result.provider }}{% endif %}
+          {% if generation_result.provider_request_id %} · request {{ generation_result.provider_request_id }}{% endif %}
+        </small>
+        {% if generation_result.publish_packaging %}
+        <p><strong>Publish packaging:</strong> {{ generation_result.publish_packaging.next_action }}</p>
+        {% endif %}
       </div>
       {% endif %}
       {% if generation_request and generation_request.status == "nora_review" %}
@@ -153,6 +161,19 @@
       {% if generation_request and generation_request.status in ["ready_for_generation", "failed", "dry_run_completed"] %}
       <form class="inline-form" method="post" action="/jobs/{{ job.id }}/run-generation-dry-run">
         <button type="submit">{{ "Rerun generation dry-run" if generation_request.status == "dry_run_completed" else "Run generation dry-run" }}</button>
+      </form>
+      {% endif %}
+      {% if generation_request and generation_request.status in ["ready_for_generation", "failed", "dry_run_completed", "completed"] %}
+      <form class="inline-form generation-intake-form" method="post" action="/jobs/{{ job.id }}/record-generation-result">
+        <label for="video_path_{{ job.id }}">Generated video path or URL</label>
+        <input id="video_path_{{ job.id }}" name="video_path" type="text" value="{{ job.video_path or '' }}" placeholder="output/Slay Hack/.../video.mp4" required>
+        <label for="provider_{{ job.id }}">Provider</label>
+        <input id="provider_{{ job.id }}" name="provider" type="text" value="{{ generation_result.provider if generation_result and generation_result.provider else 'manual_upload' }}" required>
+        <label for="provider_request_id_{{ job.id }}">Provider request id</label>
+        <input id="provider_request_id_{{ job.id }}" name="provider_request_id" type="text" value="{{ generation_result.provider_request_id if generation_result and generation_result.provider_request_id else '' }}">
+        <label for="generation_note_{{ job.id }}">Generation note</label>
+        <textarea id="generation_note_{{ job.id }}" name="note" rows="2">{{ generation_result.note if generation_result and generation_result.note else '' }}</textarea>
+        <button type="submit">Record real generation result</button>
       </form>
       {% endif %}
     </article>

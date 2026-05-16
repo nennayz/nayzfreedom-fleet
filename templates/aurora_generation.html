@@ -21,6 +21,14 @@
     <strong>{{ dry_run_count }}</strong>
   </div>
   <div class="stat-card">
+    <span>Waiting video</span>
+    <strong>{{ waiting_real_count }}</strong>
+  </div>
+  <div class="stat-card">
+    <span>Completed</span>
+    <strong>{{ completed_count }}</strong>
+  </div>
+  <div class="stat-card">
     <span>Failed</span>
     <strong>{{ failed_count }}</strong>
   </div>
@@ -44,12 +52,16 @@
       <small>
         {{ item.tool_hint }} · {{ item.scene_count }} scenes · {{ item.asset_count }} assets · attempt {{ item.attempt }}
         {% if item.result %} · {{ item.result.output_path }}{% endif %}
+        {% if item.waiting_for_real_video %} · waiting real video{% endif %}
       </small>
       <small class="generation-action">{{ item.next_action }}</small>
       {% if item.can_run %}
       <form class="inline-form" method="post" action="/jobs/{{ item.job.id }}/run-generation-dry-run">
         <button type="submit">{{ "Rerun generation dry-run" if item.status == "dry_run_completed" else "Run generation dry-run" }}</button>
       </form>
+      {% endif %}
+      {% if item.can_record %}
+      <a class="button button-secondary generation-action" href="/jobs/{{ item.job.id }}">Record real generation result</a>
       {% endif %}
     </div>
     {% endfor %}

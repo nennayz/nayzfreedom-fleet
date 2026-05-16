@@ -949,6 +949,7 @@ def _mission_outputs(job, faq_content: str | None) -> list[dict[str, str]]:
     generation_status = str(generation_request.get("status", "")) if isinstance(generation_request, dict) else ""
     generation_result_status = str(generation_result.get("status", "")) if isinstance(generation_result, dict) else ""
     generation_ready = generation_status in {"dry_run_completed", "completed"} or generation_result_status in {"dry_run_completed", "completed"}
+    real_video_ready = generation_status == "completed" and generation_result_status == "completed" and bool(job.video_path)
     growth_ready = job.growth_strategy is not None
     community_ready = bool(faq_content)
     publish_ready = job.publish_result is not None
@@ -981,8 +982,8 @@ def _mission_outputs(job, faq_content: str | None) -> list[dict[str, str]]:
         },
         {
             "label": "Publish packaging",
-            "state": "Ready" if generation_ready else "Waiting" if video_package_ready else "Not needed",
-            "detail": "Roxy and Emma can package caption, hashtags, FAQ, and publish prep after the real video is attached." if generation_ready else "Waiting for generation status.",
+            "state": "Ready" if real_video_ready else "Waiting" if video_package_ready else "Not needed",
+            "detail": "Roxy and Emma can package caption, hashtags, FAQ, and publish prep." if real_video_ready else "Waiting for the real generated video attachment.",
         },
         {
             "label": "Growth",
@@ -1312,6 +1313,23 @@ def _generation_state(value: str) -> str:
     return "missing"
 
 
+def _waiting_for_real_video(job: ContentJob) -> bool:
+    request = getattr(job, "generation_request", None) or {}
+    result = getattr(job, "generation_result", None) or {}
+    request_status = str(request.get("status", "")) if isinstance(request, dict) else ""
+    result_status = str(result.get("status", "")) if isinstance(result, dict) else ""
+    return request_status == "dry_run_completed" and result_status == "dry_run_completed" and not bool(job.video_path)
+
+
+def _clean_generation_text(value: str | None, field: str, max_length: int = 500) -> str:
+    cleaned = (value or "").strip()
+    if not cleaned:
+        raise ValueError(f"{field} is required")
+    if len(cleaned) > max_length:
+        raise ValueError(f"{field} must be {max_length} characters or fewer")
+    return cleaned
+
+
 def _generation_artifact_path(root: Path, job: ContentJob) -> Path:
     return root / "output" / job.pm.page_name / job.id / "video_generation_dry_run.json"
 
@@ -1341,10 +1359,12 @@ def _generation_queue(root: Path) -> list[dict[str, object]]:
                 "next_action": request.get("next_action", "Review generation package."),
                 "result": result if isinstance(result, dict) else None,
                 "can_run": status in {"ready_for_generation", "failed", "dry_run_completed"},
+                "can_record": status in {"ready_for_generation", "dry_run_completed", "failed"},
+                "waiting_for_real_video": _waiting_for_real_video(job),
             }
         )
-    order = {"ready_for_generation": 0, "failed": 1, "dry_run_completed": 2, "nora_review": 3, "completed": 4}
-    rows.sort(key=lambda item: (order.get(str(item["status"]), 9), str(item["job"].id)), reverse=False)
+    order = {"ready_for_generation": 0, "dry_run_completed": 1, "failed": 2, "nora_review": 3, "completed": 4}
+    rows.sort(key=lambda item: (order.get(str(item["status"]), 9), not item["waiting_for_real_video"], str(item["job"].id)), reverse=False)
     return rows
 
 
@@ -1405,6 +1425,60 @@ def _run_generation_dry_run(root: Path, job: ContentJob) -> ContentJob:
         "message": "Dry run only; no external generation API was called.",
     }
     job.stage = "generation_dry_run"
+    job.status = JobStatus.AWAITING_APPROVAL
+    _save_job_at_root(root, job)
+    return job
+
+
+def _record_generation_result(
+    root: Path,
+    job: ContentJob,
+    video_path: str,
+    provider: str,
+    provider_request_id: str | None = None,
+    note: str | None = None,
+) -> ContentJob:
+    if not isinstance(getattr(job, "video_package", None), dict):
+        raise ValueError("No video package is attached to this mission")
+    generation_request = dict(job.generation_request or {})
+    status = str(generation_request.get("status", ""))
+    if status not in {"ready_for_generation", "dry_run_completed", "failed", "completed"}:
+        raise ValueError("Generation is not ready to record a real result yet")
+
+    recorded_at = datetime.now(timezone.utc).isoformat()
+    cleaned_video_path = _clean_generation_text(video_path, "Video path")
+    cleaned_provider = _clean_generation_text(provider, "Provider", max_length=80)
+    cleaned_request_id = (provider_request_id or "").strip()[:120] or None
+    cleaned_note = (note or "").strip()[:500] or None
+
+    generation_request.update(
+        {
+            "status": "completed",
+            "provider": cleaned_provider,
+            "provider_request_id": cleaned_request_id,
+            "completed_at": recorded_at,
+            "next_action": "Generated video is attached. Roxy and Emma can package caption, hashtags, FAQ, and publish prep.",
+        }
+    )
+    job.video_path = cleaned_video_path
+    job.generation_request = generation_request
+    job.generation_result = {
+        "status": "completed",
+        "mode": "real",
+        "provider": cleaned_provider,
+        "provider_request_id": cleaned_request_id,
+        "output_path": cleaned_video_path,
+        "created_at": recorded_at,
+        "message": "Real generated video is attached to this mission.",
+        "publish_packaging": {
+            "status": "ready",
+            "owners": ["Roxy", "Emma"],
+            "next_action": "Prepare caption, hashtags, FAQ, and publish schedule.",
+        },
+    }
+    if cleaned_note:
+        job.generation_result["note"] = cleaned_note
+    job.stage = "generation_completed"
     job.status = JobStatus.AWAITING_APPROVAL
     _save_job_at_root(root, job)
     return job
@@ -1781,6 +1855,8 @@ def aurora_generation(request: Request, _: str = Depends(verify_auth)):
             "generation_jobs": rows,
             "ready_count": sum(1 for item in rows if item["status"] == "ready_for_generation"),
             "dry_run_count": sum(1 for item in rows if item["status"] == "dry_run_completed"),
+            "completed_count": sum(1 for item in rows if item["status"] == "completed"),
+            "waiting_real_count": sum(1 for item in rows if item["waiting_for_real_video"]),
             "failed_count": sum(1 for item in rows if item["status"] == "failed"),
         },
     )
@@ -2065,6 +2141,28 @@ def run_generation_dry_run(job_id: str, request: Request, _: str = Depends(verif
         raise HTTPException(status_code=404, detail=f"Job {job_id!r} not found")
     try:
         _run_generation_dry_run(root, job)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return RedirectResponse(f"/jobs/{job_id}", status_code=303)
+
+
+@app.post("/jobs/{job_id}/record-generation-result")
+def record_generation_result(
+    job_id: str,
+    request: Request,
+    video_path: str = Form(...),
+    provider: str = Form("manual_upload"),
+    provider_request_id: str = Form(""),
+    note: str = Form(""),
+    _: str = Depends(verify_auth),
+):
+    root = _root(request)
+    try:
+        job = _find_job_at_root(root, job_id)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Job {job_id!r} not found")
+    try:
+        _record_generation_result(root, job, video_path, provider, provider_request_id, note)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     return RedirectResponse(f"/jobs/{job_id}", status_code=303)
