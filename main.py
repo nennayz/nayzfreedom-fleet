@@ -39,6 +39,12 @@ def main() -> None:
     parser.add_argument("--schedule", action="store_true",
                         help="Schedule post at Roxy's recommended time instead of immediately")
     parser.add_argument(
+        "--publish-platform",
+        action="append",
+        dest="publish_platforms",
+        help="Retry only one publish platform; can be passed more than once.",
+    )
+    parser.add_argument(
         "--content-type",
         choices=["video", "article", "image", "infographic"],
         dest="content_type",
@@ -72,7 +78,7 @@ def main() -> None:
             sys.exit(1)
         print(f"Publishing job {job.id} for {job.pm.page_name} (schedule={args.schedule})")
         agent = PublishAgent(config)
-        result = agent.run(job, schedule=args.schedule)
+        result = agent.run(job, schedule=args.schedule, target_platforms=args.publish_platforms)
         result.status = JobStatus.FAILED if has_publish_failures(result.publish_result) else JobStatus.COMPLETED
         save_job(result)
         statuses = {p: v.get("status") for p, v in (result.publish_result or {}).items()}

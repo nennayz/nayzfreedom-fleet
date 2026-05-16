@@ -4,6 +4,7 @@ import re
 import time
 import requests
 from pathlib import Path
+from urllib.parse import quote
 from agents.base_agent import BaseAgent
 from models.content_job import ContentJob, ContentType
 
@@ -24,6 +25,12 @@ _SECRET_PATTERNS = [
 ]
 
 
+class MetaAPIError(RuntimeError):
+    def __init__(self, message: str, meta_error: dict[str, object] | None = None):
+        super().__init__(message)
+        self.meta_error = meta_error or {}
+
+
 def has_publish_failures(result: dict | None) -> bool:
     if not result:
         return False
@@ -38,20 +45,39 @@ def sanitize_error_text(text: str, limit: int = 500) -> str:
     return redacted[:limit]
 
 
+def _safe_meta_error(response: requests.Response) -> dict[str, object]:
+    body = ""
+    try:
+        body = response.text
+    except Exception:  # noqa: BLE001
+        body = ""
+    data = {}
+    try:
+        payload = response.json()
+        if isinstance(payload, dict):
+            error = payload.get("error", payload)
+            if isinstance(error, dict):
+                data = {
+                    key: sanitize_error_text(error[key]) if isinstance(error[key], str) else error[key]
+                    for key in ("message", "type", "code", "error_subcode", "fbtrace_id")
+                    if key in error
+                }
+    except Exception:  # noqa: BLE001
+        data = {}
+    if body:
+        data["body"] = sanitize_error_text(body)
+    return data
+
+
 def _raise_for_status_with_body(response: requests.Response, context: str) -> None:
     try:
         response.raise_for_status()
     except Exception as exc:
-        body = ""
-        try:
-            body = response.text
-        except Exception:  # noqa: BLE001
-            body = ""
+        meta_error = _safe_meta_error(response)
+        body = meta_error.get("body", "")
         if body:
-            raise RuntimeError(
-                f"{context}: {exc}; body={sanitize_error_text(body)}"
-            ) from exc
-        raise
+            raise MetaAPIError(f"{context}: {exc}; body={body}", meta_error) from exc
+        raise MetaAPIError(f"{context}: {exc}", meta_error) from exc
 
 
 class PublishAgent(BaseAgent):
@@ -62,8 +88,10 @@ class PublishAgent(BaseAgent):
 
     def run_live(self, job: ContentJob, **kwargs) -> ContentJob:
         schedule: bool = kwargs.get("schedule", False)
+        target_platforms = kwargs.get("target_platforms")
+        requested_platforms = list(target_platforms or job.platforms)
         effective_platforms = [
-            p for p in job.platforms
+            p for p in requested_platforms
             if not (job.content_type == ContentType.ARTICLE and p in ("instagram", "tiktok", "youtube"))
         ]
         if job.content_type != ContentType.ARTICLE:
@@ -79,7 +107,7 @@ class PublishAgent(BaseAgent):
                 )
         scheduled_time = self._scheduled_unix_ts(job) if schedule else None
         caption = self._build_caption(job)
-        result: dict = {}
+        result: dict = dict(job.publish_result or {}) if target_platforms else {}
         for platform in effective_platforms:
             try:
                 if platform == "facebook":
@@ -105,7 +133,11 @@ class PublishAgent(BaseAgent):
                 status = "published" if platform == "instagram" else "scheduled" if scheduled_time else "published"
                 result[platform] = {"status": status, **post_result}
             except Exception as e:
-                result[platform] = {"status": "failed", "error": str(e)}
+                failure = {"status": "failed", "error": str(e)}
+                meta_error = getattr(e, "meta_error", None)
+                if meta_error:
+                    failure["meta_error"] = meta_error
+                result[platform] = failure
         job.publish_result = result
         job.stage = "publish_done"
         return job
@@ -343,20 +375,36 @@ class PublishAgent(BaseAgent):
             raise ValueError(f"PublishAgent: image_path is None for job {job.id}")
         headers = self._auth_headers(token)
         url = f"{_META_GRAPH_BASE}/{ig_user_id}/media"
-        # Note: Meta IG Content Publishing API v19+ supports `source` (multipart) for direct
-        # file upload to container creation. If this fails at runtime, switch to `image_url`
-        # pointing to a publicly hosted URL.
         data: dict = {"caption": caption}
         if scheduled_time:
             data["scheduled_publish_time"] = str(scheduled_time)
-        with open(job.image_path, "rb") as f:
-            resp = requests.post(url, data=data, files={"source": f}, headers=headers)
-        _raise_for_status_with_body(resp, "Instagram image container creation failed")
-        container_id = resp.json()["id"]
+        try:
+            with open(job.image_path, "rb") as f:
+                resp = requests.post(url, data=data, files={"source": f}, headers=headers)
+            _raise_for_status_with_body(resp, "Instagram image container creation failed")
+            container_id = resp.json()["id"]
+            upload_mode = "source"
+        except Exception as source_error:
+            image_url = self._public_media_url(job, job.image_path)
+            if not image_url:
+                raise source_error
+            fallback_data = {**data, "image_url": image_url}
+            resp = requests.post(url, data=fallback_data, headers=headers)
+            _raise_for_status_with_body(resp, "Instagram image_url container creation failed")
+            container_id = resp.json()["id"]
+            upload_mode = "image_url"
         pub_url = f"{_META_GRAPH_BASE}/{ig_user_id}/media_publish"
         pub_resp = requests.post(pub_url, data={"creation_id": container_id}, headers=headers)
         _raise_for_status_with_body(pub_resp, "Instagram image publish failed")
-        return pub_resp.json()
+        return {**pub_resp.json(), "upload_mode": upload_mode}
+
+    def _public_media_url(self, job: ContentJob, media_path: str) -> str:
+        base_url = getattr(self.config, "public_base_url", "") or ""
+        if not base_url:
+            return ""
+        path = Path(str(media_path))
+        filename = quote(path.name)
+        return f"{base_url.rstrip().rstrip('/')}/media/public/{quote(job.id)}/{filename}"
 
     def _post_ig_reel(
         self,

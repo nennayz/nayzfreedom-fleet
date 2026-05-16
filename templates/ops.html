@@ -140,6 +140,7 @@
         <span class="badge badge-publish-failed">{{ item.platform }}</span>
         <strong>{{ item.job_id }}</strong>
         <small>{{ item.category }} - {{ item.detail }}</small>
+        {% if item.meta_error %}<small>Meta {{ item.meta_error }}</small>{% endif %}
         <small>
           <span class="badge badge-ops-{{ item.media.state | lower }}">{{ item.media.label }}</span>
           {{ item.media.detail }}
@@ -147,6 +148,10 @@
         <small>
           <span class="badge badge-ops-{{ item.caption.state | lower }}">{{ item.caption.label }}</span>
           {{ item.caption.detail }}
+        </small>
+        <small>
+          <span class="badge badge-ops-{{ item.public_url.state | lower }}">{{ item.public_url.label }}</span>
+          {{ item.public_url.detail }}
         </small>
         <small>{{ item.recommendation }}</small>
         <div class="inline-actions">

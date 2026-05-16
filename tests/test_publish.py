@@ -11,6 +11,7 @@ def make_publish_config():
         meta_access_token="meta-token",
         meta_page_id="page-123",
         meta_ig_user_id="ig-456",
+        public_base_url="",
         tiktok_access_token="tiktok-token",
         youtube_client_id="yt-client-id",
         youtube_client_secret="yt-client-secret",
@@ -191,6 +192,31 @@ def test_publish_partial_failure_records_per_platform(mocker, tmp_path, monkeypa
     assert job.stage == "publish_done"
 
 
+def test_publish_target_platform_preserves_other_results(mocker, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    img_file = tmp_path / "image.png"
+    img_file.write_bytes(b"PNG")
+    mock_post = mocker.patch("agents.publish.requests.post")
+    fb_resp = mocker.MagicMock()
+    fb_resp.raise_for_status = mocker.MagicMock()
+    fb_resp.json.return_value = {"id": "fb-retry-ok"}
+    mock_post.return_value = fb_resp
+    agent = PublishAgent(make_publish_config())
+    job = make_image_job(dry_run=False)
+    job.image_path = str(img_file)
+    job.platforms = ["facebook", "instagram"]
+    job.publish_result = {
+        "facebook": {"status": "failed", "error": "bad request"},
+        "instagram": {"status": "published", "id": "ig-existing"},
+    }
+
+    job = agent.run(job, schedule=True, target_platforms=["facebook"])
+
+    assert mock_post.call_count == 1
+    assert job.publish_result["facebook"]["status"] == "scheduled"
+    assert job.publish_result["instagram"]["id"] == "ig-existing"
+
+
 def test_publish_missing_image_path_raises_value_error():
     import pytest
     agent = PublishAgent(make_publish_config())
@@ -239,11 +265,12 @@ def test_main_publish_only_flag_dispatches_publish_agent(mocker, tmp_path, monke
     mocker.patch("main.Config.from_env", return_value=make_publish_config())
 
     import sys
-    sys.argv = ["main.py", "--publish-only", job.id]
+    sys.argv = ["main.py", "--publish-only", job.id, "--publish-platform", "facebook"]
     from main import main
     main()
 
     mock_run.assert_called_once()
+    assert mock_run.call_args.kwargs["target_platforms"] == ["facebook"]
 
 
 def test_publish_live_ig_reels_uses_resumable_upload(mocker, tmp_path, monkeypatch):
@@ -302,6 +329,7 @@ def test_publish_meta_error_includes_sanitized_body(mocker):
     resp = mocker.MagicMock()
     resp.raise_for_status.side_effect = Exception("400 Client Error")
     resp.text = '{"error":{"message":"bad token access_token=secret-token"}}'
+    resp.json.return_value = {"error": {"message": "bad token access_token=secret-token", "type": "OAuthException", "code": 190, "error_subcode": 460}}
     mock_post.return_value = resp
     agent = PublishAgent(make_publish_config())
     job = make_article_job(dry_run=False)
@@ -311,6 +339,44 @@ def test_publish_meta_error_includes_sanitized_body(mocker):
     assert "body=" in error
     assert "access_token=<redacted>" in error
     assert "secret-token" not in error
+    meta_error = job.publish_result["facebook"]["meta_error"]
+    assert meta_error["code"] == 190
+    assert meta_error["error_subcode"] == 460
+    assert meta_error["type"] == "OAuthException"
+    assert "access_token=<redacted>" in meta_error["message"]
+    assert "secret-token" not in meta_error["body"]
+
+
+def test_publish_ig_image_falls_back_to_public_image_url(mocker, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    img_file = tmp_path / "image.png"
+    img_file.write_bytes(b"PNG")
+    source_resp = mocker.MagicMock()
+    source_resp.raise_for_status.side_effect = Exception("400 Client Error")
+    source_resp.text = '{"error":{"message":"source upload rejected","code":100}}'
+    source_resp.json.return_value = {"error": {"message": "source upload rejected", "code": 100}}
+    fallback_resp = mocker.MagicMock()
+    fallback_resp.raise_for_status = mocker.MagicMock()
+    fallback_resp.json.return_value = {"id": "container-url"}
+    publish_resp = mocker.MagicMock()
+    publish_resp.raise_for_status = mocker.MagicMock()
+    publish_resp.json.return_value = {"id": "ig-post-url"}
+    mock_post = mocker.patch("agents.publish.requests.post", side_effect=[source_resp, fallback_resp, publish_resp])
+    config = make_publish_config()
+    config.public_base_url = "https://fleet.nayzfreedom.cloud"
+    agent = PublishAgent(config)
+    job = make_image_job(dry_run=False)
+    job.id = "job-123"
+    job.image_path = str(img_file)
+    job.platforms = ["instagram"]
+
+    job = agent.run(job)
+
+    assert mock_post.call_count == 3
+    fallback_data = mock_post.call_args_list[1].kwargs["data"]
+    assert fallback_data["image_url"] == "https://fleet.nayzfreedom.cloud/media/public/job-123/image.png"
+    assert job.publish_result["instagram"]["status"] == "published"
+    assert job.publish_result["instagram"]["upload_mode"] == "image_url"
 
 
 def test_publish_tiktok_image_skips_with_reason(tmp_path, monkeypatch):

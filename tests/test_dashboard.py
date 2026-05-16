@@ -83,6 +83,27 @@ def test_healthz_does_not_require_auth(client):
     assert resp.json() == {"status": "ok", "service": "nayzfreedom-dashboard"}
 
 
+def test_public_media_serves_job_file_without_auth(tmp_path, client):
+    media_dir = tmp_path / "output" / "Slayhack" / "20260512_060000"
+    media_dir.mkdir(parents=True)
+    (media_dir / "image.png").write_bytes(b"PNG")
+
+    resp = client.get("/media/public/20260512_060000/image.png")
+
+    assert resp.status_code == 200
+    assert resp.content == b"PNG"
+
+
+def test_public_media_rejects_unknown_or_unsupported_file(tmp_path, client):
+    media_dir = tmp_path / "output" / "Slayhack" / "20260512_060000"
+    media_dir.mkdir(parents=True)
+    (media_dir / "secret.txt").write_text("secret")
+
+    resp = client.get("/media/public/20260512_060000/secret.txt")
+
+    assert resp.status_code == 404
+
+
 def test_meta_policy_pages_do_not_require_auth(client):
     privacy = client.get("/privacy")
     deletion = client.get("/data-deletion")
@@ -794,7 +815,13 @@ def test_ops_page_renders_status_and_errors(tmp_path, client, monkeypatch):
         "20260512_060000",
         brief="publish failed",
         status="failed",
-        publish_result={"facebook": {"status": "failed", "error": "bad token"}},
+        publish_result={
+            "facebook": {
+                "status": "failed",
+                "error": "bad token",
+                "meta_error": {"code": 190, "error_subcode": 460, "type": "OAuthException", "message": "bad token"},
+            }
+        },
     )
     logs = tmp_path / "logs"
     logs.mkdir(exist_ok=True)
@@ -839,8 +866,10 @@ def test_ops_page_renders_status_and_errors(tmp_path, client, monkeypatch):
     assert "Retry lane" in resp.text
     assert "facebook - auth or permission" in resp.text
     assert "/ops/publish-failures/20260512_060000/facebook/retry" in resp.text
+    assert "Meta code=190 error_subcode=460 type=OAuthException message=bad token" in resp.text
     assert "Media missing" in resp.text
     assert "Caption missing" in resp.text
+    assert "Public URL blocked" in resp.text
     assert "Crew ownership" in resp.text
     assert "Hygiene checks" in resp.text
     assert "System resources" in resp.text
@@ -882,7 +911,9 @@ def test_ops_publish_failure_triage_shows_media_and_caption_readiness(tmp_path, 
     assert resp.status_code == 200
     assert "Media ready" in resp.text
     assert "Caption ready" in resp.text
-    assert "switch IG image upload to public image_url" in resp.text
+    assert "Public URL ready" in resp.text
+    assert "https://fleet.nayzfreedom.cloud/media/public/20260512_070000/image.png" in resp.text
+    assert "retry can use public image_url fallback" in resp.text
 
 
 def test_ops_smoke_test_renders_results(tmp_path, client, monkeypatch):
@@ -1404,7 +1435,9 @@ def test_retry_publish_spawns_publish_only(tmp_path, client, monkeypatch):
     assert resp.status_code == 303
     assert resp.headers["location"] == "/jobs/20260512_060000"
     cmd = mock_popen.call_args.args[0]
-    assert cmd[1:] == ["main.py", "--publish-only", "20260512_060000", "--schedule"]
+    assert cmd[1:] == [
+        "main.py", "--publish-only", "20260512_060000", "--schedule", "--publish-platform", "facebook",
+    ]
 
 
 def test_ops_retry_publish_failure_validates_and_logs(tmp_path, client, monkeypatch):
@@ -1426,7 +1459,9 @@ def test_ops_retry_publish_failure_validates_and_logs(tmp_path, client, monkeypa
     assert resp.status_code == 303
     assert resp.headers["location"] == "/ops"
     cmd = mock_popen.call_args.args[0]
-    assert cmd[1:] == ["main.py", "--publish-only", "20260512_060000", "--schedule"]
+    assert cmd[1:] == [
+        "main.py", "--publish-only", "20260512_060000", "--schedule", "--publish-platform", "instagram",
+    ]
     work_activity = (tmp_path / "logs" / "work_activity.jsonl").read_text()
     assert "Ops retry requested for instagram publish failure on 20260512_060000" in work_activity
     assert "meta bad request" in work_activity
