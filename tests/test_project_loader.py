@@ -13,7 +13,7 @@ def test_load_slay_hack():
     pm = load_project("slay_hack")
     assert isinstance(pm, PMProfile)
     assert pm.name == "Slay"
-    assert pm.page_name == "Slay Hack"
+    assert pm.page_name == "Slayhack"
     assert "male Project Manager" in pm.persona
     assert "Format A" in pm.persona
     assert pm.brand.nora_max_retries == 2
@@ -28,7 +28,7 @@ def test_load_missing_project_raises():
 def test_load_legacy_nayzfreedom_fleet_alias():
     pm = load_project("nayzfreedom_fleet")
     assert pm.name == "Slay"
-    assert pm.page_name == "Slay Hack"
+    assert pm.page_name == "Slayhack"
 
 
 def test_list_project_slugs_hides_alias_sources():
