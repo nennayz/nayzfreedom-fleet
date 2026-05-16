@@ -126,7 +126,7 @@ GOOGLE_APPLICATION_CREDENTIALS=/opt/nayzfreedom/secrets/google-service-account.j
 GOOGLE_DRIVE_BACKUP_FOLDER_ID=<drive-folder-id>
 ```
 
-The service account must have write access to the target Drive folder.
+The service account must have write access to the target Drive folder. For service-account uploads, use a Google Shared Drive folder or OAuth/domain delegation; regular My Drive folders can return `storageQuotaExceeded` because service accounts do not have personal Drive storage quota. Drive upload failures are logged as `drive_backup=failed` while the local VPS backup still succeeds.
 
 ## Alerts
 

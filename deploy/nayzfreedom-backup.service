@@ -5,6 +5,7 @@ Description=NayzFreedom production backup (one-shot)
 Type=oneshot
 User=root
 WorkingDirectory=/opt/nayzfreedom
+EnvironmentFile=/opt/nayzfreedom/.env
 ExecStart=/opt/nayzfreedom/deploy/backup.sh
 StandardOutput=journal
 StandardError=journal
