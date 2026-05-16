@@ -151,7 +151,6 @@ class LilaAgent(BaseAgent):
                 prompt=job.visual_prompt,
                 n=1,
                 size="1024x1024",
-                response_format="b64_json",
             )
         except openai.OpenAIError as e:
             raise RuntimeError(

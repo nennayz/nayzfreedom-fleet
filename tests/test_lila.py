@@ -88,7 +88,6 @@ def test_lila_live_image_calls_openai(mocker, tmp_path, monkeypatch):
         prompt="gold lipstick on marble",
         n=1,
         size="1024x1024",
-        response_format="b64_json",
     )
     assert job.image_path is not None
     assert job.image_path.endswith("image.png")
@@ -114,7 +113,6 @@ def test_lila_live_infographic_calls_openai(mocker, tmp_path, monkeypatch):
         prompt="clean white infographic layout",
         n=1,
         size="1024x1024",
-        response_format="b64_json",
     )
     assert job.image_path is not None
     assert job.image_path.endswith("image.png")
