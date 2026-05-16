@@ -140,6 +140,15 @@
         <span class="badge badge-publish-failed">{{ item.platform }}</span>
         <strong>{{ item.job_id }}</strong>
         <small>{{ item.category }} - {{ item.detail }}</small>
+        <small>
+          <span class="badge badge-ops-{{ item.media.state | lower }}">{{ item.media.label }}</span>
+          {{ item.media.detail }}
+        </small>
+        <small>
+          <span class="badge badge-ops-{{ item.caption.state | lower }}">{{ item.caption.label }}</span>
+          {{ item.caption.detail }}
+        </small>
+        <small>{{ item.recommendation }}</small>
         <div class="inline-actions">
           <a class="button button-secondary" href="/jobs/{{ item.job_id }}">Open job</a>
           <form class="inline-form" method="post" action="{{ item.retry_path }}">
