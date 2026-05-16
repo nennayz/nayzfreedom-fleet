@@ -75,18 +75,41 @@
     <div class="ops-action-result">
       <span class="badge badge-ops-ready">FB scheduled {{ publish_summary.counts.facebook_scheduled }}</span>
       <span class="badge badge-ops-ready">IG pending {{ publish_summary.counts.instagram_pending }}</span>
+      <span class="badge badge-ops-missing">IG due {{ publish_summary.counts.instagram_due_now }}</span>
+      <span class="badge badge-ops-ready">IG future {{ publish_summary.counts.instagram_future }}</span>
+      <span class="badge badge-ops-failed">IG stale {{ publish_summary.counts.instagram_stale }}</span>
       <span class="badge badge-ops-missing">IG retrying {{ publish_summary.counts.instagram_retrying }}</span>
       <span class="badge badge-ops-failed">IG failed {{ publish_summary.counts.instagram_failed }}</span>
+      <span class="badge badge-ops-ready">IG published {{ publish_summary.counts.instagram_published }}</span>
     </div>
     <div class="ops-list spacious">
       {% for item in publish_summary.queue %}
       <a class="ops-row" href="/jobs/{{ item.job_id }}">
         <span class="badge badge-ops-{{ item.state | lower }}">{{ item.status }}</span>
         <strong>{{ item.job_id }}</strong>
-        <small>{{ item.detail }}</small>
+        <small>
+          due {{ item.due_at or "unknown" }} - {{ item.time_remaining }} - retries {{ item.retry_count }}
+          {% if item.caption %} - {{ item.caption }}{% endif %}
+          {% if item.detail %} - {{ item.detail }}{% endif %}
+        </small>
       </a>
       {% else %}
       <p class="muted">No Instagram queue items need attention.</p>
+      {% endfor %}
+    </div>
+    <div class="section-heading compact">
+      <p class="eyebrow">Instagram queue history</p>
+      <h3>Latest runs</h3>
+    </div>
+    <div class="ops-list">
+      {% for item in instagram_queue_history %}
+      <div class="ops-row">
+        <span class="badge badge-ops-{{ item.state | lower }}">{{ "dry run" if item.dry_run else "run" }}</span>
+        <strong>{{ item.timestamp }}</strong>
+        <small>processed {{ item.processed }} - published {{ item.published }} - retrying {{ item.retrying }} - failed {{ item.failed }}</small>
+      </div>
+      {% else %}
+      <p class="muted">No Instagram queue runs recorded yet.</p>
       {% endfor %}
     </div>
   </article>

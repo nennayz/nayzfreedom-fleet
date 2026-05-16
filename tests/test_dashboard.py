@@ -831,6 +831,14 @@ def test_ops_page_renders_status_and_errors(tmp_path, client, monkeypatch):
         "line_count": 3,
         "report": "Slayhack weekly Ops report\njobs total=1 failed=1 latest=20260512_060000",
     }) + "\n")
+    (logs / "instagram_queue_history.jsonl").write_text(json.dumps({
+        "timestamp": "2026-05-16T06:20:00Z",
+        "processed": 2,
+        "published": 1,
+        "retrying": 1,
+        "failed": 0,
+        "dry_run": False,
+    }) + "\n")
     monkeypatch.setattr(
         _dm,
         "_ops_unit_status",
@@ -849,7 +857,7 @@ def test_ops_page_renders_status_and_errors(tmp_path, client, monkeypatch):
     assert "bad token" in resp.text
     assert "Run smoke test" in resp.text
     assert "Run backup now" in resp.text
-    assert "Run Instagram queue now" in resp.text
+    assert "Run due Instagram queue now" in resp.text
     assert "Run production summary now" in resp.text
     assert "Restart dashboard" in resp.text
     assert "Recent Ops actions" in resp.text
@@ -863,6 +871,8 @@ def test_ops_page_renders_status_and_errors(tmp_path, client, monkeypatch):
     assert "Ops summary" in resp.text
     assert "Mission attention" in resp.text
     assert "Queue state" in resp.text
+    assert "Instagram queue history" in resp.text
+    assert "processed 2 - published 1 - retrying 1 - failed 0" in resp.text
     assert "Failure triage" in resp.text
     assert "Retry lane" in resp.text
     assert "Safe IG 0" in resp.text
@@ -960,7 +970,7 @@ def test_ops_action_runs_selected_command(tmp_path, client, monkeypatch):
 
     def fake_run_action(action):
         calls.append(action)
-        return {"name": "Run Instagram queue now", "state": "Ready", "detail": "started"}
+        return {"name": "Run due Instagram queue now", "state": "Ready", "detail": "started"}
 
     monkeypatch.setattr(_dm, "_run_ops_action", fake_run_action)
 
@@ -968,7 +978,7 @@ def test_ops_action_runs_selected_command(tmp_path, client, monkeypatch):
 
     assert resp.status_code == 200
     assert calls == ["instagram_queue"]
-    assert "Run Instagram queue now" in resp.text
+    assert "Run due Instagram queue now" in resp.text
     assert "started" in resp.text
     assert "Recent Ops actions" in resp.text
     audit_path = tmp_path / "logs" / "ops_actions.jsonl"
@@ -1196,14 +1206,28 @@ def test_recent_ops_reports_reads_latest_and_sanitizes(tmp_path, monkeypatch):
     assert "<redacted>" in rows[0]["report"]
 
 
-def test_ops_publish_summary_counts_queue_states(tmp_path):
+def test_ops_publish_summary_counts_queue_states(tmp_path, monkeypatch):
+    monkeypatch.setattr(_dm, "_ops_now_utc", lambda: _dm.datetime(2026, 5, 16, 6, 30, tzinfo=_dm.timezone.utc))
     _write_job(
         tmp_path,
         "20260512_060000",
+        brief="future caption",
         publish_result={
             "facebook": {"status": "scheduled"},
-            "instagram": {"status": "pending_queue", "due_at": "2026-05-16T06:00:00Z"},
+            "instagram": {"status": "pending_queue", "due_at": "2026-05-16T07:00:00Z"},
         },
+    )
+    _write_job(
+        tmp_path,
+        "20260512_063000",
+        brief="due caption",
+        publish_result={"instagram": {"status": "pending_queue", "due_at": "2026-05-16T06:30:00Z"}},
+    )
+    _write_job(
+        tmp_path,
+        "20260512_060100",
+        brief="stale caption",
+        publish_result={"instagram": {"status": "pending_queue", "due_at": "2026-05-16T06:00:00Z"}},
     )
     _write_job(
         tmp_path,
@@ -1215,15 +1239,26 @@ def test_ops_publish_summary_counts_queue_states(tmp_path):
         "20260514_060000",
         publish_result={"instagram": {"status": "failed", "error": "blocked"}},
     )
+    _write_job(
+        tmp_path,
+        "20260515_060000",
+        publish_result={"instagram": {"status": "published", "published_at": "2026-05-16T06:05:00Z"}},
+    )
 
     jobs = _dm.list_all_jobs(tmp_path)
     result = _dm._ops_publish_summary(jobs)
 
     assert result["counts"]["facebook_scheduled"] == 1
-    assert result["counts"]["instagram_pending"] == 1
+    assert result["counts"]["instagram_pending"] == 3
+    assert result["counts"]["instagram_due_now"] == 1
+    assert result["counts"]["instagram_future"] == 1
+    assert result["counts"]["instagram_stale"] == 1
     assert result["counts"]["instagram_retrying"] == 1
     assert result["counts"]["instagram_failed"] == 1
-    assert [item["status"] for item in result["queue"]] == ["failed", "retrying", "pending_queue"]
+    assert result["counts"]["instagram_published"] == 1
+    assert [item["status"] for item in result["queue"]] == ["failed", "stale", "due now", "retrying", "future", "published"]
+    assert result["queue"][2]["retry_count"] == 0
+    assert result["queue"][2]["caption"] == "due caption"
 
 
 def test_backup_history_reports_recent_archives(tmp_path, monkeypatch):
