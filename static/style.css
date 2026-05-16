@@ -764,6 +764,14 @@ button[type="submit"]:hover { background: var(--navy-soft); }
 .generation-intake-form label {
   margin-bottom: -0.2rem;
 }
+.publish-package-result {
+  background: rgba(31,143,154,0.06);
+}
+.publish-package-form {
+  border-top: 1px solid var(--line);
+  margin-top: 1rem;
+  padding-top: 1rem;
+}
 .ops-action-result {
   align-items: center;
   border-top: 1px solid var(--line);

@@ -41,7 +41,7 @@ from models.aurora_workflow import (
     VideoProductionPackage,
     StoryboardScene,
 )
-from models.content_job import ContentJob, ContentType, JobStatus, QAResult
+from models.content_job import ContentJob, ContentType, GrowthStrategy, JobStatus, QAResult
 from project_loader import (
     list_project_slugs,
     load_project,
@@ -950,6 +950,7 @@ def _mission_outputs(job, faq_content: str | None) -> list[dict[str, str]]:
     generation_result_status = str(generation_result.get("status", "")) if isinstance(generation_result, dict) else ""
     generation_ready = generation_status in {"dry_run_completed", "completed"} or generation_result_status in {"dry_run_completed", "completed"}
     real_video_ready = generation_status == "completed" and generation_result_status == "completed" and bool(job.video_path)
+    package_ready = _publish_package_completed(job)
     growth_ready = job.growth_strategy is not None
     community_ready = bool(faq_content)
     publish_ready = job.publish_result is not None
@@ -982,8 +983,8 @@ def _mission_outputs(job, faq_content: str | None) -> list[dict[str, str]]:
         },
         {
             "label": "Publish packaging",
-            "state": "Ready" if real_video_ready else "Waiting" if video_package_ready else "Not needed",
-            "detail": "Roxy and Emma can package caption, hashtags, FAQ, and publish prep." if real_video_ready else "Waiting for the real generated video attachment.",
+            "state": "Ready" if package_ready else "Waiting" if real_video_ready else "Not needed" if not video_package_ready else "Waiting",
+            "detail": "Publish package is recorded for Roxy and Emma." if package_ready else "Roxy and Emma can package caption, hashtags, FAQ, and publish prep." if real_video_ready else "Waiting for the real generated video attachment.",
         },
         {
             "label": "Growth",
@@ -1321,6 +1322,19 @@ def _waiting_for_real_video(job: ContentJob) -> bool:
     return request_status == "dry_run_completed" and result_status == "dry_run_completed" and not bool(job.video_path)
 
 
+def _real_generation_completed(job: ContentJob) -> bool:
+    request = getattr(job, "generation_request", None) or {}
+    result = getattr(job, "generation_result", None) or {}
+    request_status = str(request.get("status", "")) if isinstance(request, dict) else ""
+    result_status = str(result.get("status", "")) if isinstance(result, dict) else ""
+    return request_status == "completed" and result_status == "completed" and bool(job.video_path)
+
+
+def _publish_package_completed(job: ContentJob) -> bool:
+    package = getattr(job, "publish_package", None)
+    return isinstance(package, dict) and package.get("status") == "completed"
+
+
 def _clean_generation_text(value: str | None, field: str, max_length: int = 500) -> str:
     cleaned = (value or "").strip()
     if not cleaned:
@@ -1336,6 +1350,24 @@ def _generation_artifact_path(root: Path, job: ContentJob) -> Path:
 
 def _generation_artifact_display_path(job: ContentJob) -> str:
     return f"output/{job.pm.page_name}/{job.id}/video_generation_dry_run.json"
+
+
+def _publish_packaging_label(job: ContentJob) -> str:
+    if _publish_package_completed(job):
+        return "Publish package complete"
+    if _real_generation_completed(job):
+        return "Ready for publish packaging"
+    if _waiting_for_real_video(job):
+        return "Waiting real video"
+    return "Not ready"
+
+
+def _publish_packaging_state(job: ContentJob) -> str:
+    if _publish_package_completed(job):
+        return "ready"
+    if _real_generation_completed(job):
+        return "missing"
+    return "unavailable"
 
 
 def _generation_queue(root: Path) -> list[dict[str, object]]:
@@ -1361,6 +1393,9 @@ def _generation_queue(root: Path) -> list[dict[str, object]]:
                 "can_run": status in {"ready_for_generation", "failed", "dry_run_completed"},
                 "can_record": status in {"ready_for_generation", "dry_run_completed", "failed"},
                 "waiting_for_real_video": _waiting_for_real_video(job),
+                "can_package": _real_generation_completed(job),
+                "packaging_label": _publish_packaging_label(job),
+                "packaging_state": _publish_packaging_state(job),
             }
         )
     order = {"ready_for_generation": 0, "dry_run_completed": 1, "failed": 2, "nora_review": 3, "completed": 4}
@@ -1425,6 +1460,69 @@ def _run_generation_dry_run(root: Path, job: ContentJob) -> ContentJob:
         "message": "Dry run only; no external generation API was called.",
     }
     job.stage = "generation_dry_run"
+    job.status = JobStatus.AWAITING_APPROVAL
+    _save_job_at_root(root, job)
+    return job
+
+
+def _split_hashtags(value: str) -> list[str]:
+    tags = []
+    for raw in value.replace("\n", ",").split(","):
+        tag = raw.strip()
+        if not tag:
+            continue
+        if not tag.startswith("#"):
+            tag = f"#{tag}"
+        tags.append(tag)
+    return tags
+
+
+def _record_publish_package(
+    root: Path,
+    job: ContentJob,
+    caption: str,
+    hashtags: str,
+    faq: str,
+    publish_notes: str | None = None,
+) -> ContentJob:
+    if not _real_generation_completed(job):
+        raise ValueError("Real generated video must be attached before publish packaging")
+
+    cleaned_caption = _clean_generation_text(caption, "Caption", max_length=2200)
+    cleaned_faq = _clean_generation_text(faq, "FAQ", max_length=4000)
+    cleaned_notes = (publish_notes or "").strip()[:1000] or None
+    tag_list = _split_hashtags(hashtags)
+    if not tag_list:
+        raise ValueError("At least one hashtag is required")
+
+    recorded_at = datetime.now(timezone.utc).isoformat()
+    faq_path = root / "output" / job.pm.page_name / job.id / "faq.md"
+    faq_path.parent.mkdir(parents=True, exist_ok=True)
+    faq_path.write_text(cleaned_faq)
+
+    job.growth_strategy = GrowthStrategy(
+        hashtags=tag_list,
+        caption=cleaned_caption,
+        best_post_time_utc="TBD",
+        best_post_time_thai="TBD",
+        editorial_guidance={
+            "source": "publish_packaging_lane",
+            "roxy_owner": "caption, hashtags, timing notes",
+            "emma_owner": "FAQ and community response prep",
+        },
+    )
+    job.community_faq_path = f"output/{job.pm.page_name}/{job.id}/faq.md"
+    job.publish_package = {
+        "status": "completed",
+        "owners": ["Roxy", "Emma"],
+        "caption": cleaned_caption,
+        "hashtags": tag_list,
+        "faq_path": job.community_faq_path,
+        "publish_notes": cleaned_notes,
+        "created_at": recorded_at,
+        "next_action": "Publish package is ready for scheduling or manual publish.",
+    }
+    job.stage = "publish_packaged"
     job.status = JobStatus.AWAITING_APPROVAL
     _save_job_at_root(root, job)
     return job
@@ -2088,6 +2186,7 @@ def job_detail(job_id: str, request: Request, _: str = Depends(verify_auth)):
     video_package = getattr(job, "video_package", None)
     generation_request = getattr(job, "generation_request", None)
     generation_result = getattr(job, "generation_result", None)
+    publish_package = getattr(job, "publish_package", None)
     return templates.TemplateResponse(
         request,
         "job_detail.html",
@@ -2102,6 +2201,8 @@ def job_detail(job_id: str, request: Request, _: str = Depends(verify_auth)):
             "video_package": video_package,
             "generation_request": generation_request,
             "generation_result": generation_result,
+            "publish_package": publish_package,
+            "can_record_publish_package": _real_generation_completed(job),
         },
     )
 
@@ -2163,6 +2264,28 @@ def record_generation_result(
         raise HTTPException(status_code=404, detail=f"Job {job_id!r} not found")
     try:
         _record_generation_result(root, job, video_path, provider, provider_request_id, note)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return RedirectResponse(f"/jobs/{job_id}", status_code=303)
+
+
+@app.post("/jobs/{job_id}/record-publish-package")
+def record_publish_package(
+    job_id: str,
+    request: Request,
+    caption: str = Form(...),
+    hashtags: str = Form(...),
+    faq: str = Form(...),
+    publish_notes: str = Form(""),
+    _: str = Depends(verify_auth),
+):
+    root = _root(request)
+    try:
+        job = _find_job_at_root(root, job_id)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Job {job_id!r} not found")
+    try:
+        _record_publish_package(root, job, caption, hashtags, faq, publish_notes)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     return RedirectResponse(f"/jobs/{job_id}", status_code=303)

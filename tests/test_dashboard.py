@@ -456,7 +456,95 @@ def test_record_generation_result_attaches_real_video_and_opens_publish_packagin
     assert "Real generated video is attached to this mission." in detail.text
     assert "Publish packaging:" in detail.text
     assert "Roxy and Emma can package caption, hashtags, FAQ, and publish prep." in detail.text
+    assert "Record publish package" in detail.text
     assert "Waiting for the real generated video attachment." not in detail.text
+
+
+def test_record_publish_package_saves_roxy_and_emma_handoff(tmp_path, client):
+    _write_slay_hack_project(tmp_path)
+    short_video_ticket_id = _slay_hack_ticket_id(tmp_path, "short-video-1")
+    created = client.post(
+        f"/aurora/workflow/video-packages/{short_video_ticket_id}/create-mission",
+        headers=_auth(),
+        follow_redirects=False,
+    )
+    job_id = created.headers["location"].split("/")[-1]
+    client.post(f"/jobs/{job_id}/ready-for-generation", headers=_auth(), follow_redirects=False)
+    client.post(f"/jobs/{job_id}/run-generation-dry-run", headers=_auth(), follow_redirects=False)
+    client.post(
+        f"/jobs/{job_id}/record-generation-result",
+        headers=_auth(),
+        data={
+            "video_path": "output/Slay Hack/final-video.mp4",
+            "provider": "manual_upload",
+            "provider_request_id": "req-123",
+        },
+        follow_redirects=False,
+    )
+
+    resp = client.post(
+        f"/jobs/{job_id}/record-publish-package",
+        headers=_auth(),
+        data={
+            "caption": "The fastest Slay Hack fix for a chaotic routine.",
+            "hashtags": "#slayhack, beautyhack",
+            "faq": "Q: Where should this publish?\nA: Start with TikTok, then adapt to Instagram.",
+            "publish_notes": "Schedule after final thumbnail check.",
+        },
+        follow_redirects=False,
+    )
+
+    assert resp.status_code == 303
+    assert resp.headers["location"] == f"/jobs/{job_id}"
+    job_path = next((tmp_path / "output" / "Slay Hack").glob("*/job.json"))
+    data = json.loads(job_path.read_text())
+    assert data["stage"] == "publish_packaged"
+    assert data["status"] == "awaiting_approval"
+    assert data["publish_package"]["status"] == "completed"
+    assert data["publish_package"]["owners"] == ["Roxy", "Emma"]
+    assert data["publish_package"]["caption"] == "The fastest Slay Hack fix for a chaotic routine."
+    assert data["publish_package"]["hashtags"] == ["#slayhack", "#beautyhack"]
+    assert data["growth_strategy"]["caption"] == "The fastest Slay Hack fix for a chaotic routine."
+    assert data["growth_strategy"]["hashtags"] == ["#slayhack", "#beautyhack"]
+    assert data["community_faq_path"].endswith("/faq.md")
+    assert (job_path.parent / "faq.md").read_text().startswith("Q: Where should this publish?")
+
+    detail = client.get(f"/jobs/{job_id}", headers=_auth())
+    queue = client.get("/aurora/generation", headers=_auth())
+
+    assert detail.status_code == 200
+    assert "Publish package complete" in detail.text
+    assert "Publish package is recorded for Roxy and Emma." in detail.text
+    assert "The fastest Slay Hack fix for a chaotic routine." in detail.text
+    assert "#beautyhack" in detail.text
+    assert "FAQ is available." in detail.text
+    assert queue.status_code == 200
+    assert "Publish package complete" in queue.text
+
+
+def test_record_publish_package_requires_real_generation(tmp_path, client):
+    _write_slay_hack_project(tmp_path)
+    short_video_ticket_id = _slay_hack_ticket_id(tmp_path, "short-video-1")
+    created = client.post(
+        f"/aurora/workflow/video-packages/{short_video_ticket_id}/create-mission",
+        headers=_auth(),
+        follow_redirects=False,
+    )
+    job_id = created.headers["location"].split("/")[-1]
+
+    resp = client.post(
+        f"/jobs/{job_id}/record-publish-package",
+        headers=_auth(),
+        data={
+            "caption": "Not ready",
+            "hashtags": "#slayhack",
+            "faq": "Not ready",
+        },
+        follow_redirects=False,
+    )
+
+    assert resp.status_code == 400
+    assert "Real generated video must be attached" in resp.text
 
 
 def test_record_generation_result_rejects_blank_video_path(tmp_path, client):
