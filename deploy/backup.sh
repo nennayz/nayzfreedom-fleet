@@ -5,6 +5,7 @@ set -euo pipefail
 
 INSTALL_DIR="${INSTALL_DIR:-/opt/nayzfreedom}"
 BACKUP_ROOT="${BACKUP_ROOT:-/opt/nayzfreedom-backups}"
+SERVICE_USER="${SERVICE_USER:-nayzfreedom}"
 TRAEFIK_CONFIG="${TRAEFIK_CONFIG:-/docker/traefik-fmcv/dynamic/nayzfreedom.yml}"
 RETENTION="${RETENTION:-7}"
 GOOGLE_DRIVE_BACKUP_FOLDER_ID="${GOOGLE_DRIVE_BACKUP_FOLDER_ID:-}"
@@ -28,6 +29,11 @@ fi
 
 sha256sum "$backup_dir/state.tgz" > "$backup_dir/state.tgz.sha256"
 chmod -R go-rwx "$backup_dir"
+if command -v getent >/dev/null 2>&1 && getent group "$SERVICE_USER" >/dev/null; then
+    chgrp -R "$SERVICE_USER" "$BACKUP_ROOT"
+    find "$BACKUP_ROOT" -type d -exec chmod 750 {} +
+    find "$BACKUP_ROOT" -type f -exec chmod 640 {} +
+fi
 
 if [ -n "$GOOGLE_DRIVE_BACKUP_FOLDER_ID" ]; then
     drive_error=/tmp/nayzfreedom-drive-backup.err
