@@ -22,6 +22,10 @@ sudo -u "$SERVICE_USER" git -C "$INSTALL_DIR" pull --ff-only origin "$DEPLOY_BRA
 
 echo "[2/3] Installing dependencies..."
 sudo -u "$SERVICE_USER" "$INSTALL_DIR/.venv/bin/pip" install --quiet -r "$INSTALL_DIR/requirements.txt"
+if [ -f "$INSTALL_DIR/deploy/nayzfreedom-ops.sudoers" ]; then
+    cp "$INSTALL_DIR/deploy/nayzfreedom-ops.sudoers" /etc/sudoers.d/nayzfreedom-ops
+    chmod 440 /etc/sudoers.d/nayzfreedom-ops
+fi
 
 echo "[3/3] Restarting services..."
 systemctl daemon-reload

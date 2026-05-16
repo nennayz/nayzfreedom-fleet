@@ -32,9 +32,13 @@ def test_production_summary_systemd_units_exist():
 def test_ops_sudoers_limits_allowed_commands():
     root = Path(__file__).resolve().parents[1]
     sudoers = root / "deploy" / "nayzfreedom-ops.sudoers"
+    setup = root / "deploy" / "setup.sh"
+    update = root / "deploy" / "update.sh"
     text = sudoers.read_text()
     assert "nayzfreedom-backup.service" in text
     assert "nayzfreedom-instagram-queue.service" in text
     assert "nayzfreedom-production-summary.service" in text
     assert "nayzfreedom-dashboard.service" in text
     assert "NOPASSWD: ALL" not in text
+    assert "/etc/sudoers.d/nayzfreedom-ops" in setup.read_text()
+    assert "/etc/sudoers.d/nayzfreedom-ops" in update.read_text()
