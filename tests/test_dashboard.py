@@ -73,6 +73,22 @@ def test_meta_policy_pages_do_not_require_auth(client):
     assert deletion_html_head.status_code == 200
 
 
+def test_meta_data_deletion_callback_returns_confirmation(client, monkeypatch):
+    monkeypatch.delenv("META_APP_SECRET", raising=False)
+    payload = base64.urlsafe_b64encode(json.dumps({"user_id": "12345"}).encode()).decode().rstrip("=")
+    signed_request = f"unused.{payload}"
+
+    resp = client.post(
+        "/data-deletion-callback",
+        data={"signed_request": signed_request},
+    )
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["url"] == "https://fleet.nayzfreedom.cloud/data-deletion"
+    assert body["confirmation_code"].startswith("slayhack-delete-")
+
+
 @pytest.fixture
 def client(tmp_path):
     _dm.app.state.root = tmp_path
