@@ -49,6 +49,7 @@ from project_loader import (
     project_slug_matches,
     resolve_project_slug,
 )
+from work_activity import read_recent_work_activity, work_activity_status
 
 DASHBOARD_USER = os.environ.get("DASHBOARD_USER")
 DASHBOARD_PASSWORD = os.environ.get("DASHBOARD_PASSWORD")
@@ -801,6 +802,8 @@ def _ops_snapshot(root: Path, smoke_results: list[dict[str, str]] | None = None)
         "action_result": None,
         "ops_audit": _recent_ops_audit(root),
         "ops_log": _ops_log_status(root),
+        "work_activity": read_recent_work_activity(root),
+        "work_activity_log": work_activity_status(root),
         "ops_incidents": _recent_ops_incidents(root),
         "ops_reports": ops_reports,
         "incident_summary": incident_summary,

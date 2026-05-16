@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-from ops_retention import rotate_ops_log
+from ops_retention import rotate_ops_log, rotate_work_activity_log
 
 
 def test_rotate_ops_log_archives_and_keeps_recent_lines(tmp_path):
@@ -37,3 +37,23 @@ def test_rotate_ops_log_skips_small_or_missing_logs(tmp_path):
     small = rotate_ops_log(tmp_path, max_bytes=100, keep_lines=2)
     assert small["rotated"] is False
     assert small["reason"] == "under_limit"
+
+
+def test_rotate_work_activity_log_archives_and_keeps_recent_lines(tmp_path):
+    log_dir = tmp_path / "logs"
+    log_dir.mkdir()
+    log_path = log_dir / "work_activity.jsonl"
+    lines = [
+        json.dumps({"timestamp": f"2026-05-16T00:00:0{i}Z", "summary": f"s{i}"})
+        for i in range(5)
+    ]
+    log_path.write_text("\n".join(lines) + "\n")
+
+    result = rotate_work_activity_log(tmp_path, max_bytes=10, keep_lines=2)
+
+    assert result["rotated"] is True
+    assert result["kept_lines"] == 2
+    assert log_path.read_text().splitlines() == lines[-2:]
+    archives = list((log_dir / "archive").glob("work_activity-*.jsonl"))
+    assert len(archives) == 1
+    assert archives[0].read_text().splitlines() == lines

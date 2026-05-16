@@ -26,6 +26,7 @@ def _read_jsonl(path: Path) -> list[dict]:
 
 def build_ops_report(root: Path) -> str:
     actions = _read_jsonl(root / "logs" / "ops_actions.jsonl")
+    work_activity = _read_jsonl(root / "logs" / "work_activity.jsonl")
     incidents = _read_jsonl(root / "logs" / "ops_incidents.jsonl")
     jobs = list_all_jobs(root)
 
@@ -43,10 +44,12 @@ def build_ops_report(root: Path) -> str:
     ]
 
     latest_action = actions[-1].get("action", "none") if actions else "none"
+    latest_work = work_activity[-1].get("summary", "none") if work_activity else "none"
     latest_incident = incidents[-1].get("title", "none") if incidents else "none"
     lines = [
         "Slayhack weekly Ops report",
         f"ops_actions_total={len(actions)} latest_action={latest_action}",
+        f"work_activity_total={len(work_activity)} latest_work={latest_work}",
         (
             "actions "
             f"smoke_test={action_counts['smoke_test']} "

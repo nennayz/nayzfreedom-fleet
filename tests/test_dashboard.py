@@ -940,6 +940,25 @@ def test_ops_log_status_counts_entries_and_archives(tmp_path):
     assert "2 entries" in result["detail"]
 
 
+def test_ops_page_shows_work_activity_log(tmp_path, client):
+    from work_activity import write_work_activity
+
+    write_work_activity(
+        tmp_path,
+        "design_decision",
+        "Add publish execution lane",
+        result="Ready for production smoke",
+    )
+
+    resp = client.get("/ops", headers=_auth())
+
+    assert resp.status_code == 200
+    assert "Work Activity" in resp.text
+    assert "work_activity.jsonl" in resp.text
+    assert "Add publish execution lane" in resp.text
+    assert "design decision" in resp.text
+
+
 def test_ops_incident_note_saves_and_displays(tmp_path, client, monkeypatch):
     monkeypatch.setattr(
         _dm,
