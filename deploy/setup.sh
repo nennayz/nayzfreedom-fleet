@@ -98,6 +98,8 @@ for unit in \
     nayzfreedom-production-summary.timer \
     nayzfreedom-log-retention.service \
     nayzfreedom-log-retention.timer \
+    nayzfreedom-ops-report.service \
+    nayzfreedom-ops-report.timer \
     nayzfreedom-backup.service \
     nayzfreedom-backup.timer \
     nayzfreedom-healthcheck.service \
@@ -138,6 +140,7 @@ systemctl enable --now nayzfreedom-healthcheck.timer
 systemctl enable --now nayzfreedom-instagram-queue.timer
 systemctl enable --now nayzfreedom-production-summary.timer
 systemctl enable --now nayzfreedom-log-retention.timer
+systemctl enable --now nayzfreedom-ops-report.timer
 
 echo ""
 echo "=== Setup complete ==="
@@ -159,4 +162,5 @@ echo "  Health:    every 5 minutes"
 echo "  IG queue:  every 5 minutes"
 echo "  Summary:   daily at 00:15 UTC"
 echo "  Logs:      daily at 00:30 UTC"
+echo "  Ops report: every Monday at 00:45 UTC"
 echo "  Check with: systemctl list-timers | grep nayz"
