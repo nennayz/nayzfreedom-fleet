@@ -14,7 +14,12 @@
     <p class="eyebrow">Mission command</p>
     <h2>{{ mission_command.state }}</h2>
     <p>{{ mission_command.action }}</p>
-    <a href="/aurora">Return to island</a>
+    <div class="inline-actions">
+      <a href="/aurora">Return to island</a>
+      {% if generation_request %}
+      <a href="/aurora/generation">Open generation queue</a>
+      {% endif %}
+    </div>
   </article>
   <article>
     <span>Current stage</span>
@@ -133,9 +138,21 @@
       <p><strong>Generation status:</strong> {{ generation_request.status | replace("_", " ") }}</p>
       <p>{{ generation_request.next_action }}</p>
       {% endif %}
-      {% if generation_request and generation_request.status != "ready_for_generation" %}
+      {% if generation_result %}
+      <div class="generation-result">
+        <span class="badge badge-ops-ready">{{ generation_result.status | replace("_", " ") }}</span>
+        <p>{{ generation_result.message }}</p>
+        <small>{{ generation_result.output_path }} · attempt {{ generation_result.attempt }}</small>
+      </div>
+      {% endif %}
+      {% if generation_request and generation_request.status == "nora_review" %}
       <form class="inline-form" method="post" action="/jobs/{{ job.id }}/ready-for-generation">
         <button type="submit">Mark ready for generation</button>
+      </form>
+      {% endif %}
+      {% if generation_request and generation_request.status in ["ready_for_generation", "failed", "dry_run_completed"] %}
+      <form class="inline-form" method="post" action="/jobs/{{ job.id }}/run-generation-dry-run">
+        <button type="submit">{{ "Rerun generation dry-run" if generation_request.status == "dry_run_completed" else "Run generation dry-run" }}</button>
       </form>
       {% endif %}
     </article>

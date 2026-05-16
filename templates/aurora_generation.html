@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-header ops-header">
+  <div>
+    <p class="eyebrow">Aurora video</p>
+    <h1>Generation queue</h1>
+  </div>
+  <div class="inline-actions">
+    <a class="button button-secondary" href="/aurora/workflow">Operating workflow</a>
+    <a class="button button-secondary" href="/aurora">Back to Aurora</a>
+  </div>
+</section>
+
+<section class="stat-grid wide">
+  <div class="stat-card">
+    <span>Ready</span>
+    <strong>{{ ready_count }}</strong>
+  </div>
+  <div class="stat-card">
+    <span>Dry-runs</span>
+    <strong>{{ dry_run_count }}</strong>
+  </div>
+  <div class="stat-card">
+    <span>Failed</span>
+    <strong>{{ failed_count }}</strong>
+  </div>
+  <div class="stat-card">
+    <span>Total</span>
+    <strong>{{ generation_jobs | length }}</strong>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="section-heading">
+    <p class="eyebrow">Runner</p>
+    <h2>Video generation packages</h2>
+  </div>
+  {% if generation_jobs %}
+  <div class="ops-list spacious">
+    {% for item in generation_jobs %}
+    <div class="ops-row generation-row">
+      <span class="badge badge-ops-{{ item.state }}">{{ item.status_label }}</span>
+      <a href="/jobs/{{ item.job.id }}"><strong>{{ item.job.brief }}</strong></a>
+      <small>
+        {{ item.tool_hint }} · {{ item.scene_count }} scenes · {{ item.asset_count }} assets · attempt {{ item.attempt }}
+        {% if item.result %} · {{ item.result.output_path }}{% endif %}
+      </small>
+      <small class="generation-action">{{ item.next_action }}</small>
+      {% if item.can_run %}
+      <form class="inline-form" method="post" action="/jobs/{{ item.job.id }}/run-generation-dry-run">
+        <button type="submit">{{ "Rerun generation dry-run" if item.status == "dry_run_completed" else "Run generation dry-run" }}</button>
+      </form>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="muted">No video generation packages have reached Nora's gate yet.</p>
+  {% endif %}
+</section>
+{% endblock %}
