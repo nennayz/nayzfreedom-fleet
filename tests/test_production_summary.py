@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import production_summary
 from production_summary import build_summary
 
 
@@ -68,3 +69,15 @@ def test_build_summary_counts_job_and_publish_states(tmp_path):
     assert "facebook_scheduled=1" in summary
     assert "instagram_pending_queue=1" in summary
     assert "failed=1" in summary
+
+
+def test_main_defaults_root_to_script_directory(tmp_path, monkeypatch, capsys):
+    _write_job(tmp_path, "20260516_060000")
+    monkeypatch.setattr(production_summary, "__file__", str(tmp_path / "production_summary.py"))
+    monkeypatch.setattr("sys.argv", ["production_summary.py", "--dry-run"])
+
+    production_summary.main()
+
+    out = capsys.readouterr().out
+    assert "Slayhack production summary" in out
+    assert "total_jobs=1" in out
