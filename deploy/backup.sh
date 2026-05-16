@@ -8,6 +8,8 @@ BACKUP_ROOT="${BACKUP_ROOT:-/opt/nayzfreedom-backups}"
 TRAEFIK_CONFIG="${TRAEFIK_CONFIG:-/docker/traefik-fmcv/dynamic/nayzfreedom.yml}"
 RETENTION="${RETENTION:-7}"
 GOOGLE_DRIVE_BACKUP_FOLDER_ID="${GOOGLE_DRIVE_BACKUP_FOLDER_ID:-}"
+GOOGLE_DRIVE_OAUTH_CLIENT_SECRETS="${GOOGLE_DRIVE_OAUTH_CLIENT_SECRETS:-}"
+GOOGLE_DRIVE_OAUTH_TOKEN_FILE="${GOOGLE_DRIVE_OAUTH_TOKEN_FILE:-}"
 
 stamp="$(date -u +%Y%m%dT%H%M%SZ)"
 backup_dir="$BACKUP_ROOT/$stamp"
@@ -29,11 +31,19 @@ chmod -R go-rwx "$backup_dir"
 
 if [ -n "$GOOGLE_DRIVE_BACKUP_FOLDER_ID" ]; then
     drive_error=/tmp/nayzfreedom-drive-backup.err
-    if "$INSTALL_DIR/.venv/bin/python" "$INSTALL_DIR/google_drive.py" \
-        "$backup_dir/state.tgz" \
-        --folder-id "$GOOGLE_DRIVE_BACKUP_FOLDER_ID" \
-        --name "nayzfreedom-$stamp-state.tgz" \
-        --mime-type "application/gzip" >/tmp/nayzfreedom-drive-backup.json 2>"$drive_error"; then
+    drive_args=(
+        "$backup_dir/state.tgz"
+        --folder-id "$GOOGLE_DRIVE_BACKUP_FOLDER_ID"
+        --name "nayzfreedom-$stamp-state.tgz"
+        --mime-type "application/gzip"
+    )
+    if [ -n "$GOOGLE_DRIVE_OAUTH_CLIENT_SECRETS" ]; then
+        drive_args+=(--oauth-client-secrets "$GOOGLE_DRIVE_OAUTH_CLIENT_SECRETS")
+        if [ -n "$GOOGLE_DRIVE_OAUTH_TOKEN_FILE" ]; then
+            drive_args+=(--token-file "$GOOGLE_DRIVE_OAUTH_TOKEN_FILE")
+        fi
+    fi
+    if "$INSTALL_DIR/.venv/bin/python" "$INSTALL_DIR/google_drive.py" "${drive_args[@]}" >/tmp/nayzfreedom-drive-backup.json 2>"$drive_error"; then
         chmod 600 /tmp/nayzfreedom-drive-backup.json
         rm -f "$drive_error"
         echo "drive_backup=uploaded"

@@ -119,14 +119,23 @@ systemctl start nayzfreedom-backup.service
 journalctl -u nayzfreedom-backup.service -n 50 --no-pager
 ```
 
-For off-server Google Drive backup, set these in `/opt/nayzfreedom/.env`:
+For off-server Google Drive backup with a service account, set these in `/opt/nayzfreedom/.env`:
 
 ```text
 GOOGLE_APPLICATION_CREDENTIALS=/opt/nayzfreedom/secrets/google-service-account.json
 GOOGLE_DRIVE_BACKUP_FOLDER_ID=<drive-folder-id>
 ```
 
-The service account must have write access to the target Drive folder. For service-account uploads, use a Google Shared Drive folder or OAuth/domain delegation; regular My Drive folders can return `storageQuotaExceeded` because service accounts do not have personal Drive storage quota. Drive upload failures are logged as `drive_backup=failed` while the local VPS backup still succeeds.
+The service account must have write access to the target Drive folder. For service-account uploads, use a Google Shared Drive folder or OAuth/domain delegation; regular My Drive folders can return `storageQuotaExceeded` because service accounts do not have personal Drive storage quota.
+
+For personal My Drive backup, create a desktop OAuth client and set these instead:
+
+```text
+GOOGLE_DRIVE_OAUTH_CLIENT_SECRETS=/opt/nayzfreedom/secrets/google-oauth-client.json
+GOOGLE_DRIVE_OAUTH_TOKEN_FILE=/opt/nayzfreedom/secrets/google-oauth-token.json
+```
+
+Drive upload failures are logged as `drive_backup=failed` while the local VPS backup still succeeds.
 
 ## Alerts
 
