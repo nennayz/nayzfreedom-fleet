@@ -377,6 +377,66 @@ button[type="submit"]:hover { background: var(--navy-soft); }
 .panel { padding: 1.25rem; }
 .section-heading { margin-bottom: 1rem; }
 
+.filter-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin: 0 0 1rem;
+}
+.filter-tab {
+  align-items: center;
+  background: rgba(255,255,255,0.78);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--navy);
+  display: inline-flex;
+  gap: 0.5rem;
+  min-height: 40px;
+  padding: 0.45rem 0.8rem;
+  text-decoration: none;
+}
+.filter-tab.active {
+  background: var(--navy);
+  color: #fff;
+}
+.filter-tab strong {
+  background: rgba(16,35,63,0.08);
+  border-radius: 999px;
+  font-size: 0.76rem;
+  min-width: 1.5rem;
+  padding: 0.12rem 0.4rem;
+  text-align: center;
+}
+.filter-tab.active strong { background: rgba(255,255,255,0.18); }
+
+.publish-history {
+  display: grid;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+.publish-history div {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+.publish-history small {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.inline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+.inline-form {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  max-width: none;
+  padding: 0;
+}
+
 .priority-line {
   color: var(--ink);
   font-size: 1rem;

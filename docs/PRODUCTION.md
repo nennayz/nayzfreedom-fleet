@@ -14,6 +14,7 @@ This runbook covers the current production deployment for the Slayhack dashboard
 - Instagram queue timer: `nayzfreedom-instagram-queue.timer`
 - Backup timer: `nayzfreedom-backup.timer`
 - Health-check timer: `nayzfreedom-healthcheck.timer`
+- Production summary timer: `nayzfreedom-production-summary.timer`
 - Traefik dynamic config: `/docker/traefik-fmcv/dynamic/nayzfreedom.yml`
 
 ## Deploy
@@ -42,6 +43,7 @@ systemctl is-active nayzfreedom-reporter.timer
 systemctl is-active nayzfreedom-instagram-queue.timer
 systemctl is-active nayzfreedom-backup.timer
 systemctl is-active nayzfreedom-healthcheck.timer
+systemctl is-active nayzfreedom-production-summary.timer
 curl -fsS https://fleet.nayzfreedom.cloud/healthz
 ```
 
@@ -64,6 +66,7 @@ Reporter timer: active
 Instagram queue timer: active
 Backup timer: active
 Health-check timer: active
+Production summary timer: active
 Traefik config: present
 ```
 
@@ -95,6 +98,7 @@ journalctl -u nayzfreedom-instagram-queue.service -n 100 --no-pager
 journalctl -u nayzfreedom-reporter.service -n 100 --no-pager
 journalctl -u nayzfreedom-backup.service -n 100 --no-pager
 journalctl -u nayzfreedom-healthcheck.service -n 100 --no-pager
+journalctl -u nayzfreedom-production-summary.service -n 100 --no-pager
 ```
 
 For a quick 24-hour error check:
@@ -144,18 +148,30 @@ GOOGLE_DRIVE_OAUTH_TOKEN_FILE=/opt/nayzfreedom/secrets/google-oauth-token.json
 
 Drive upload failures are logged as `drive_backup=failed` while the local VPS backup still succeeds.
 
+Verify the latest local backup archive:
+
+```bash
+/opt/nayzfreedom/deploy/restore_smoke.sh
+```
+
 ## Alerts
 
-Scheduler failure alerts, weekly reports, and health-check failures use
+Scheduler failure alerts, weekly reports, daily production summaries, and health-check failures use
 `SLACK_WEBHOOK_URL` first. If Slack is not set, they fall back to Telegram when
 both `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` are present.
+
+Run the summary manually without sending:
+
+```bash
+sudo -u nayzfreedom /opt/nayzfreedom/.venv/bin/python /opt/nayzfreedom/production_summary.py --dry-run
+```
 
 ## Monitoring
 
 The health-check timer runs every 5 minutes and fails when:
 
 - public `/healthz` is unavailable
-- dashboard, bot, scheduler timer, or reporter timer is inactive
+- dashboard, bot, scheduler timer, reporter timer, Instagram queue timer, or production summary timer is inactive
 - disk usage for `/opt/nayzfreedom` is 85% or higher
 - `META_ACCESS_TOKEN` is set but the Meta Graph `/me` check fails
 - recent logs from the last 5 minutes contain `Traceback`, `ERROR`, or `CRITICAL`

@@ -20,7 +20,7 @@ from dashboard_store import (
     load_performance_all,
     summarize_jobs,
 )
-from job_store import find_job
+from job_store import find_job, save_job
 from project_loader import (
     list_project_slugs,
     load_project,
@@ -78,6 +78,54 @@ def _publish_status_items(job) -> list[dict[str, str]]:
 
 
 templates.env.globals["publish_status_items"] = _publish_status_items
+
+
+def _publish_history_items(job) -> list[dict[str, str]]:
+    items = []
+    for item in _publish_status_items(job):
+        value = (job.publish_result or {}).get(item["platform"], {})
+        if not isinstance(value, dict):
+            continue
+        detail = value.get("due_at") or value.get("id") or value.get("reason") or value.get("error") or ""
+        items.append({**item, "detail": str(detail)})
+    return items
+
+
+templates.env.globals["publish_history_items"] = _publish_history_items
+
+
+def _filter_jobs(jobs, selected: str):
+    if selected == "running":
+        return [job for job in jobs if getattr(job.status, "value", str(job.status)) == "running"]
+    if selected == "failed":
+        return [job for job in jobs if getattr(job.status, "value", str(job.status)) == "failed"]
+    if selected in {"scheduled", "queued", "published"}:
+        target = {"scheduled": "scheduled", "queued": "pending_queue", "published": "published"}[selected]
+        return [
+            job for job in jobs
+            if any(item["status"] == target for item in _publish_status_items(job))
+        ]
+    return jobs
+
+
+def _mission_filters(jobs, selected: str) -> list[dict[str, object]]:
+    filters = [
+        ("all", "All"),
+        ("running", "Running"),
+        ("failed", "Failed"),
+        ("scheduled", "Scheduled"),
+        ("queued", "Queued"),
+        ("published", "Published"),
+    ]
+    return [
+        {
+            "key": key,
+            "label": label,
+            "active": key == selected,
+            "count": len(_filter_jobs(jobs, key)),
+        }
+        for key, label in filters
+    ]
 
 
 @app.get("/healthz")
@@ -361,7 +409,19 @@ def island_detail(project_slug: str, request: Request, _: str = Depends(verify_a
 @app.get("/aurora/missions", response_class=HTMLResponse)
 def aurora_missions(request: Request, _: str = Depends(verify_auth)):
     jobs = list_all_jobs(_root(request))
-    return templates.TemplateResponse(request, "jobs.html", {"jobs": jobs})
+    selected_filter = request.query_params.get("filter", "all")
+    if selected_filter not in {"all", "running", "failed", "scheduled", "queued", "published"}:
+        selected_filter = "all"
+    filtered_jobs = _filter_jobs(jobs, selected_filter)
+    return templates.TemplateResponse(
+        request,
+        "jobs.html",
+        {
+            "jobs": filtered_jobs,
+            "mission_filters": _mission_filters(jobs, selected_filter),
+            "selected_filter": selected_filter,
+        },
+    )
 
 
 @app.get("/aurora/metrics", response_class=HTMLResponse)
@@ -411,7 +471,14 @@ def jobs_redirect(_: str = Depends(verify_auth)):
 @app.get("/jobs/partial", response_class=HTMLResponse)
 def jobs_partial(request: Request, _: str = Depends(verify_auth)):
     jobs = list_all_jobs(_root(request))
-    return templates.TemplateResponse(request, "_jobs_partial.html", {"jobs": jobs})
+    selected_filter = request.query_params.get("filter", "all")
+    if selected_filter not in {"all", "running", "failed", "scheduled", "queued", "published"}:
+        selected_filter = "all"
+    return templates.TemplateResponse(
+        request,
+        "_jobs_partial.html",
+        {"jobs": _filter_jobs(jobs, selected_filter), "selected_filter": selected_filter},
+    )
 
 
 @app.get("/jobs/{job_id}", response_class=HTMLResponse)
@@ -440,6 +507,39 @@ def job_detail(job_id: str, request: Request, _: str = Depends(verify_auth)):
             "mission_outputs": mission_outputs,
         },
     )
+
+
+@app.post("/jobs/{job_id}/retry-publish")
+def retry_publish(job_id: str, _: str = Depends(verify_auth)):
+    try:
+        find_job(job_id)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Job {job_id!r} not found")
+    subprocess.Popen(
+        [sys.executable, "main.py", "--publish-only", job_id, "--schedule"],
+        cwd=str(_ROOT),
+    )
+    return RedirectResponse(f"/jobs/{job_id}", status_code=303)
+
+
+@app.post("/jobs/{job_id}/publish-instagram-now")
+def publish_instagram_now(job_id: str, _: str = Depends(verify_auth)):
+    from datetime import datetime, timezone
+    import time
+
+    try:
+        job = find_job(job_id)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Job {job_id!r} not found")
+    ig_result = (job.publish_result or {}).get("instagram", {})
+    if not isinstance(ig_result, dict) or ig_result.get("status") != "pending_queue":
+        raise HTTPException(status_code=400, detail="Instagram is not pending queue for this job")
+    ig_result["scheduled_publish_time"] = int(time.time()) - 1
+    ig_result["due_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    ig_result["publish_now_requested"] = True
+    save_job(job)
+    subprocess.Popen([sys.executable, "instagram_queue.py"], cwd=str(_ROOT))
+    return RedirectResponse(f"/jobs/{job_id}", status_code=303)
 
 
 @app.get("/metrics", response_class=HTMLResponse)

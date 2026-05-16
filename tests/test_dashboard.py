@@ -289,6 +289,34 @@ def test_jobs_page_shows_publish_indicators(tmp_path, client):
     assert "Instagram pending queue" in resp.text
 
 
+def test_jobs_page_filters_publish_states(tmp_path, client):
+    _write_job(
+        tmp_path,
+        "20260512_060000",
+        brief="queued mission",
+        publish_result={"instagram": {"status": "pending_queue"}},
+    )
+    _write_job(
+        tmp_path,
+        "20260513_060000",
+        brief="scheduled mission",
+        publish_result={"facebook": {"status": "scheduled"}},
+    )
+    _write_job(tmp_path, "20260514_060000", brief="plain mission")
+
+    queued = client.get("/aurora/missions?filter=queued", headers=_auth())
+    scheduled = client.get("/aurora/missions?filter=scheduled", headers=_auth())
+
+    assert queued.status_code == 200
+    assert "queued mission" in queued.text
+    assert "scheduled mission" not in queued.text
+    assert "plain mission" not in queued.text
+    assert 'class="filter-tab active" href="/aurora/missions?filter=queued"' in queued.text
+    assert scheduled.status_code == 200
+    assert "scheduled mission" in scheduled.text
+    assert "queued mission" not in scheduled.text
+
+
 def test_dashboard_refuses_start_without_env():
     saved_user = os.environ.pop("DASHBOARD_USER", None)
     saved_pass = os.environ.pop("DASHBOARD_PASSWORD", None)
@@ -347,6 +375,84 @@ def test_job_detail_shows_brief(tmp_path, client):
     assert "Publish result is recorded." in resp.text
     assert "Command the Brief" in resp.text
     assert "/aurora/crew/robin" in resp.text
+
+
+def test_job_detail_shows_publish_controls(tmp_path, client):
+    _write_job(
+        tmp_path,
+        "20260512_060000",
+        publish_result={
+            "facebook": {"status": "failed", "error": "bad request"},
+            "instagram": {"status": "pending_queue", "due_at": "2026-05-16T06:00:00Z"},
+        },
+    )
+    from models.content_job import ContentJob
+    job = ContentJob.model_validate_json(
+        (tmp_path / "output" / "Slayhack" / "20260512_060000" / "job.json").read_text()
+    )
+    with patch.object(_dm, "find_job", return_value=job):
+        resp = client.get("/jobs/20260512_060000", headers=_auth())
+
+    assert resp.status_code == 200
+    assert "Publish control" in resp.text
+    assert "Facebook failed" in resp.text
+    assert "Instagram pending queue" in resp.text
+    assert "Retry publish" in resp.text
+    assert "Publish Instagram now" in resp.text
+
+
+def test_retry_publish_spawns_publish_only(tmp_path, client, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    _write_job(
+        tmp_path,
+        "20260512_060000",
+        status="failed",
+        stage="publish_done",
+        publish_result={"facebook": {"status": "failed", "error": "bad request"}},
+    )
+    mock_popen = MagicMock()
+    with patch("dashboard.subprocess.Popen", mock_popen):
+        resp = client.post(
+            "/jobs/20260512_060000/retry-publish",
+            headers=_auth(),
+            follow_redirects=False,
+        )
+
+    assert resp.status_code == 303
+    assert resp.headers["location"] == "/jobs/20260512_060000"
+    cmd = mock_popen.call_args.args[0]
+    assert cmd[1:] == ["main.py", "--publish-only", "20260512_060000", "--schedule"]
+
+
+def test_publish_instagram_now_marks_due_and_runs_queue(tmp_path, client, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    _write_job(
+        tmp_path,
+        "20260512_060000",
+        publish_result={
+            "instagram": {
+                "status": "pending_queue",
+                "scheduled_publish_time": 9999999999,
+                "due_at": "2286-11-20T17:46:39Z",
+            }
+        },
+    )
+    mock_popen = MagicMock()
+    with patch("dashboard.subprocess.Popen", mock_popen):
+        resp = client.post(
+            "/jobs/20260512_060000/publish-instagram-now",
+            headers=_auth(),
+            follow_redirects=False,
+        )
+
+    assert resp.status_code == 303
+    assert resp.headers["location"] == "/jobs/20260512_060000"
+    cmd = mock_popen.call_args.args[0]
+    assert cmd[1:] == ["instagram_queue.py"]
+    data = json.loads((tmp_path / "output" / "Slayhack" / "20260512_060000" / "job.json").read_text())
+    ig_result = data["publish_result"]["instagram"]
+    assert ig_result["publish_now_requested"] is True
+    assert ig_result["scheduled_publish_time"] < 9999999999
 
 
 def test_job_detail_workflow_marks_current_crew_stage(tmp_path, client):

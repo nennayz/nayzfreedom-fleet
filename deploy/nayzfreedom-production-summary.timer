@@ -1,0 +1,11 @@
+[Unit]
+Description=NayzFreedom daily production summary - 00:15 UTC
+Requires=nayzfreedom-production-summary.service
+
+[Timer]
+OnCalendar=*-*-* 00:15:00 UTC
+Persistent=true
+Unit=nayzfreedom-production-summary.service
+
+[Install]
+WantedBy=timers.target

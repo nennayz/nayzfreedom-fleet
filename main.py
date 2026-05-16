@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from agents.publish import PublishAgent
+from agents.publish import PublishAgent, has_publish_failures
 from activity_logger import log_action, log_command
 from config import Config, MissingAPIKeyError
 from job_store import find_job, save_job
@@ -66,16 +66,19 @@ def main() -> None:
         except FileNotFoundError as e:
             print(f"Error: {e}")
             sys.exit(1)
-        if job.stage != "emma_done":
-            print(f"Error: job {job.id} is at stage '{job.stage}', expected 'emma_done'. "
+        if job.stage not in {"emma_done", "publish_done"}:
+            print(f"Error: job {job.id} is at stage '{job.stage}', expected 'emma_done' or 'publish_done'. "
                   "Run the full pipeline first.")
             sys.exit(1)
         print(f"Publishing job {job.id} for {job.pm.page_name} (schedule={args.schedule})")
         agent = PublishAgent(config)
         result = agent.run(job, schedule=args.schedule)
+        result.status = JobStatus.FAILED if has_publish_failures(result.publish_result) else JobStatus.COMPLETED
         save_job(result)
         statuses = {p: v.get("status") for p, v in (result.publish_result or {}).items()}
         print(f"Publish complete: {statuses}")
+        if result.status == JobStatus.FAILED:
+            sys.exit(1)
         return
 
     if args.track:

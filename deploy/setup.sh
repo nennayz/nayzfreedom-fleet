@@ -16,7 +16,7 @@
 #   6. Installs systemd units for dashboard, scheduler, reporter
 #   7. Creates dashboard auth defaults if missing
 #   8. Enables and starts dashboard, then conditionally enables bot/timers
-#   9. Enables production backup and health-check timers
+#   9. Enables production backup, health-check, Instagram queue, and summary timers
 
 set -euo pipefail
 
@@ -94,6 +94,8 @@ for unit in \
     nayzfreedom-reporter.timer \
     nayzfreedom-instagram-queue.service \
     nayzfreedom-instagram-queue.timer \
+    nayzfreedom-production-summary.service \
+    nayzfreedom-production-summary.timer \
     nayzfreedom-backup.service \
     nayzfreedom-backup.timer \
     nayzfreedom-healthcheck.service \
@@ -101,7 +103,7 @@ for unit in \
     cp "$DEPLOY_DIR/$unit" "/etc/systemd/system/$unit"
 done
 
-chmod +x "$INSTALL_DIR/deploy/backup.sh" "$INSTALL_DIR/deploy/healthcheck.sh"
+chmod +x "$INSTALL_DIR/deploy/backup.sh" "$INSTALL_DIR/deploy/healthcheck.sh" "$INSTALL_DIR/deploy/restore_smoke.sh"
 
 systemctl daemon-reload
 
@@ -128,6 +130,7 @@ fi
 systemctl enable --now nayzfreedom-backup.timer
 systemctl enable --now nayzfreedom-healthcheck.timer
 systemctl enable --now nayzfreedom-instagram-queue.timer
+systemctl enable --now nayzfreedom-production-summary.timer
 
 echo ""
 echo "=== Setup complete ==="
@@ -147,4 +150,5 @@ echo "  Reporter:  every Monday at 08:00 UTC"
 echo "  Backup:    daily at 03:30 UTC"
 echo "  Health:    every 5 minutes"
 echo "  IG queue:  every 5 minutes"
+echo "  Summary:   daily at 00:15 UTC"
 echo "  Check with: systemctl list-timers | grep nayz"
