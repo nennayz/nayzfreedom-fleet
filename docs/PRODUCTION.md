@@ -23,10 +23,13 @@ Run from the VPS:
 ssh root@2.24.88.63
 cd /opt/nayzfreedom
 chown -R nayzfreedom:nayzfreedom /opt/nayzfreedom
-sudo -u nayzfreedom git -C /opt/nayzfreedom pull --ff-only origin main
-systemctl restart nayzfreedom-dashboard.service
-systemctl restart nayzfreedom-bot.service
+./deploy/update.sh
 ```
+
+`main` is protected. Make production changes on a feature branch, open a pull
+request, merge the pull request, then run `./deploy/update.sh` on the VPS. For
+an emergency branch deploy, set `DEPLOY_BRANCH=your-branch`, but prefer the
+protected pull-request path.
 
 Verify:
 
@@ -139,7 +142,9 @@ Drive upload failures are logged as `drive_backup=failed` while the local VPS ba
 
 ## Alerts
 
-Scheduler failure alerts and weekly reports use `SLACK_WEBHOOK_URL` first. If Slack is not set, they fall back to Telegram when both `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` are present.
+Scheduler failure alerts, weekly reports, and health-check failures use
+`SLACK_WEBHOOK_URL` first. If Slack is not set, they fall back to Telegram when
+both `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` are present.
 
 ## Monitoring
 
@@ -148,6 +153,7 @@ The health-check timer runs every 5 minutes and fails when:
 - public `/healthz` is unavailable
 - dashboard, bot, scheduler timer, or reporter timer is inactive
 - disk usage for `/opt/nayzfreedom` is 85% or higher
+- `META_ACCESS_TOKEN` is set but the Meta Graph `/me` check fails
 - recent logs from the last 5 minutes contain `Traceback`, `ERROR`, or `CRITICAL`
 
 Run manually:

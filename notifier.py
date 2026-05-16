@@ -106,3 +106,12 @@ def send_weekly_report(lines: list[str], dry_run: bool = False) -> None:
         return
 
     _send_alert(message, "weekly report")
+
+
+def send_healthcheck_alert(message: str, dry_run: bool = False) -> None:
+    """Send a production health-check alert."""
+    if dry_run:
+        print(message)
+        return
+
+    _send_alert(message, "health-check alert")

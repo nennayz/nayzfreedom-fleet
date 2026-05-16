@@ -1,7 +1,7 @@
 from __future__ import annotations
 from unittest.mock import patch, MagicMock
 
-from notifier import send_slack_alert, send_weekly_report
+from notifier import send_healthcheck_alert, send_slack_alert, send_weekly_report
 
 
 FAILURES_ONE = [
@@ -154,3 +154,25 @@ def test_send_weekly_report_uses_telegram_fallback(monkeypatch):
     mock_post.assert_called_once()
     assert mock_post.call_args.args[0] == "https://api.telegram.org/bottelegram-token/sendMessage"
     assert ":bar_chart: Weekly Report" in mock_post.call_args.kwargs["json"]["text"]
+
+
+def test_send_healthcheck_alert_dry_run_prints(capsys, monkeypatch):
+    monkeypatch.setenv("SLACK_WEBHOOK_URL", "https://hooks.slack.com/fake")
+    send_healthcheck_alert("health failed", dry_run=True)
+    out = capsys.readouterr().out
+    assert "health failed" in out
+
+
+def test_send_healthcheck_alert_uses_telegram_fallback(monkeypatch):
+    monkeypatch.delenv("SLACK_WEBHOOK_URL", raising=False)
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "telegram-token")
+    monkeypatch.setenv("TELEGRAM_CHAT_ID", "123456")
+    mock_post = MagicMock()
+    mock_post.return_value.__enter__ = lambda s: mock_post.return_value
+    mock_post.return_value.__exit__ = MagicMock(return_value=False)
+    mock_post.return_value.status_code = 200
+    with patch("notifier.requests.post", mock_post):
+        send_healthcheck_alert("health failed")
+    mock_post.assert_called_once()
+    assert mock_post.call_args.args[0] == "https://api.telegram.org/bottelegram-token/sendMessage"
+    assert "health failed" in mock_post.call_args.kwargs["json"]["text"]

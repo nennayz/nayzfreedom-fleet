@@ -52,6 +52,16 @@ def test_healthz_does_not_require_auth(client):
     assert resp.json() == {"status": "ok", "service": "nayzfreedom-dashboard"}
 
 
+def test_meta_policy_pages_do_not_require_auth(client):
+    privacy = client.get("/privacy")
+    deletion = client.get("/data-deletion")
+
+    assert privacy.status_code == 200
+    assert "Privacy Policy" in privacy.text
+    assert deletion.status_code == 200
+    assert "Data Deletion" in deletion.text
+
+
 @pytest.fixture
 def client(tmp_path):
     _dm.app.state.root = tmp_path
