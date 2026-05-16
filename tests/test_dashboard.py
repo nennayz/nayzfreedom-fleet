@@ -370,7 +370,8 @@ def test_generation_dry_run_writes_artifact_and_updates_job(tmp_path, client):
     assert "Dry run only; no external generation API was called." in detail.text
     assert "Rerun generation dry-run" in detail.text
     assert "Generation dry-run artifact is saved." in detail.text
-    assert "Roxy and Emma can package caption, hashtags, FAQ, and publish prep after the real video is attached." in detail.text
+    assert "Record real generation result" in detail.text
+    assert "Waiting for the real generated video attachment." in detail.text
 
 
 def test_generation_dry_run_can_rerun_and_increments_attempt(tmp_path, client):
@@ -407,6 +408,77 @@ def test_generation_dry_run_rejects_mission_without_video_package(tmp_path, clie
 
     assert resp.status_code == 400
     assert "No video package is attached" in resp.text
+
+
+def test_record_generation_result_attaches_real_video_and_opens_publish_packaging(tmp_path, client):
+    _write_slay_hack_project(tmp_path)
+    short_video_ticket_id = _slay_hack_ticket_id(tmp_path, "short-video-1")
+    created = client.post(
+        f"/aurora/workflow/video-packages/{short_video_ticket_id}/create-mission",
+        headers=_auth(),
+        follow_redirects=False,
+    )
+    job_id = created.headers["location"].split("/")[-1]
+    client.post(f"/jobs/{job_id}/ready-for-generation", headers=_auth(), follow_redirects=False)
+    client.post(f"/jobs/{job_id}/run-generation-dry-run", headers=_auth(), follow_redirects=False)
+
+    resp = client.post(
+        f"/jobs/{job_id}/record-generation-result",
+        headers=_auth(),
+        data={
+            "video_path": "output/Slay Hack/final-video.mp4",
+            "provider": "manual_upload",
+            "provider_request_id": "req-123",
+            "note": "Captain attached final render.",
+        },
+        follow_redirects=False,
+    )
+
+    assert resp.status_code == 303
+    assert resp.headers["location"] == f"/jobs/{job_id}"
+    job_path = next((tmp_path / "output" / "Slay Hack").glob("*/job.json"))
+    data = json.loads(job_path.read_text())
+    assert data["stage"] == "generation_completed"
+    assert data["status"] == "awaiting_approval"
+    assert data["video_path"] == "output/Slay Hack/final-video.mp4"
+    assert data["generation_request"]["status"] == "completed"
+    assert data["generation_request"]["provider"] == "manual_upload"
+    assert data["generation_request"]["provider_request_id"] == "req-123"
+    assert data["generation_result"]["status"] == "completed"
+    assert data["generation_result"]["mode"] == "real"
+    assert data["generation_result"]["output_path"] == "output/Slay Hack/final-video.mp4"
+    assert data["generation_result"]["publish_packaging"]["status"] == "ready"
+    assert data["generation_result"]["note"] == "Captain attached final render."
+
+    detail = client.get(f"/jobs/{job_id}", headers=_auth())
+
+    assert detail.status_code == 200
+    assert "Real generated video is attached to this mission." in detail.text
+    assert "Publish packaging:" in detail.text
+    assert "Roxy and Emma can package caption, hashtags, FAQ, and publish prep." in detail.text
+    assert "Waiting for the real generated video attachment." not in detail.text
+
+
+def test_record_generation_result_rejects_blank_video_path(tmp_path, client):
+    _write_slay_hack_project(tmp_path)
+    short_video_ticket_id = _slay_hack_ticket_id(tmp_path, "short-video-1")
+    created = client.post(
+        f"/aurora/workflow/video-packages/{short_video_ticket_id}/create-mission",
+        headers=_auth(),
+        follow_redirects=False,
+    )
+    job_id = created.headers["location"].split("/")[-1]
+    client.post(f"/jobs/{job_id}/ready-for-generation", headers=_auth(), follow_redirects=False)
+
+    resp = client.post(
+        f"/jobs/{job_id}/record-generation-result",
+        headers=_auth(),
+        data={"video_path": " ", "provider": "manual_upload"},
+        follow_redirects=False,
+    )
+
+    assert resp.status_code == 400
+    assert "Video path is required" in resp.text
 
 
 def test_aurora_crew_pages_render(client):
