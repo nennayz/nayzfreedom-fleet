@@ -104,6 +104,10 @@ for unit in \
 done
 
 chmod +x "$INSTALL_DIR/deploy/backup.sh" "$INSTALL_DIR/deploy/healthcheck.sh" "$INSTALL_DIR/deploy/restore_smoke.sh"
+if [ -f "$INSTALL_DIR/deploy/nayzfreedom-ops.sudoers" ]; then
+    cp "$INSTALL_DIR/deploy/nayzfreedom-ops.sudoers" /etc/sudoers.d/nayzfreedom-ops
+    chmod 440 /etc/sudoers.d/nayzfreedom-ops
+fi
 
 systemctl daemon-reload
 
