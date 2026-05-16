@@ -48,6 +48,20 @@
 
 <section class="panel">
   <div class="section-heading">
+    <p class="eyebrow">Filters</p>
+    <h2>Generation and publish state</h2>
+  </div>
+  <div class="inline-actions">
+    {% for item in generation_filters %}
+    <a class="button {{ 'button-secondary' if not item.active else '' }}" href="/aurora/generation?filter={{ item.key }}">
+      {{ item.label }} {{ item.count }}
+    </a>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="panel">
+  <div class="section-heading">
     <p class="eyebrow">Runner</p>
     <h2>Video generation packages</h2>
   </div>

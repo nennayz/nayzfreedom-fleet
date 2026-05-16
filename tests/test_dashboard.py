@@ -583,10 +583,20 @@ def test_create_publish_job_and_schedule_publish_from_package(tmp_path, client):
     assert data["publish_result"]["tiktok"]["status"] == "scheduled"
     assert data["publish_result"]["instagram"]["status"] == "scheduled"
     assert data["publish_result"]["tiktok"]["dry_run"] is True
+    work_activity = (tmp_path / "logs" / "work_activity.jsonl").read_text()
+    assert "Created video package mission" in work_activity
+    assert "Marked generation ready" in work_activity
+    assert "Generation dry-run completed" in work_activity
+    assert "Recorded real generation result" in work_activity
+    assert "Recorded publish package" in work_activity
+    assert "Created publish job" in work_activity
+    assert "Scheduled publish handoff" in work_activity
 
     scheduled_detail = client.get(f"/jobs/{job_id}", headers=_auth())
     scheduled_filter = client.get("/aurora/missions?filter=scheduled", headers=_auth())
     queue = client.get("/aurora/generation", headers=_auth())
+    queue_scheduled = client.get("/aurora/generation?filter=scheduled", headers=_auth())
+    queue_ready = client.get("/aurora/generation?filter=ready_to_publish", headers=_auth())
 
     assert scheduled_detail.status_code == 200
     assert "Scheduled publish" in scheduled_detail.text
@@ -595,6 +605,11 @@ def test_create_publish_job_and_schedule_publish_from_package(tmp_path, client):
     assert "Video package mission: Quick hack" in scheduled_filter.text
     assert queue.status_code == 200
     assert "Scheduled publish" in queue.text
+    assert "Generation and publish state" in queue.text
+    assert queue_scheduled.status_code == 200
+    assert "Video package mission: Quick hack" in queue_scheduled.text
+    assert queue_ready.status_code == 200
+    assert "Video package mission: Quick hack" not in queue_ready.text
 
 
 def test_create_publish_job_requires_publish_package(tmp_path, client):
@@ -852,6 +867,8 @@ def test_ops_smoke_test_renders_results(tmp_path, client, monkeypatch):
     assert audit["user"] == "admin"
     assert audit["action"] == "smoke_test"
     assert audit["result_state"] == "Ready"
+    work_activity = (tmp_path / "logs" / "work_activity.jsonl").read_text()
+    assert "Dashboard Ops smoke test" in work_activity
 
 
 def test_ops_action_runs_selected_command(tmp_path, client, monkeypatch):
@@ -881,6 +898,8 @@ def test_ops_action_runs_selected_command(tmp_path, client, monkeypatch):
     assert audit["user"] == "admin"
     assert audit["action"] == "instagram_queue"
     assert audit["result_state"] == "Ready"
+    work_activity = (tmp_path / "logs" / "work_activity.jsonl").read_text()
+    assert "Dashboard Ops action: instagram_queue" in work_activity
 
 
 def test_run_ops_action_rejects_unknown_action():

@@ -49,7 +49,7 @@ from project_loader import (
     project_slug_matches,
     resolve_project_slug,
 )
-from work_activity import read_recent_work_activity, work_activity_status
+from work_activity import read_recent_work_activity, work_activity_status, write_work_activity
 
 DASHBOARD_USER = os.environ.get("DASHBOARD_USER")
 DASHBOARD_PASSWORD = os.environ.get("DASHBOARD_PASSWORD")
@@ -178,6 +178,9 @@ def _filter_jobs(jobs, selected: str):
     return jobs
 
 
+MISSION_FILTER_KEYS = {"all", "running", "failed", "ready_to_publish", "scheduled", "queued", "published", "publish_failed"}
+
+
 def _mission_filters(jobs, selected: str) -> list[dict[str, object]]:
     filters = [
         ("all", "All"),
@@ -258,6 +261,35 @@ def _write_ops_audit(root: Path, user: str, action: str, result: dict[str, str])
     }
     with path.open("a") as fh:
         fh.write(json.dumps(record, sort_keys=True) + "\n")
+
+
+def _write_work_event(
+    root: Path,
+    event_type: str,
+    summary: str,
+    *,
+    actor: str = "dashboard",
+    command: str | None = None,
+    result: str | None = None,
+    next_action: str | None = None,
+    files: list[str] | None = None,
+    metadata: dict[str, object] | None = None,
+) -> None:
+    try:
+        write_work_activity(
+            root,
+            event_type,
+            summary,
+            actor=actor,
+            command=command,
+            files=files,
+            result=result,
+            next_action=next_action,
+            metadata=metadata,
+        )
+    except Exception:
+        # Work activity logging should never block the dashboard action itself.
+        pass
 
 
 def _recent_ops_audit(root: Path, limit: int = 8) -> list[dict[str, str]]:
@@ -1419,6 +1451,47 @@ def _publish_execution_summary(job: ContentJob) -> dict[str, object]:
     }
 
 
+GENERATION_FILTERS = (
+    ("all", "All"),
+    ("waiting_real_video", "Waiting real video"),
+    ("ready_packaging", "Ready packaging"),
+    ("package_complete", "Package complete"),
+    ("ready_to_publish", "Ready to publish"),
+    ("scheduled", "Scheduled publish"),
+    ("publish_failed", "Publish failed"),
+)
+
+
+def _generation_row_matches_filter(item: dict[str, object], selected: str) -> bool:
+    if selected == "all":
+        return True
+    if selected == "waiting_real_video":
+        return bool(item["waiting_for_real_video"])
+    if selected == "ready_packaging":
+        return bool(item["can_package"]) and item["packaging_label"] != "Publish package complete"
+    if selected == "package_complete":
+        return item["packaging_label"] == "Publish package complete"
+    if selected == "ready_to_publish":
+        return item["publish_execution"]["status"] == "ready_to_publish"
+    if selected == "scheduled":
+        return item["publish_execution"]["status"] == "scheduled"
+    if selected == "publish_failed":
+        return item["publish_execution"]["status"] == "failed"
+    return True
+
+
+def _generation_filter_cards(rows: list[dict[str, object]], selected: str) -> list[dict[str, object]]:
+    return [
+        {
+            "key": key,
+            "label": label,
+            "active": key == selected,
+            "count": sum(1 for item in rows if _generation_row_matches_filter(item, key)),
+        }
+        for key, label in GENERATION_FILTERS
+    ]
+
+
 def _generation_queue(root: Path) -> list[dict[str, object]]:
     rows = []
     for job in list_all_jobs(root):
@@ -2048,11 +2121,18 @@ def aurora_workflow(request: Request, _: str = Depends(verify_auth)):
 @app.get("/aurora/generation", response_class=HTMLResponse)
 def aurora_generation(request: Request, _: str = Depends(verify_auth)):
     rows = _generation_queue(_root(request))
+    selected_filter = request.query_params.get("filter", "all")
+    valid_filters = {key for key, _ in GENERATION_FILTERS}
+    if selected_filter not in valid_filters:
+        selected_filter = "all"
+    filtered_rows = [item for item in rows if _generation_row_matches_filter(item, selected_filter)]
     return templates.TemplateResponse(
         request,
         "aurora_generation.html",
         {
-            "generation_jobs": rows,
+            "generation_jobs": filtered_rows,
+            "generation_filters": _generation_filter_cards(rows, selected_filter),
+            "selected_filter": selected_filter,
             "ready_count": sum(1 for item in rows if item["status"] == "ready_for_generation"),
             "dry_run_count": sum(1 for item in rows if item["status"] == "dry_run_completed"),
             "completed_count": sum(1 for item in rows if item["status"] == "completed"),
@@ -2065,7 +2145,7 @@ def aurora_generation(request: Request, _: str = Depends(verify_auth)):
 
 
 @app.post("/aurora/workflow/video-packages/{ticket_id}/create-mission")
-def create_video_package_mission(ticket_id: str, request: Request, _: str = Depends(verify_auth)):
+def create_video_package_mission(ticket_id: str, request: Request, user: str = Depends(verify_auth)):
     root = _root(request)
     slate = _calendar_slate(root)
     ticket = _find_video_ticket(slate, ticket_id)
@@ -2076,6 +2156,15 @@ def create_video_package_mission(ticket_id: str, request: Request, _: str = Depe
         raise HTTPException(status_code=400, detail=f"Ticket {ticket_id!r} is not a video package")
     job = _video_package_job(root, ticket, package)
     _save_job_at_root(root, job)
+    _write_work_event(
+        root,
+        "implementation_step",
+        f"Created video package mission {job.id}",
+        actor=user,
+        result=ticket_id,
+        next_action="Mark ready for generation after Nora review.",
+        metadata={"job_id": job.id, "ticket_id": ticket_id},
+    )
     return RedirectResponse(f"/jobs/{job.id}", status_code=303)
 
 
@@ -2127,7 +2216,7 @@ def island_detail(project_slug: str, request: Request, _: str = Depends(verify_a
 def aurora_missions(request: Request, _: str = Depends(verify_auth)):
     jobs = list_all_jobs(_root(request))
     selected_filter = request.query_params.get("filter", "all")
-    if selected_filter not in {"all", "running", "failed", "scheduled", "queued", "published"}:
+    if selected_filter not in MISSION_FILTER_KEYS:
         selected_filter = "all"
     filtered_jobs = _filter_jobs(jobs, selected_filter)
     return templates.TemplateResponse(
@@ -2197,6 +2286,15 @@ def ops_smoke_test(request: Request, user: str = Depends(verify_auth)):
         "detail": f"{len(smoke_results) - len(failed)}/{len(smoke_results)} checks passed",
     }
     _write_ops_audit(root, user, "smoke_test", audit_result)
+    _write_work_event(
+        root,
+        "production_smoke",
+        "Dashboard Ops smoke test",
+        actor=user,
+        result=audit_result["detail"],
+        next_action="Review failed checks before continuing." if failed else "Continue production operations.",
+        metadata={"state": audit_result["state"]},
+    )
     snapshot = _ops_snapshot(root, smoke_results=smoke_results)
     return templates.TemplateResponse(request, "ops.html", snapshot)
 
@@ -2206,6 +2304,14 @@ def ops_action(action: str, request: Request, user: str = Depends(verify_auth)):
     root = _root(request)
     action_result = _run_ops_action(action)
     _write_ops_audit(root, user, action, action_result)
+    _write_work_event(
+        root,
+        "deploy_step" if action == "restart_dashboard" else "implementation_step",
+        f"Dashboard Ops action: {action}",
+        actor=user,
+        result=str(action_result.get("detail", action_result.get("state", ""))),
+        metadata={"state": action_result.get("state", ""), "name": action_result.get("name", action)},
+    )
     snapshot = _ops_snapshot(root)
     snapshot["action_result"] = action_result
     return templates.TemplateResponse(request, "ops.html", snapshot)
@@ -2228,6 +2334,14 @@ def ops_incident(
         return templates.TemplateResponse(request, "ops.html", snapshot, status_code=400)
     snapshot = _ops_snapshot(root)
     snapshot["incident_result"] = {"state": "Ready", "detail": f"Saved incident: {incident['title']}"}
+    _write_work_event(
+        root,
+        "blocker",
+        f"Ops incident opened: {incident['title']}",
+        actor=user,
+        result=f"{incident['severity']} {incident['status']}",
+        next_action="Investigate or resolve from the Ops incident panel.",
+    )
     return templates.TemplateResponse(request, "ops.html", snapshot)
 
 
@@ -2250,6 +2364,13 @@ def ops_incident_status(
         "state": "Ready",
         "detail": f"Marked incident {incident['title']} as {incident['status']}",
     }
+    _write_work_event(
+        root,
+        "implementation_step",
+        f"Ops incident status updated: {incident['title']}",
+        actor=user,
+        result=str(incident["status"]),
+    )
     return templates.TemplateResponse(request, "ops.html", snapshot)
 
 
@@ -2262,7 +2383,7 @@ def jobs_redirect(_: str = Depends(verify_auth)):
 def jobs_partial(request: Request, _: str = Depends(verify_auth)):
     jobs = list_all_jobs(_root(request))
     selected_filter = request.query_params.get("filter", "all")
-    if selected_filter not in {"all", "running", "failed", "scheduled", "queued", "published"}:
+    if selected_filter not in MISSION_FILTER_KEYS:
         selected_filter = "all"
     return templates.TemplateResponse(
         request,
@@ -2315,7 +2436,7 @@ def job_detail(job_id: str, request: Request, _: str = Depends(verify_auth)):
 
 
 @app.post("/jobs/{job_id}/ready-for-generation")
-def ready_for_generation(job_id: str, request: Request, _: str = Depends(verify_auth)):
+def ready_for_generation(job_id: str, request: Request, user: str = Depends(verify_auth)):
     root = _root(request)
     try:
         job = _find_job_at_root(root, job_id)
@@ -2337,11 +2458,20 @@ def ready_for_generation(job_id: str, request: Request, _: str = Depends(verify_
     job.stage = "nora_done"
     job.status = JobStatus.AWAITING_APPROVAL
     _save_job_at_root(root, job)
+    _write_work_event(
+        root,
+        "implementation_step",
+        f"Marked generation ready for {job_id}",
+        actor=user,
+        result="ready_for_generation",
+        next_action="Run generation dry-run or hand off to real generation.",
+        metadata={"job_id": job_id},
+    )
     return RedirectResponse(f"/jobs/{job_id}", status_code=303)
 
 
 @app.post("/jobs/{job_id}/run-generation-dry-run")
-def run_generation_dry_run(job_id: str, request: Request, _: str = Depends(verify_auth)):
+def run_generation_dry_run(job_id: str, request: Request, user: str = Depends(verify_auth)):
     root = _root(request)
     try:
         job = _find_job_at_root(root, job_id)
@@ -2350,7 +2480,17 @@ def run_generation_dry_run(job_id: str, request: Request, _: str = Depends(verif
     try:
         _run_generation_dry_run(root, job)
     except ValueError as exc:
+        _write_work_event(root, "blocker", f"Generation dry-run blocked for {job_id}", actor=user, result=str(exc))
         raise HTTPException(status_code=400, detail=str(exc))
+    _write_work_event(
+        root,
+        "test_result",
+        f"Generation dry-run completed for {job_id}",
+        actor=user,
+        result="dry_run_completed",
+        next_action="Record real generation result before publish packaging.",
+        metadata={"job_id": job_id},
+    )
     return RedirectResponse(f"/jobs/{job_id}", status_code=303)
 
 
@@ -2362,7 +2502,7 @@ def record_generation_result(
     provider: str = Form("manual_upload"),
     provider_request_id: str = Form(""),
     note: str = Form(""),
-    _: str = Depends(verify_auth),
+    user: str = Depends(verify_auth),
 ):
     root = _root(request)
     try:
@@ -2372,7 +2512,17 @@ def record_generation_result(
     try:
         _record_generation_result(root, job, video_path, provider, provider_request_id, note)
     except ValueError as exc:
+        _write_work_event(root, "blocker", f"Real generation result blocked for {job_id}", actor=user, result=str(exc))
         raise HTTPException(status_code=400, detail=str(exc))
+    _write_work_event(
+        root,
+        "implementation_step",
+        f"Recorded real generation result for {job_id}",
+        actor=user,
+        result=f"provider={provider}",
+        next_action="Record Roxy and Emma publish package.",
+        metadata={"job_id": job_id, "provider_request_id": provider_request_id},
+    )
     return RedirectResponse(f"/jobs/{job_id}", status_code=303)
 
 
@@ -2384,7 +2534,7 @@ def record_publish_package(
     hashtags: str = Form(...),
     faq: str = Form(...),
     publish_notes: str = Form(""),
-    _: str = Depends(verify_auth),
+    user: str = Depends(verify_auth),
 ):
     root = _root(request)
     try:
@@ -2394,12 +2544,22 @@ def record_publish_package(
     try:
         _record_publish_package(root, job, caption, hashtags, faq, publish_notes)
     except ValueError as exc:
+        _write_work_event(root, "blocker", f"Publish package blocked for {job_id}", actor=user, result=str(exc))
         raise HTTPException(status_code=400, detail=str(exc))
+    _write_work_event(
+        root,
+        "implementation_step",
+        f"Recorded publish package for {job_id}",
+        actor=user,
+        result="publish_package completed",
+        next_action="Create publish job.",
+        metadata={"job_id": job_id},
+    )
     return RedirectResponse(f"/jobs/{job_id}", status_code=303)
 
 
 @app.post("/jobs/{job_id}/create-publish-job")
-def create_publish_job(job_id: str, request: Request, _: str = Depends(verify_auth)):
+def create_publish_job(job_id: str, request: Request, user: str = Depends(verify_auth)):
     root = _root(request)
     try:
         job = _find_job_at_root(root, job_id)
@@ -2408,12 +2568,22 @@ def create_publish_job(job_id: str, request: Request, _: str = Depends(verify_au
     try:
         _create_publish_execution(root, job)
     except ValueError as exc:
+        _write_work_event(root, "blocker", f"Create publish job blocked for {job_id}", actor=user, result=str(exc))
         raise HTTPException(status_code=400, detail=str(exc))
+    _write_work_event(
+        root,
+        "implementation_step",
+        f"Created publish job for {job_id}",
+        actor=user,
+        result="ready_to_publish",
+        next_action="Schedule publish after platform readiness check.",
+        metadata={"job_id": job_id},
+    )
     return RedirectResponse(f"/jobs/{job_id}", status_code=303)
 
 
 @app.post("/jobs/{job_id}/schedule-publish")
-def schedule_publish(job_id: str, request: Request, _: str = Depends(verify_auth)):
+def schedule_publish(job_id: str, request: Request, user: str = Depends(verify_auth)):
     root = _root(request)
     try:
         job = _find_job_at_root(root, job_id)
@@ -2422,12 +2592,23 @@ def schedule_publish(job_id: str, request: Request, _: str = Depends(verify_auth
     try:
         _schedule_publish_execution(root, job)
     except ValueError as exc:
+        _write_work_event(root, "blocker", f"Schedule publish blocked for {job_id}", actor=user, result=str(exc))
         raise HTTPException(status_code=400, detail=str(exc))
+    _write_work_event(
+        root,
+        "production_smoke",
+        f"Scheduled publish handoff for {job_id}",
+        actor=user,
+        result="scheduled publish handoff",
+        next_action="Use platform publisher controls for live posting.",
+        metadata={"job_id": job_id},
+    )
     return RedirectResponse(f"/jobs/{job_id}", status_code=303)
 
 
 @app.post("/jobs/{job_id}/retry-publish")
-def retry_publish(job_id: str, _: str = Depends(verify_auth)):
+def retry_publish(job_id: str, request: Request, user: str = Depends(verify_auth)):
+    root = _root(request)
     try:
         find_job(job_id)
     except FileNotFoundError:
@@ -2436,14 +2617,24 @@ def retry_publish(job_id: str, _: str = Depends(verify_auth)):
         [sys.executable, "main.py", "--publish-only", job_id, "--schedule"],
         cwd=str(_ROOT),
     )
+    _write_work_event(
+        root,
+        "deploy_step",
+        f"Retry publish requested for {job_id}",
+        actor=user,
+        command="main.py --publish-only --schedule",
+        result="subprocess started",
+        metadata={"job_id": job_id},
+    )
     return RedirectResponse(f"/jobs/{job_id}", status_code=303)
 
 
 @app.post("/jobs/{job_id}/publish-instagram-now")
-def publish_instagram_now(job_id: str, _: str = Depends(verify_auth)):
+def publish_instagram_now(job_id: str, request: Request, user: str = Depends(verify_auth)):
     from datetime import datetime, timezone
     import time
 
+    root = _root(request)
     try:
         job = find_job(job_id)
     except FileNotFoundError:
@@ -2456,6 +2647,15 @@ def publish_instagram_now(job_id: str, _: str = Depends(verify_auth)):
     ig_result["publish_now_requested"] = True
     save_job(job)
     subprocess.Popen([sys.executable, "instagram_queue.py"], cwd=str(_ROOT))
+    _write_work_event(
+        root,
+        "deploy_step",
+        f"Instagram publish-now requested for {job_id}",
+        actor=user,
+        command="instagram_queue.py",
+        result="subprocess started",
+        metadata={"job_id": job_id},
+    )
     return RedirectResponse(f"/jobs/{job_id}", status_code=303)
 
 
@@ -2476,7 +2676,7 @@ def trigger_run(
     brief: str = Form(...),
     content_type: str = Form(...),
     dry_run: str = Form(default=None),
-    _: str = Depends(verify_auth),
+    user: str = Depends(verify_auth),
 ):
     root = _root(request)
     valid = set(list_project_slugs(root))
@@ -2497,6 +2697,16 @@ def trigger_run(
     if dry_run:
         cmd.append("--dry-run")
     subprocess.Popen(cmd, cwd=str(_ROOT))
+    _write_work_event(
+        root,
+        "terminal_command",
+        "Dashboard mission trigger",
+        actor=user,
+        command=" ".join(cmd),
+        result="subprocess started",
+        next_action="Review mission output after pipeline completes.",
+        metadata={"project": project, "content_type": content_type, "dry_run": bool(dry_run)},
+    )
     return RedirectResponse("/aurora/missions", status_code=303)
 
 
