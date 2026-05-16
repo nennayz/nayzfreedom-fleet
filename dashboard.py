@@ -7,7 +7,7 @@ import os
 import secrets
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import requests
@@ -118,6 +118,8 @@ def _publish_status_items(job) -> list[dict[str, str]]:
             label = "Instagram published"
         elif platform == "instagram" and status == "pending_queue":
             label = "Instagram pending queue"
+        elif platform == "instagram" and status == "retrying":
+            label = "Instagram retrying"
         else:
             label = f"{platform.title()} {str(status).replace('_', ' ')}"
         items.append({"platform": platform, "status": str(status), "label": label})
@@ -147,10 +149,10 @@ def _filter_jobs(jobs, selected: str):
     if selected == "failed":
         return [job for job in jobs if getattr(job.status, "value", str(job.status)) == "failed"]
     if selected in {"scheduled", "queued", "published"}:
-        target = {"scheduled": "scheduled", "queued": "pending_queue", "published": "published"}[selected]
+        targets = {"scheduled": {"scheduled"}, "queued": {"pending_queue", "retrying"}, "published": {"published"}}[selected]
         return [
             job for job in jobs
-            if any(item["status"] == target for item in _publish_status_items(job))
+            if any(item["status"] in targets for item in _publish_status_items(job))
         ]
     return jobs
 
@@ -456,8 +458,35 @@ def _latest_backup_status() -> dict[str, str]:
     checksum = latest / "state.tgz.sha256"
     if archive.exists() and checksum.exists():
         size_mb = archive.stat().st_size / (1024 * 1024)
-        return {"state": "Ready", "detail": f"{latest.name} - {size_mb:.1f} MB"}
+        age = datetime.now(timezone.utc) - datetime.fromtimestamp(latest.stat().st_mtime, tz=timezone.utc)
+        state = "Ready" if age <= timedelta(hours=36) else "Missing"
+        return {"state": state, "detail": f"{latest.name} - {size_mb:.1f} MB - age {int(age.total_seconds() // 3600)}h"}
     return {"state": "Failed", "detail": f"{latest.name} is missing archive or checksum."}
+
+
+def _backup_history(limit: int = 5) -> list[dict[str, str]]:
+    backup_root = Path(os.environ.get("BACKUP_ROOT", "/opt/nayzfreedom-backups"))
+    if not backup_root.exists():
+        return []
+    try:
+        backups = sorted([path for path in backup_root.iterdir() if path.is_dir()], reverse=True)[:limit]
+    except PermissionError:
+        return [{"state": "Failed", "name": "Backup history", "detail": f"Permission denied: {backup_root}"}]
+    rows = []
+    now = datetime.now(timezone.utc)
+    for path in backups:
+        archive = path / "state.tgz"
+        checksum = path / "state.tgz.sha256"
+        age = now - datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc)
+        if archive.exists() and checksum.exists():
+            size_mb = archive.stat().st_size / (1024 * 1024)
+            state = "Ready" if age <= timedelta(hours=36) else "Missing"
+            detail = f"{size_mb:.1f} MB - age {int(age.total_seconds() // 3600)}h"
+        else:
+            state = "Failed"
+            detail = "missing archive or checksum"
+        rows.append({"state": state, "name": path.name, "detail": detail})
+    return rows
 
 
 def _ops_publish_errors(jobs, limit: int = 6) -> list[dict[str, str]]:
@@ -476,6 +505,127 @@ def _ops_publish_errors(jobs, limit: int = 6) -> list[dict[str, str]]:
                 "detail": error[:220],
             })
     return rows[:limit]
+
+
+def _ops_publish_summary(jobs) -> dict[str, object]:
+    counts = {
+        "facebook_scheduled": 0,
+        "instagram_pending": 0,
+        "instagram_retrying": 0,
+        "instagram_failed": 0,
+        "instagram_published": 0,
+    }
+    queue_rows = []
+    for job in jobs:
+        result = job.publish_result or {}
+        facebook = result.get("facebook") if isinstance(result, dict) else None
+        instagram = result.get("instagram") if isinstance(result, dict) else None
+        if isinstance(facebook, dict) and facebook.get("status") == "scheduled":
+            counts["facebook_scheduled"] += 1
+        if not isinstance(instagram, dict):
+            continue
+        status = str(instagram.get("status", "unknown"))
+        if status == "pending_queue":
+            counts["instagram_pending"] += 1
+        elif status == "retrying":
+            counts["instagram_retrying"] += 1
+        elif status == "failed":
+            counts["instagram_failed"] += 1
+        elif status == "published":
+            counts["instagram_published"] += 1
+        if status in {"pending_queue", "retrying", "failed"}:
+            detail = (
+                instagram.get("next_retry_at")
+                or instagram.get("due_at")
+                or instagram.get("error")
+                or instagram.get("reason")
+                or ""
+            )
+            queue_rows.append({
+                "job_id": job.id,
+                "status": status,
+                "state": "Failed" if status == "failed" else "Missing" if status == "retrying" else "Ready",
+                "detail": _sanitize_ops_detail(detail),
+            })
+    return {"counts": counts, "queue": queue_rows[:6]}
+
+
+def _workflow_owner_summary(jobs) -> list[dict[str, str]]:
+    rows = []
+    for job in jobs[:8]:
+        voyage_steps = _build_voyage_steps(job)
+        command = _mission_command(job, voyage_steps, sum(1 for item in voyage_steps if item["state"] == "done"))
+        badge_state = "Failed" if command["state"] == "Needs Captain" else "Missing" if command["state"] == "In Motion" else "Ready"
+        rows.append({
+            "job_id": job.id,
+            "state": badge_state,
+            "owner": command["owner"],
+            "stage": command["stage_label"],
+            "detail": job.brief[:120],
+        })
+    return rows
+
+
+def _security_hygiene_checks(root: Path) -> list[dict[str, str]]:
+    gitignore = root / ".gitignore"
+    gitignore_text = gitignore.read_text() if gitignore.exists() else ""
+    env_ignored = any(line.strip() in {".env", ".env.*"} for line in gitignore_text.splitlines())
+    return [
+        {
+            "state": "Ready" if (root / ".env").exists() else "Missing",
+            "name": "Production secrets",
+            "detail": ".env exists locally on this host." if (root / ".env").exists() else ".env is not present on this host.",
+        },
+        {
+            "state": "Ready" if env_ignored else "Failed",
+            "name": "Git ignore",
+            "detail": ".env patterns are ignored." if env_ignored else ".env ignore rule is missing.",
+        },
+        {
+            "state": "Ready",
+            "name": "Token hygiene",
+            "detail": "Keep GitHub, Meta, Google, and Telegram token rotation in the external runbook.",
+        },
+    ]
+
+
+def _ops_daily_summary(
+    jobs,
+    units: list[dict[str, str]],
+    backup: dict[str, str],
+    incident_summary: dict[str, int],
+    publish_summary: dict[str, object],
+    ops_reports: list[dict[str, str]],
+) -> list[dict[str, str]]:
+    summary = summarize_jobs(jobs)
+    unit_failures = sum(item["state"] != "Ready" for item in units)
+    publish_counts = publish_summary["counts"]
+    ig_attention = publish_counts["instagram_failed"] + publish_counts["instagram_retrying"]
+    if summary["failed"] or incident_summary["open"] or unit_failures or backup["state"] == "Failed" or publish_counts["instagram_failed"]:
+        state = "Failed"
+        action = "Review failed missions, open incidents, service state, or publish failures."
+    elif backup["state"] != "Ready" or publish_counts["instagram_retrying"]:
+        state = "Missing"
+        action = "Check stale backup or queued Instagram retry before launching more work."
+    else:
+        state = "Ready"
+        action = "Production is clear for the next mission."
+    latest_report = ops_reports[0]["timestamp"] if ops_reports else "none"
+    return [
+        {"state": state, "name": "Ops state", "detail": action},
+        {
+            "state": "Failed" if summary["failed"] or incident_summary["open"] else "Ready",
+            "name": "Mission attention",
+            "detail": f"{summary['failed']} failed jobs - {incident_summary['open']} open incidents",
+        },
+        {
+            "state": "Failed" if ig_attention else "Ready",
+            "name": "Publish queue",
+            "detail": f"IG pending={publish_counts['instagram_pending']} retrying={publish_counts['instagram_retrying']} failed={publish_counts['instagram_failed']}",
+        },
+        {"state": str(backup["state"]), "name": "Backup", "detail": str(backup["detail"])},
+        {"state": "Ready" if latest_report != "none" else "Missing", "name": "Latest Ops report", "detail": latest_report},
+    ]
 
 
 def _signed_request_for_smoke() -> str:
@@ -533,21 +683,31 @@ def _ops_smoke_results(root: Path) -> list[dict[str, str]]:
 def _ops_snapshot(root: Path, smoke_results: list[dict[str, str]] | None = None) -> dict[str, object]:
     jobs = list_all_jobs(root)
     summary = summarize_jobs(jobs)
+    units = _ops_unit_status()
+    backup = _latest_backup_status()
+    incident_summary = _incident_summary(root)
+    ops_reports = _recent_ops_reports(root)
+    publish_summary = _ops_publish_summary(jobs)
     return {
-        "units": _ops_unit_status(),
-        "backup": _latest_backup_status(),
+        "units": units,
+        "backup": backup,
+        "backup_history": _backup_history(),
         "summary": summary,
         "latest_jobs": jobs[:5],
         "publish_errors": _ops_publish_errors(jobs),
+        "publish_summary": publish_summary,
         "smoke_results": smoke_results,
         "action_buttons": _ops_action_buttons(),
         "action_result": None,
         "ops_audit": _recent_ops_audit(root),
         "ops_log": _ops_log_status(root),
         "ops_incidents": _recent_ops_incidents(root),
-        "ops_reports": _recent_ops_reports(root),
-        "incident_summary": _incident_summary(root),
+        "ops_reports": ops_reports,
+        "incident_summary": incident_summary,
         "incident_result": None,
+        "ops_daily_summary": _ops_daily_summary(jobs, units, backup, incident_summary, publish_summary, ops_reports),
+        "workflow_owners": _workflow_owner_summary(jobs),
+        "security_hygiene": _security_hygiene_checks(root),
     }
 
 

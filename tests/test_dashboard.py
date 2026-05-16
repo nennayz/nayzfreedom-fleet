@@ -329,6 +329,11 @@ def test_ops_page_renders_status_and_errors(tmp_path, client, monkeypatch):
     assert "Weekly Ops history" in resp.text
     assert "Slayhack weekly Ops report" in resp.text
     assert "jobs total=1 failed=1 latest=20260512_060000" in resp.text
+    assert "Ops summary" in resp.text
+    assert "Mission attention" in resp.text
+    assert "Queue state" in resp.text
+    assert "Crew ownership" in resp.text
+    assert "Hygiene checks" in resp.text
 
 
 def test_ops_smoke_test_renders_results(tmp_path, client, monkeypatch):
@@ -581,6 +586,51 @@ def test_recent_ops_reports_reads_latest_and_sanitizes(tmp_path, monkeypatch):
     assert rows[0]["timestamp"] == "2026-05-16T06:00:00Z"
     assert "secret-value" not in rows[0]["report"]
     assert "<redacted>" in rows[0]["report"]
+
+
+def test_ops_publish_summary_counts_queue_states(tmp_path):
+    _write_job(
+        tmp_path,
+        "20260512_060000",
+        publish_result={
+            "facebook": {"status": "scheduled"},
+            "instagram": {"status": "pending_queue", "due_at": "2026-05-16T06:00:00Z"},
+        },
+    )
+    _write_job(
+        tmp_path,
+        "20260513_060000",
+        publish_result={"instagram": {"status": "retrying", "next_retry_at": "2026-05-16T06:15:00Z"}},
+    )
+    _write_job(
+        tmp_path,
+        "20260514_060000",
+        publish_result={"instagram": {"status": "failed", "error": "blocked"}},
+    )
+
+    jobs = _dm.list_all_jobs(tmp_path)
+    result = _dm._ops_publish_summary(jobs)
+
+    assert result["counts"]["facebook_scheduled"] == 1
+    assert result["counts"]["instagram_pending"] == 1
+    assert result["counts"]["instagram_retrying"] == 1
+    assert result["counts"]["instagram_failed"] == 1
+    assert [item["status"] for item in result["queue"]] == ["failed", "retrying", "pending_queue"]
+
+
+def test_backup_history_reports_recent_archives(tmp_path, monkeypatch):
+    backup_root = tmp_path / "backups"
+    backup_dir = backup_root / "20260516T000000Z"
+    backup_dir.mkdir(parents=True)
+    (backup_dir / "state.tgz").write_bytes(b"backup")
+    (backup_dir / "state.tgz.sha256").write_text("checksum")
+    monkeypatch.setenv("BACKUP_ROOT", str(backup_root))
+
+    rows = _dm._backup_history()
+
+    assert rows[0]["state"] == "Ready"
+    assert rows[0]["name"] == "20260516T000000Z"
+    assert "age" in rows[0]["detail"]
 
 
 def test_latest_backup_status_handles_permission_denied(monkeypatch, tmp_path):

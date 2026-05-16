@@ -2,15 +2,18 @@ from __future__ import annotations
 import argparse
 import json
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from dotenv import load_dotenv
 
-from agents.publish import PublishAgent, has_publish_failures
+from agents.publish import PublishAgent, has_publish_failures, sanitize_error_text
 from config import Config
 from job_store import save_job
 from models.content_job import ContentJob, JobStatus
+
+_IG_MAX_RETRIES = 3
+_IG_RETRY_DELAY_SECONDS = 15 * 60
 
 
 def _now_ts() -> int:
@@ -28,12 +31,33 @@ def _pending_instagram_jobs(root: Path, now_ts: int) -> list[ContentJob]:
         ig_result = (job.publish_result or {}).get("instagram", {})
         if not isinstance(ig_result, dict):
             continue
-        if ig_result.get("status") != "pending_queue":
+        status = ig_result.get("status")
+        if status not in {"pending_queue", "retrying"}:
             continue
-        due = int(ig_result.get("scheduled_publish_time") or 0)
+        due = int(ig_result.get("next_retry_unix") or ig_result.get("scheduled_publish_time") or 0)
         if due <= now_ts:
             jobs.append(job)
     return sorted(jobs, key=lambda job: job.id)
+
+
+def _retry_instagram_result(previous: dict, failed_result: dict, now_ts: int) -> dict:
+    retry_count = int(previous.get("retry_count") or 0) + 1
+    if retry_count >= _IG_MAX_RETRIES:
+        return {
+            **failed_result,
+            "status": "failed",
+            "retry_count": retry_count,
+            "error": sanitize_error_text(str(failed_result.get("error", "Instagram publish failed"))),
+        }
+    next_retry = datetime.fromtimestamp(now_ts, tz=timezone.utc) + timedelta(seconds=_IG_RETRY_DELAY_SECONDS)
+    return {
+        **failed_result,
+        "status": "retrying",
+        "retry_count": retry_count,
+        "next_retry_unix": int(next_retry.timestamp()),
+        "next_retry_at": next_retry.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "error": sanitize_error_text(str(failed_result.get("error", "Instagram publish failed"))),
+    }
 
 
 def process_instagram_queue(root: Path | None = None, dry_run: bool = False) -> int:
@@ -44,7 +68,8 @@ def process_instagram_queue(root: Path | None = None, dry_run: bool = False) -> 
     processed = 0
     failures = 0
 
-    for job in _pending_instagram_jobs(root, _now_ts()):
+    now_ts = _now_ts()
+    for job in _pending_instagram_jobs(root, now_ts):
         processed += 1
         if dry_run:
             print(f"would_publish_instagram={job.id}")
@@ -55,6 +80,9 @@ def process_instagram_queue(root: Path | None = None, dry_run: bool = False) -> 
         job.platforms = ["instagram"]
         job = agent.run(job, schedule=False)
         ig_result = (job.publish_result or {}).get("instagram")
+        previous_ig = original_result.get("instagram", {}) if isinstance(original_result.get("instagram"), dict) else {}
+        if isinstance(ig_result, dict) and ig_result.get("status") == "failed":
+            ig_result = _retry_instagram_result(previous_ig, ig_result, now_ts)
         merged_result = {**original_result, "instagram": ig_result}
         job.publish_result = merged_result
         job.platforms = original_platforms

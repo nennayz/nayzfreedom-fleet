@@ -57,3 +57,63 @@ def test_instagram_queue_skips_future_job(mocker, tmp_path, monkeypatch):
 
     assert exit_code == 0
     mock_run.assert_not_called()
+
+
+def test_instagram_queue_marks_failure_for_retry(mocker, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "a")
+    monkeypatch.setenv("OPENAI_API_KEY", "o")
+    monkeypatch.setenv("BRAVE_SEARCH_API_KEY", "b")
+    job_id = _write_pending_job(tmp_path)
+    failed_job = make_video_job(dry_run=False, video_path=str(tmp_path / "video.mp4"))
+    failed_job.id = job_id
+    failed_job.publish_result = {
+        "instagram": {
+            "status": "failed",
+            "error": "Instagram failed access_token=secret-token",
+        }
+    }
+    mocker.patch("instagram_queue._now_ts", return_value=100)
+    mocker.patch("instagram_queue.Config.from_env", return_value=make_publish_config())
+    mocker.patch("instagram_queue.PublishAgent.run", return_value=failed_job)
+
+    exit_code = process_instagram_queue(root=tmp_path)
+
+    assert exit_code == 0
+    saved = json.loads((tmp_path / "output" / "Slayhack" / job_id / "job.json").read_text())
+    ig_result = saved["publish_result"]["instagram"]
+    assert saved["status"] == "completed"
+    assert ig_result["status"] == "retrying"
+    assert ig_result["retry_count"] == 1
+    assert ig_result["next_retry_unix"] == 1000
+    assert "secret-token" not in ig_result["error"]
+    assert "<redacted>" in ig_result["error"]
+
+
+def test_instagram_queue_fails_after_max_retries(mocker, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "a")
+    monkeypatch.setenv("OPENAI_API_KEY", "o")
+    monkeypatch.setenv("BRAVE_SEARCH_API_KEY", "b")
+    job_id = _write_pending_job(tmp_path)
+    path = tmp_path / "output" / "Slayhack" / job_id / "job.json"
+    data = json.loads(path.read_text())
+    data["publish_result"]["instagram"]["status"] = "retrying"
+    data["publish_result"]["instagram"]["retry_count"] = 2
+    data["publish_result"]["instagram"]["next_retry_unix"] = 1
+    path.write_text(json.dumps(data))
+    failed_job = make_video_job(dry_run=False, video_path=str(tmp_path / "video.mp4"))
+    failed_job.id = job_id
+    failed_job.publish_result = {"instagram": {"status": "failed", "error": "blocked"}}
+    mocker.patch("instagram_queue._now_ts", return_value=100)
+    mocker.patch("instagram_queue.Config.from_env", return_value=make_publish_config())
+    mocker.patch("instagram_queue.PublishAgent.run", return_value=failed_job)
+
+    exit_code = process_instagram_queue(root=tmp_path)
+
+    assert exit_code == 1
+    saved = json.loads(path.read_text())
+    ig_result = saved["publish_result"]["instagram"]
+    assert saved["status"] == "failed"
+    assert ig_result["status"] == "failed"
+    assert ig_result["retry_count"] == 3
