@@ -333,6 +333,22 @@ def test_ops_smoke_test_renders_results(tmp_path, client, monkeypatch):
     assert "HTTP 200" in resp.text
 
 
+def test_latest_backup_status_handles_permission_denied(monkeypatch, tmp_path):
+    backup_root = tmp_path / "backups"
+    backup_root.mkdir()
+    monkeypatch.setenv("BACKUP_ROOT", str(backup_root))
+
+    def deny_iterdir(self):
+        raise PermissionError("denied")
+
+    monkeypatch.setattr(Path, "iterdir", deny_iterdir)
+
+    result = _dm._latest_backup_status()
+
+    assert result["state"] == "Failed"
+    assert "Permission denied" in result["detail"]
+
+
 def test_jobs_partial_returns_fragment(tmp_path, client):
     _write_job(tmp_path, "20260512_060000")
     resp = client.get("/jobs/partial", headers=_auth())

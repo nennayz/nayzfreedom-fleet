@@ -181,7 +181,10 @@ def _latest_backup_status() -> dict[str, str]:
     backup_root = Path(os.environ.get("BACKUP_ROOT", "/opt/nayzfreedom-backups"))
     if not backup_root.exists():
         return {"state": "Missing", "detail": f"{backup_root} not found"}
-    backups = sorted([path for path in backup_root.iterdir() if path.is_dir()], reverse=True)
+    try:
+        backups = sorted([path for path in backup_root.iterdir() if path.is_dir()], reverse=True)
+    except PermissionError:
+        return {"state": "Failed", "detail": f"Permission denied: {backup_root}"}
     if not backups:
         return {"state": "Missing", "detail": "No backup folders found."}
     latest = backups[0]
