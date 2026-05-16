@@ -126,7 +126,7 @@ The health-check timer runs every 5 minutes and fails when:
 - public `/healthz` is unavailable
 - dashboard, bot, scheduler timer, or reporter timer is inactive
 - disk usage for `/opt/nayzfreedom` is 85% or higher
-- recent logs contain `Traceback`, `ERROR`, or `CRITICAL`
+- recent logs from the last 5 minutes contain `Traceback`, `ERROR`, or `CRITICAL`
 
 Run manually:
 

@@ -6,7 +6,7 @@ set -euo pipefail
 HEALTH_URL="${HEALTH_URL:-https://fleet.nayzfreedom.cloud/healthz}"
 DISK_PATH="${DISK_PATH:-/opt/nayzfreedom}"
 DISK_LIMIT="${DISK_LIMIT:-85}"
-ERROR_WINDOW="${ERROR_WINDOW:-15 minutes ago}"
+ERROR_WINDOW="${ERROR_WINDOW:-5 minutes ago}"
 
 check_unit() {
     local unit="$1"
