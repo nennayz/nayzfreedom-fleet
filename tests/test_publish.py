@@ -251,12 +251,17 @@ def test_publish_live_ig_reels_uses_resumable_upload(mocker, tmp_path, monkeypat
     vid_file = tmp_path / "video.mp4"
     vid_file.write_bytes(b"MP4")
     mock_post = mocker.patch("agents.publish.requests.post")
+    mock_get = mocker.patch("agents.publish.requests.get")
     init_resp = mocker.MagicMock()
     init_resp.raise_for_status = mocker.MagicMock()
     init_resp.json.return_value = {"id": "container-2", "uri": "https://rupload.facebook.com/upload-123"}
     upload_resp = mocker.MagicMock()
     upload_resp.raise_for_status = mocker.MagicMock()
     upload_resp.json.return_value = {"success": True}
+    status_resp = mocker.MagicMock()
+    status_resp.raise_for_status = mocker.MagicMock()
+    status_resp.json.return_value = {"status_code": "FINISHED"}
+    mock_get.return_value = status_resp
     publish_resp = mocker.MagicMock()
     publish_resp.raise_for_status = mocker.MagicMock()
     publish_resp.json.return_value = {"id": "reel-1"}
@@ -271,8 +276,39 @@ def test_publish_live_ig_reels_uses_resumable_upload(mocker, tmp_path, monkeypat
     publish_url = mock_post.call_args_list[2][0][0]
     assert "ig-456/media" in init_url
     assert "rupload.facebook.com" in upload_url
+    assert mock_get.call_args[0][0].endswith("/container-2")
+    assert mock_get.call_args[1]["params"] == {"fields": "status_code"}
     assert "ig-456/media_publish" in publish_url
     assert job.publish_result["instagram"]["status"] == "published"
+
+
+def test_publish_live_ig_reels_schedule_publishes_without_scheduled_field(mocker, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    vid_file = tmp_path / "video.mp4"
+    vid_file.write_bytes(b"MP4")
+    mock_post = mocker.patch("agents.publish.requests.post")
+    mock_get = mocker.patch("agents.publish.requests.get")
+    init_resp = mocker.MagicMock()
+    init_resp.raise_for_status = mocker.MagicMock()
+    init_resp.json.return_value = {"id": "container-3", "uri": "https://rupload.facebook.com/upload-456"}
+    upload_resp = mocker.MagicMock()
+    upload_resp.raise_for_status = mocker.MagicMock()
+    status_resp = mocker.MagicMock()
+    status_resp.raise_for_status = mocker.MagicMock()
+    status_resp.json.return_value = {"status_code": "FINISHED"}
+    mock_get.return_value = status_resp
+    publish_resp = mocker.MagicMock()
+    publish_resp.raise_for_status = mocker.MagicMock()
+    publish_resp.json.return_value = {"id": "reel-2"}
+    mock_post.side_effect = [init_resp, upload_resp, publish_resp]
+    agent = PublishAgent(make_publish_config())
+    job = make_video_job(dry_run=False, video_path=str(vid_file))
+    job.platforms = ["instagram"]
+    job = agent.run(job, schedule=True)
+    init_data = mock_post.call_args_list[0][1]["data"]
+    assert "scheduled_publish_time" not in init_data
+    assert job.publish_result["instagram"]["status"] == "published"
+    assert "published immediately" in job.publish_result["instagram"]["schedule_note"]
 
 
 def test_publish_tiktok_image_skips_with_reason(tmp_path, monkeypatch):

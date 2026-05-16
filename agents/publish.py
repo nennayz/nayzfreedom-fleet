@@ -11,6 +11,8 @@ _TIKTOK_BASE = "https://open.tiktokapis.com/v2"
 _TIKTOK_CHUNK_SIZE = 10 * 1024 * 1024  # 10 MB
 _TIKTOK_POLL_INTERVAL = 5
 _TIKTOK_POLL_TIMEOUT = 300
+_IG_CONTAINER_POLL_INTERVAL = 5
+_IG_CONTAINER_POLL_TIMEOUT = 300
 _YOUTUBE_UPLOAD_BASE = "https://www.googleapis.com/upload/youtube/v3"
 _YOUTUBE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 logger = logging.getLogger(__name__)
@@ -54,7 +56,12 @@ class PublishAgent(BaseAgent):
                 if platform == "facebook":
                     post_result = self._post_facebook(job, caption, scheduled_time)
                 elif platform == "instagram":
-                    post_result = self._post_instagram(job, caption, scheduled_time)
+                    post_result = self._post_instagram(job, caption, None)
+                    if scheduled_time:
+                        post_result["schedule_note"] = (
+                            "Instagram scheduling is not enabled for this Meta account; "
+                            "published immediately."
+                        )
                 elif platform == "tiktok":
                     post_result = self._post_tiktok(job, caption)
                     if post_result.get("status") == "skipped":
@@ -68,7 +75,7 @@ class PublishAgent(BaseAgent):
                 else:
                     result[platform] = {"status": "skipped", "error": f"unsupported platform: {platform}"}
                     continue
-                status = "scheduled" if scheduled_time else "published"
+                status = "published" if platform == "instagram" else "scheduled" if scheduled_time else "published"
                 result[platform] = {"status": status, **post_result}
             except Exception as e:
                 result[platform] = {"status": "failed", "error": str(e)}
@@ -357,7 +364,32 @@ class PublishAgent(BaseAgent):
                 data=f,
             )
         upload_resp.raise_for_status()
+        self._wait_for_ig_container(container_id, token)
         pub_url = f"{_META_GRAPH_BASE}/{ig_user_id}/media_publish"
         pub_resp = requests.post(pub_url, data={"creation_id": container_id}, headers=headers)
         pub_resp.raise_for_status()
         return pub_resp.json()
+
+    def _wait_for_ig_container(self, container_id: str, token: str) -> None:
+        url = f"{_META_GRAPH_BASE}/{container_id}"
+        headers = self._auth_headers(token)
+        elapsed = 0
+        last_status = "unknown"
+        while elapsed < _IG_CONTAINER_POLL_TIMEOUT:
+            resp = requests.get(
+                url,
+                params={"fields": "status_code"},
+                headers=headers,
+            )
+            resp.raise_for_status()
+            last_status = resp.json().get("status_code", "unknown")
+            if last_status == "FINISHED":
+                return
+            if last_status in {"ERROR", "EXPIRED"}:
+                raise RuntimeError(f"Instagram container processing failed: {last_status}")
+            time.sleep(_IG_CONTAINER_POLL_INTERVAL)
+            elapsed += _IG_CONTAINER_POLL_INTERVAL
+        raise TimeoutError(
+            f"timed out waiting for Instagram container {container_id} "
+            f"to finish processing; last status: {last_status}"
+        )
