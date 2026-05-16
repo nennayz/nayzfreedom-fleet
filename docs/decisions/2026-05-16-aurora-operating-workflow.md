@@ -38,21 +38,24 @@ Aurora v2 will use four mission types:
 3. `production_batch`
 4. `performance_review`
 
-The existing crew remains the core team. New specialist roles will be introduced first as workflow/prompt roles and later as code modules or dashboard surfaces as needed:
+The existing crew remains the core team. New specialist roles should be introduced only when they remove real operational ambiguity or prevent repeated work:
 
-- Market Analyst
-- Monetization Strategist
+- Market & Monetization Analyst
+- Video Producer
 - Archivist
-- Calendar Planner
-- Storyboard Director
-- Video Production Planner
-- Infographic Producer
 - Growth Analyst
-- Lesson Librarian
+
+Several responsibilities remain as modes under existing roles instead of becoming separate people:
+
+- Calendar planning stays with PM and Robin.
+- Infographic production stays with Lila.
+- Lesson library stays with Archivist.
+- Monetization strategy stays with Market & Monetization Analyst.
+
+Video Producer is a first-class role from the start because long-video output is central to the Slay Hack workflow and needs storyboard-first planning before generation.
 
 ## Consequences
 
 This makes Aurora closer to how the work actually happens. PMs can own pages, central specialists can serve multiple pages, and performance data can feed future planning instead of living only as reports.
 
 The existing pipeline should remain operational while v2 is introduced. Early implementation should add models and dashboard surfaces before replacing agent flow.
-

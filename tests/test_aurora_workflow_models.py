@@ -76,8 +76,51 @@ def test_long_video_ticket_requires_storyboard():
             content_type=ContentType.VIDEO,
             title="Long video",
             objective="retention",
-            owner="Storyboard Director",
+            owner="Video Producer",
         )
+
+
+def test_ticket_primary_platform_must_be_listed():
+    with pytest.raises(ValidationError, match="platform_primary must be one of platforms"):
+        ProductionTicket(
+            ticket_id="short-1",
+            project="slay_hack",
+            page_name="Slay Hack",
+            ticket_type=ProductionTicketType.SHORT_VIDEO,
+            content_type=ContentType.VIDEO,
+            title="Short video",
+            objective="reach",
+            owner="Video Producer",
+            platforms=["instagram"],
+            platform_primary="tiktok",
+        )
+
+
+def test_ticket_records_decision_owner_and_workflow_controls():
+    ticket = ProductionTicket(
+        ticket_id="short-2",
+        project="slay_hack",
+        page_name="Slay Hack",
+        ticket_type=ProductionTicketType.SHORT_VIDEO,
+        content_type=ContentType.VIDEO,
+        title="Short video",
+        objective="reach",
+        owner="Video Producer",
+        decision_owner="Slay",
+        priority=2,
+        platforms=["tiktok", "instagram"],
+        platform_primary="tiktok",
+        acceptance_criteria=["Hook, payoff, CTA, and primary platform are clear."],
+        evidence_links=["signal:beauty-hook-001"],
+        asset_requirements=["Hero object reference"],
+        linked_lessons=["lesson:short-hook-retention"],
+    )
+
+    assert ticket.decision_owner == "Slay"
+    assert ticket.priority == 2
+    assert ticket.platform_primary == "tiktok"
+    assert ticket.acceptance_criteria
+    assert ticket.asset_requirements == ["Hero object reference"]
 
 
 def test_calendar_slate_counts_and_daily_minimum():

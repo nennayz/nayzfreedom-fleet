@@ -187,6 +187,25 @@ CREW = (
         accent_color="#d56f9f",
         quote="A crew is remembered by how it welcomes people aboard.",
     ),
+    CrewMember(
+        slug="video-producer",
+        name="Vera Reel",
+        image="/static/crew/video-producer.svg",
+        ship_role="Cinematographer",
+        operational_role="Video Producer",
+        station="Reel Deck",
+        workflow_stage="Video production plan",
+        mission_phase="Central Video",
+        summary="Turns approved video ideas into scene timing, storyboard structure, tool packages, and asset requirements.",
+        personality="structured, cinematic, production-minded",
+        strengths=["storyboards", "scene timing", "tool-aware video packages"],
+        watch_outs=["must coordinate with Bella for words and Lila for visual language"],
+        inputs=["selected video idea", "platform goal", "brand voice", "asset references"],
+        outputs=["scene plan", "storyboard", "Veo3 prompt package", "asset checklist"],
+        visual_signature="teal accents, storyboard frames, production slate, precise camera posture",
+        accent_color="#1f8f9a",
+        quote="A strong video is built before the first frame moves.",
+    ),
 )
 
 

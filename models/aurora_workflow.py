@@ -76,19 +76,30 @@ class ProductionTicket(BaseModel):
     title: str
     objective: str
     owner: str
+    decision_owner: Optional[str] = None
+    priority: int = Field(default=3, ge=1, le=5)
     platforms: list[str] = Field(default_factory=list)
+    platform_primary: Optional[str] = None
     status: TicketStatus = TicketStatus.PLANNED
     due_date: Optional[date] = None
     brief: str = ""
     format_name: Optional[str] = None
+    acceptance_criteria: list[str] = Field(default_factory=list)
+    evidence_links: list[str] = Field(default_factory=list)
+    asset_requirements: list[str] = Field(default_factory=list)
+    asset_sources: list[str] = Field(default_factory=list)
+    linked_lessons: list[str] = Field(default_factory=list)
     storyboard: list[StoryboardScene] = Field(default_factory=list)
     dependencies: list[str] = Field(default_factory=list)
     qa_notes: list[str] = Field(default_factory=list)
+    blocked_by_request_id: Optional[str] = None
 
     @model_validator(mode="after")
     def require_storyboard_for_long_video(self) -> "ProductionTicket":
         if self.ticket_type == ProductionTicketType.LONG_VIDEO and not self.storyboard:
             raise ValueError("long_video tickets require at least one storyboard scene")
+        if self.platform_primary and self.platform_primary not in self.platforms:
+            raise ValueError("platform_primary must be one of platforms")
         return self
 
 

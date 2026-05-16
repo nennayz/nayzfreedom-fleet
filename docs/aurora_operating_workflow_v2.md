@@ -30,7 +30,7 @@ Aurora has two layers:
 
 | Layer | Responsibility | Examples |
 |---|---|---|
-| Central Aurora Team | Shared specialists used by every project | Robin, Mia, Zoe, Nora, Roxy, Emma, Market Analyst, Archivist, Growth Analyst |
+| Central Aurora Team | Shared specialists used by every project | Robin, Mia, Zoe, Nora, Roxy, Emma, Market & Monetization Analyst, Video Producer, Archivist, Growth Analyst |
 | Page PM Squad | Dedicated owner and production context for one page | Slay for Slay Hack, future PMs for future pages |
 
 The central team should not replace the PM. The PM decides what the page should do. The central team supplies research, production, QA, distribution, and learning support.
@@ -57,7 +57,7 @@ Core flow:
 ```text
 Robin frames the discovery mission
 Mia scans trends and platform signals
-Market Analyst studies audience, competitors, and monetization
+Market & Monetization Analyst studies audience, competitors, and revenue paths
 Zoe develops page concepts and initial content angles
 Archivist checks memory, Drive, Notion, and prior project history
 Nora reviews feasibility and risk
@@ -114,7 +114,7 @@ Mia brings current signals
 Archivist checks Drive and Notion for prior topics and duplicates
 Zoe proposes angles and hooks
 PM selects the daily slate
-Calendar Planner turns the slate into production tickets
+Robin turns the slate into production tickets
 Nora checks coverage and risk before production begins
 ```
 
@@ -147,9 +147,8 @@ Core flow:
 ```text
 PM dispatches tickets
 Article Writer/Bella writes article copy
-Infographic Producer/Lila builds infographic direction
-Storyboard Director builds video scene plan
-Video Production Planner prepares script, prompts, tools, and asset list
+Lila builds infographic direction
+Video Producer builds scene plans, script handoff, prompts, tools, and asset lists
 Nora QA checks each item
 Roxy packages captions, hashtags, timing, and CTAs
 Emma prepares community responses and FAQ
@@ -162,9 +161,9 @@ Production ticket types:
 | Ticket type | Owner | Required output |
 |---|---|---|
 | `article` | Bella or Article Writer | Headline, body, CTA, platform adaptation |
-| `infographic` | Infographic Producer, Lila | 4:5 or platform-specific visual brief, copy blocks, visual prompt |
-| `short_video` | Storyboard Director, Bella, Lila | 15-40 sec script, scene plan, visual prompts, CTA |
-| `long_video` | Storyboard Director, Video Production Planner, Bella, Lila | 60-180 sec storyboard, scene timing, script, prompts, asset checklist |
+| `infographic` | Lila | 4:5 or platform-specific visual brief, copy blocks, visual prompt |
+| `short_video` | Video Producer, Bella, Lila | 15-40 sec script, scene plan, visual prompts, CTA |
+| `long_video` | Video Producer, Bella, Lila | 60-180 sec storyboard, scene timing, script, prompts, asset checklist |
 | `community_post` | Emma | Group/Messenger prompt, moderation guide |
 | `distribution_pack` | Roxy | Captions, hashtags, post timing, platform CTAs |
 
@@ -225,15 +224,21 @@ Decision buckets:
 
 | Role | Responsibility |
 |---|---|
-| Market Analyst | Audience, competitor, niche, and monetization research for new project discovery |
-| Monetization Strategist | Revenue path analysis: ads, affiliate, shops, subscriptions, brand deals |
-| Archivist | Drive/Notion/history lookup, duplicate prevention, asset provenance |
-| Calendar Planner | Turns strategy into daily/weekly production slates |
-| Storyboard Director | Scene-by-scene video planning before generation |
-| Video Production Planner | Tool-aware video package planning, including Veo3 scene timing |
-| Infographic Producer | Static educational visual structure and platform adaptation |
-| Growth Analyst | Engagement analysis, scale/repair/lesson decision support |
-| Lesson Librarian | Maintains durable lesson-learned and winning-pattern records |
+| Market & Monetization Analyst | Audience, competitor, niche, viral thesis, and revenue path analysis for new project discovery |
+| Video Producer | Storyboard-first video planning, scene timing, tool-aware prompt packages, and video asset requirements |
+| Archivist | Drive/Notion/history lookup, duplicate prevention, asset provenance, and durable lesson records |
+| Growth Analyst | Engagement analysis and scale/repair/lesson decision support |
+
+### Role Modes, Not Separate People
+
+These responsibilities should stay as modes under existing roles until the dashboard shows a real bottleneck:
+
+| Mode | Lives under | Reason |
+|---|---|---|
+| Calendar planning | PM and Robin | PM chooses priorities; Robin turns the slate into tickets |
+| Infographic production | Lila | It is part of visual direction, not a separate routing lane |
+| Lesson library | Archivist | Lesson records and duplicate prevention use the same memory system |
+| Monetization strategy | Market & Monetization Analyst | Audience validation and revenue path should be decided together |
 
 ## Interactive Routing
 
@@ -241,12 +246,32 @@ Aurora v2 must allow sideways and backward movement.
 
 Examples:
 
-- Nora sends a video back to Storyboard Director if the scene flow is unclear.
+- Nora sends a video back to Video Producer if the scene flow is unclear.
 - Lila asks Bella for tighter visual language if a script is too abstract.
 - Roxy asks PM to choose the primary platform if captions conflict.
 - Archivist blocks an idea if Notion/Drive shows it was already produced.
 - Growth Analyst sends a winner back to Zoe for sequels.
-- PM asks Market Analyst for extra research before approving a new page.
+- PM asks Market & Monetization Analyst for extra research before approving a new page.
+
+## Anti-Duplication Rules
+
+- Mia owns live signals; Market & Monetization Analyst owns business viability.
+- Zoe proposes routes; the PM selects priorities and final slate.
+- Bella owns words; Video Producer owns scene timing, video structure, and generation package.
+- Lila owns visual language; Video Producer requests visual assets instead of replacing Lila.
+- Nora checks quality and risk; the PM makes page-level business decisions.
+- Growth Analyst diagnoses performance; Roxy turns that diagnosis into distribution changes.
+- Archivist owns duplicate checks before production and lesson links after performance review.
+
+Every production ticket should carry:
+
+- `decision_owner` for final approval.
+- `priority` so not every item competes equally.
+- `platform_primary` when multiple platforms are listed.
+- `acceptance_criteria` before production begins.
+- `evidence_links` or source signals for research traceability.
+- `asset_requirements` and `asset_sources` for Drive/Veo3/reference control.
+- `linked_lessons` so prior learning affects new work.
 
 The dashboard should eventually show these as "requests" or "blocks", not as failures.
 
