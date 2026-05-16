@@ -7,6 +7,7 @@ import os
 import secrets
 import subprocess
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 import requests
@@ -187,6 +188,59 @@ def _run_command(args: list[str], timeout: int = 8) -> dict[str, str]:
     }
 
 
+def _sanitize_ops_detail(detail: object) -> str:
+    text = str(detail or "")
+    for secret_value in (
+        os.environ.get("META_ACCESS_TOKEN", ""),
+        os.environ.get("META_APP_SECRET", ""),
+        os.environ.get("DASHBOARD_PASSWORD", ""),
+        os.environ.get("TELEGRAM_BOT_TOKEN", ""),
+    ):
+        if secret_value:
+            text = text.replace(secret_value, "<redacted>")
+    return text[:500]
+
+
+def _ops_log_path(root: Path) -> Path:
+    return root / "logs" / "ops_actions.jsonl"
+
+
+def _write_ops_audit(root: Path, user: str, action: str, result: dict[str, str]) -> None:
+    path = _ops_log_path(root)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    record = {
+        "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "user": user,
+        "action": action,
+        "result_state": str(result.get("state", "unknown")),
+        "result_name": str(result.get("name", action)),
+        "detail": _sanitize_ops_detail(result.get("detail", "")),
+    }
+    with path.open("a") as fh:
+        fh.write(json.dumps(record, sort_keys=True) + "\n")
+
+
+def _recent_ops_audit(root: Path, limit: int = 8) -> list[dict[str, str]]:
+    path = _ops_log_path(root)
+    if not path.exists():
+        return []
+    rows = []
+    for line in path.read_text().splitlines()[-limit:]:
+        try:
+            item = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        rows.append({
+            "timestamp": str(item.get("timestamp", "")),
+            "user": str(item.get("user", "")),
+            "action": str(item.get("action", "")),
+            "state": str(item.get("result_state", "unknown")),
+            "name": str(item.get("result_name", "")),
+            "detail": _sanitize_ops_detail(item.get("detail", "")),
+        })
+    return list(reversed(rows))
+
+
 def _systemctl_args(verb: str, unit: str) -> list[str]:
     return ["sudo", "-n", "systemctl", verb, unit]
 
@@ -341,6 +395,7 @@ def _ops_snapshot(root: Path, smoke_results: list[dict[str, str]] | None = None)
         "smoke_results": smoke_results,
         "action_buttons": _ops_action_buttons(),
         "action_result": None,
+        "ops_audit": _recent_ops_audit(root),
     }
 
 
@@ -727,16 +782,25 @@ def ops_dashboard(request: Request, _: str = Depends(verify_auth)):
 
 
 @app.post("/ops/smoke-test", response_class=HTMLResponse)
-def ops_smoke_test(request: Request, _: str = Depends(verify_auth)):
+def ops_smoke_test(request: Request, user: str = Depends(verify_auth)):
     root = _root(request)
-    snapshot = _ops_snapshot(root, smoke_results=_ops_smoke_results(root))
+    smoke_results = _ops_smoke_results(root)
+    failed = [item for item in smoke_results if item["state"] != "Ready"]
+    audit_result = {
+        "name": "Run smoke test",
+        "state": "Failed" if failed else "Ready",
+        "detail": f"{len(smoke_results) - len(failed)}/{len(smoke_results)} checks passed",
+    }
+    _write_ops_audit(root, user, "smoke_test", audit_result)
+    snapshot = _ops_snapshot(root, smoke_results=smoke_results)
     return templates.TemplateResponse(request, "ops.html", snapshot)
 
 
 @app.post("/ops/actions/{action}", response_class=HTMLResponse)
-def ops_action(action: str, request: Request, _: str = Depends(verify_auth)):
+def ops_action(action: str, request: Request, user: str = Depends(verify_auth)):
     root = _root(request)
     action_result = _run_ops_action(action)
+    _write_ops_audit(root, user, action, action_result)
     snapshot = _ops_snapshot(root)
     snapshot["action_result"] = action_result
     return templates.TemplateResponse(request, "ops.html", snapshot)

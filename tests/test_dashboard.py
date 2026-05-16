@@ -314,6 +314,7 @@ def test_ops_page_renders_status_and_errors(tmp_path, client, monkeypatch):
     assert "Run Instagram queue now" in resp.text
     assert "Run production summary now" in resp.text
     assert "Restart dashboard" in resp.text
+    assert "Recent Ops actions" in resp.text
 
 
 def test_ops_smoke_test_renders_results(tmp_path, client, monkeypatch):
@@ -335,6 +336,12 @@ def test_ops_smoke_test_renders_results(tmp_path, client, monkeypatch):
     assert "Latest smoke test" in resp.text
     assert "Health URL" in resp.text
     assert "HTTP 200" in resp.text
+    audit_path = tmp_path / "logs" / "ops_actions.jsonl"
+    assert audit_path.exists()
+    audit = json.loads(audit_path.read_text().splitlines()[-1])
+    assert audit["user"] == "admin"
+    assert audit["action"] == "smoke_test"
+    assert audit["result_state"] == "Ready"
 
 
 def test_ops_action_runs_selected_command(tmp_path, client, monkeypatch):
@@ -358,6 +365,12 @@ def test_ops_action_runs_selected_command(tmp_path, client, monkeypatch):
     assert calls == ["instagram_queue"]
     assert "Run Instagram queue now" in resp.text
     assert "started" in resp.text
+    assert "Recent Ops actions" in resp.text
+    audit_path = tmp_path / "logs" / "ops_actions.jsonl"
+    audit = json.loads(audit_path.read_text().splitlines()[-1])
+    assert audit["user"] == "admin"
+    assert audit["action"] == "instagram_queue"
+    assert audit["result_state"] == "Ready"
 
 
 def test_run_ops_action_rejects_unknown_action():
@@ -380,6 +393,26 @@ def test_run_ops_action_uses_sudo_systemctl(monkeypatch):
 
     assert result["state"] == "Ready"
     assert calls == [(["sudo", "-n", "systemctl", "start", "nayzfreedom-backup.service"], 30)]
+
+
+def test_ops_audit_sanitizes_and_reads_recent_entries(tmp_path, monkeypatch):
+    monkeypatch.setenv("META_ACCESS_TOKEN", "secret-token")
+
+    _dm._write_ops_audit(
+        tmp_path,
+        "admin",
+        "backup",
+        {"name": "Run backup now", "state": "Ready", "detail": "ok secret-token"},
+    )
+
+    path = tmp_path / "logs" / "ops_actions.jsonl"
+    raw = path.read_text()
+    assert "secret-token" not in raw
+    assert "<redacted>" in raw
+    rows = _dm._recent_ops_audit(tmp_path)
+    assert rows[0]["action"] == "backup"
+    assert rows[0]["state"] == "Ready"
+    assert "<redacted>" in rows[0]["detail"]
 
 
 def test_latest_backup_status_handles_permission_denied(monkeypatch, tmp_path):
