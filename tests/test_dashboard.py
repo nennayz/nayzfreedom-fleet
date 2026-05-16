@@ -71,6 +71,12 @@ def _write_slay_hack_project(tmp_path: Path) -> None:
     )
 
 
+def _slay_hack_ticket_id(tmp_path: Path, suffix: str) -> str:
+    slate = _dm._calendar_slate(tmp_path)
+    assert slate is not None
+    return next(ticket.ticket_id for ticket in slate.tickets if ticket.ticket_id.endswith(suffix))
+
+
 def test_healthz_does_not_require_auth(client):
     resp = client.get("/healthz")
     assert resp.status_code == 200
@@ -200,6 +206,7 @@ def test_aurora_overview_shows_projects(tmp_path, client):
 
 def test_aurora_workflow_page_renders_daily_slate(tmp_path, client):
     _write_slay_hack_project(tmp_path)
+    short_video_ticket_id = _slay_hack_ticket_id(tmp_path, "short-video-1")
     _write_job(tmp_path, "20260512_060000", brief="completed mission", status="completed", page="Slay Hack")
     _write_job(tmp_path, "20260512_070000", brief="failed mission", status="failed", page="Slay Hack")
 
@@ -224,6 +231,8 @@ def test_aurora_workflow_page_renders_daily_slate(tmp_path, client):
     assert "Slay decides" in resp.text
     assert "primary youtube" in resp.text
     assert "Mission packages" in resp.text
+    assert "Create mission" in resp.text
+    assert f"/aurora/workflow/video-packages/{short_video_ticket_id}/create-mission" in resp.text
     assert "Short-form Veo3 package" in resp.text
     assert "Veo3 storyboard package" in resp.text
     assert "Video Producer owns 3 scenes over 23 seconds for tiktok." in resp.text
@@ -235,6 +244,73 @@ def test_aurora_workflow_page_renders_daily_slate(tmp_path, client):
     assert "4 asset needs" in resp.text
     assert "Engagement review" in resp.text
     assert "Cross-team requests" in resp.text
+
+
+def test_create_video_package_mission_saves_job_and_detail(tmp_path, client):
+    _write_slay_hack_project(tmp_path)
+    short_video_ticket_id = _slay_hack_ticket_id(tmp_path, "short-video-1")
+
+    resp = client.post(
+        f"/aurora/workflow/video-packages/{short_video_ticket_id}/create-mission",
+        headers=_auth(),
+        follow_redirects=False,
+    )
+
+    assert resp.status_code == 303
+    assert resp.headers["location"].startswith("/jobs/")
+    job_id = resp.headers["location"].split("/")[-1]
+    job_files = list((tmp_path / "output" / "Slay Hack").glob("*/job.json"))
+    assert len(job_files) == 1
+    data = json.loads(job_files[0].read_text())
+    assert data["id"] == job_id
+    assert data["stage"] == "video_package_ready"
+    assert data["status"] == "running"
+    assert data["content_type"] == "video"
+    assert data["video_package"]["ticket_id"] == short_video_ticket_id
+    assert data["generation_request"]["status"] == "nora_review"
+    assert data["generation_request"]["tool_hint"] == "veo3"
+
+    detail = client.get(resp.headers["location"], headers=_auth())
+
+    assert detail.status_code == 200
+    assert "Video package mission: Quick hack" in detail.text
+    assert "Package the Motion" in detail.text
+    assert "Vera Reel" in detail.text
+    assert "Video Producer" in detail.text
+    assert "Mark ready for generation" in detail.text
+    assert "Scene timing, prompts, and assets are attached." in detail.text
+    assert "Waiting for Nora to mark ready for generation." in detail.text
+
+
+def test_mark_video_package_mission_ready_for_generation(tmp_path, client):
+    _write_slay_hack_project(tmp_path)
+    short_video_ticket_id = _slay_hack_ticket_id(tmp_path, "short-video-1")
+    created = client.post(
+        f"/aurora/workflow/video-packages/{short_video_ticket_id}/create-mission",
+        headers=_auth(),
+        follow_redirects=False,
+    )
+    job_id = created.headers["location"].split("/")[-1]
+
+    resp = client.post(f"/jobs/{job_id}/ready-for-generation", headers=_auth(), follow_redirects=False)
+
+    assert resp.status_code == 303
+    assert resp.headers["location"] == f"/jobs/{job_id}"
+    job_path = next((tmp_path / "output" / "Slay Hack").glob("*/job.json"))
+    data = json.loads(job_path.read_text())
+    assert data["stage"] == "nora_done"
+    assert data["status"] == "awaiting_approval"
+    assert data["qa_result"]["passed"] is True
+    assert data["generation_request"]["status"] == "ready_for_generation"
+    assert data["generation_request"]["approved_by"] == "Nora"
+
+    detail = client.get(f"/jobs/{job_id}", headers=_auth())
+
+    assert detail.status_code == 200
+    assert "Generation status:" in detail.text
+    assert "ready for generation" in detail.text
+    assert "Nora approved the package for generation." in detail.text
+    assert "Mark ready for generation" not in detail.text
 
 
 def test_aurora_crew_pages_render(client):

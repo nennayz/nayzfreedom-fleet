@@ -123,6 +123,12 @@ h2 { font-size: 1.1rem; margin-bottom: 0.75rem; }
 .compact-hero {
   display: block;
 }
+.mission-hero h1 {
+  overflow-wrap: anywhere;
+}
+.mission-hero .hero-copy {
+  max-width: 820px;
+}
 
 .hero::after {
   content: "";
@@ -627,6 +633,28 @@ button[type="submit"]:hover { background: var(--navy-soft); }
   line-height: 1.35;
   margin: 0.2rem 0 0;
 }
+.video-package-detail {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1.2fr) minmax(240px, 0.8fr);
+  margin-bottom: 1rem;
+}
+.video-package-detail article {
+  background: rgba(16,35,63,0.04);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 0.95rem;
+}
+.video-package-detail p,
+.video-package-detail li {
+  color: var(--muted);
+  line-height: 1.5;
+}
+.video-package-detail h3 {
+  color: var(--ink);
+  font-size: 1rem;
+  margin: 0 0 0.6rem;
+}
 .video-package-card h3 {
   color: var(--ink);
   font-size: 1rem;
@@ -1124,6 +1152,7 @@ a:hover { color: var(--navy-soft); }
   .workflow-card-grid,
   .workflow-lane-grid,
   .video-package-grid,
+  .video-package-detail,
   .workflow-stats {
     grid-template-columns: 1fr;
   }

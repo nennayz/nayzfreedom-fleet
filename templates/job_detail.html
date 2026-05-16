@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-<section class="hero aurora-hero">
+<section class="hero compact-hero mission-hero">
   <p class="eyebrow">Voyage log</p>
   <h1>Mission {{ job.id }}</h1>
   <p class="hero-copy">{{ job.brief }}</p>
@@ -118,6 +118,47 @@
     </div>
   </article>
 </section>
+
+{% if video_package %}
+<section class="panel">
+  <div class="section-heading">
+    <p class="eyebrow">Video Producer</p>
+    <h2>{{ video_package.title }}</h2>
+  </div>
+  <div class="video-package-detail">
+    <article>
+      <span class="badge badge-ops-ready">{{ video_package.format_name }}</span>
+      <p>{{ video_package.owner }} prepared {{ video_package.scenes | length }} scenes over {{ video_package.total_duration_seconds }} seconds for {{ video_package.platform_primary }}.</p>
+      {% if generation_request %}
+      <p><strong>Generation status:</strong> {{ generation_request.status | replace("_", " ") }}</p>
+      <p>{{ generation_request.next_action }}</p>
+      {% endif %}
+      {% if generation_request and generation_request.status != "ready_for_generation" %}
+      <form class="inline-form" method="post" action="/jobs/{{ job.id }}/ready-for-generation">
+        <button type="submit">Mark ready for generation</button>
+      </form>
+      {% endif %}
+    </article>
+    <article>
+      <h3>Asset checklist</h3>
+      <ul>
+        {% for asset in video_package.asset_checklist %}
+        <li>{{ asset }}</li>
+        {% endfor %}
+      </ul>
+    </article>
+  </div>
+  <div class="scene-timeline">
+    {% for scene in video_package.scenes %}
+    <div class="scene-row">
+      <span>{{ scene.start_second }}-{{ scene.end_second }}s</span>
+      <strong>{{ scene.purpose }}</strong>
+      <small>{{ scene.prompt }}</small>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
 
 {% if job.bella_output %}
 <details>
