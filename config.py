@@ -17,6 +17,7 @@ class Config:
     meta_access_token: str = ""
     meta_page_id: str = ""
     meta_ig_user_id: str = ""
+    public_base_url: str = ""
     tiktok_access_token: str = ""
     youtube_client_id: str = ""
     youtube_client_secret: str = ""
@@ -36,6 +37,7 @@ class Config:
             meta_access_token=os.getenv("META_ACCESS_TOKEN", ""),
             meta_page_id=os.getenv("META_PAGE_ID", ""),
             meta_ig_user_id=os.getenv("META_IG_USER_ID", ""),
+            public_base_url=os.getenv("PUBLIC_BASE_URL", os.getenv("OPS_PUBLIC_BASE_URL", "https://fleet.nayzfreedom.cloud")),
             tiktok_access_token=os.getenv("TIKTOK_ACCESS_TOKEN", ""),
             youtube_client_id=os.getenv("YOUTUBE_CLIENT_ID", ""),
             youtube_client_secret=os.getenv("YOUTUBE_CLIENT_SECRET", ""),

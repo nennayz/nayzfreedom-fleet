@@ -10,11 +10,12 @@ import subprocess
 import sys
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
+from urllib.parse import quote
 
 import requests
 import yaml
 from fastapi import Depends, FastAPI, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -692,6 +693,63 @@ def _media_readiness(root: Path, job) -> dict[str, str]:
     }
 
 
+def _public_media_path(root: Path, job_id: str, filename: str) -> Path:
+    safe_name = Path(filename).name
+    allowed = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".mp4", ".mov"}
+    if Path(safe_name).suffix.lower() not in allowed:
+        raise FileNotFoundError("unsupported public media type")
+    output_root = (root / "output").resolve()
+    for path in output_root.rglob(safe_name):
+        if path.parent.name != job_id:
+            continue
+        resolved = path.resolve()
+        if output_root in resolved.parents:
+            return resolved
+    raise FileNotFoundError(f"public media not found for {job_id}/{safe_name}")
+
+
+def _public_media_url(job) -> str:
+    media = job.video_path if _content_type_value(job) == "video" else job.image_path
+    if not media:
+        return ""
+    return f"{OPS_PUBLIC_BASE_URL}/media/public/{quote(job.id)}/{quote(Path(str(media)).name)}"
+
+
+def _public_url_readiness(root: Path, job, media: dict[str, str]) -> dict[str, str]:
+    content_type = _content_type_value(job)
+    if content_type == "article":
+        return {
+            "state": "Ready",
+            "label": "Public URL not required",
+            "detail": "Article feed posts do not upload media.",
+        }
+    if media["state"] != "Ready":
+        return {
+            "state": "Failed",
+            "label": "Public URL blocked",
+            "detail": "Fix local media before exposing public URL.",
+        }
+    url = _public_media_url(job)
+    if not url:
+        return {
+            "state": "Missing",
+            "label": "Public URL missing",
+            "detail": "OPS_PUBLIC_BASE_URL is not configured.",
+        }
+    return {"state": "Ready", "label": "Public URL ready", "detail": url}
+
+
+def _failed_publish_platforms(job) -> list[str]:
+    result = job.publish_result or {}
+    if not isinstance(result, dict):
+        return []
+    return [
+        str(platform)
+        for platform, value in result.items()
+        if isinstance(value, dict) and value.get("status") == "failed"
+    ]
+
+
 def _caption_readiness(job) -> dict[str, str]:
     strategy = job.growth_strategy
     caption = getattr(strategy, "caption", "") if strategy else ""
@@ -708,14 +766,23 @@ def _caption_readiness(job) -> dict[str, str]:
     return {"state": "Ready", "label": "Caption ready", "detail": detail}
 
 
-def _retry_recommendation(job, platform: str, category: str, media: dict[str, str], caption: dict[str, str]) -> str:
+def _retry_recommendation(
+    job,
+    platform: str,
+    category: str,
+    media: dict[str, str],
+    caption: dict[str, str],
+    public_url: dict[str, str],
+) -> str:
     content_type = _content_type_value(job)
     if media["state"] != "Ready":
         return "Fix media path before retry."
     if caption["state"] != "Ready":
         return "Add caption before retry."
+    if platform == "instagram" and content_type != "video" and public_url["state"] != "Ready":
+        return "Public image URL is required before IG image_url fallback can work."
     if platform == "instagram" and content_type != "video" and category == "meta bad request":
-        return "Payload is locally ready; inspect Meta body or switch IG image upload to public image_url if source upload is rejected."
+        return "Payload is locally ready; retry can use public image_url fallback if source upload is rejected."
     if platform == "facebook" and content_type == "article" and category == "meta bad request":
         return "Payload is locally ready; inspect Meta body, page permission, or scheduled feed constraints."
     if category == "auth or permission":
@@ -734,9 +801,18 @@ def _ops_publish_failure_triage(root: Path, jobs, limit: int = 12) -> dict[str, 
             if not isinstance(value, dict) or value.get("status") != "failed":
                 continue
             error = _sanitize_ops_detail(value.get("error") or value.get("reason") or "failed")
+            meta_error = value.get("meta_error") if isinstance(value.get("meta_error"), dict) else {}
+            meta_error_detail = ""
+            if meta_error:
+                meta_error_detail = " ".join(
+                    f"{key}={_sanitize_ops_detail(meta_error.get(key))}"
+                    for key in ("code", "error_subcode", "type", "message")
+                    if meta_error.get(key) not in (None, "")
+                )
             category = _publish_failure_category(str(platform), error)
             media = _media_readiness(root, job)
             caption = _caption_readiness(job)
+            public_url = _public_url_readiness(root, job, media)
             key = f"{platform}:{category}"
             group = groups.setdefault(
                 key,
@@ -755,9 +831,11 @@ def _ops_publish_failure_triage(root: Path, jobs, limit: int = 12) -> dict[str, 
                     "platform": str(platform),
                     "category": category,
                     "detail": error[:240],
+                    "meta_error": meta_error_detail[:300],
                     "media": media,
                     "caption": caption,
-                    "recommendation": _retry_recommendation(job, str(platform), category, media, caption),
+                    "public_url": public_url,
+                    "recommendation": _retry_recommendation(job, str(platform), category, media, caption, public_url),
                     "retry_path": f"/ops/publish-failures/{job.id}/{platform}/retry",
                 }
             )
@@ -981,6 +1059,15 @@ def _ops_snapshot(root: Path, smoke_results: list[dict[str, str]] | None = None)
 @app.get("/healthz")
 def healthz():
     return JSONResponse({"status": "ok", "service": "nayzfreedom-dashboard"})
+
+
+@app.get("/media/public/{job_id}/{filename}")
+def public_media(job_id: str, filename: str, request: Request):
+    try:
+        path = _public_media_path(_root(request), job_id, filename)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Public media not found")
+    return FileResponse(path)
 
 
 @app.api_route("/privacy", methods=["GET", "HEAD"], response_class=HTMLResponse)
@@ -2742,11 +2829,17 @@ def schedule_publish(job_id: str, request: Request, user: str = Depends(verify_a
 def retry_publish(job_id: str, request: Request, user: str = Depends(verify_auth)):
     root = _root(request)
     try:
-        _find_job_at_root(root, job_id)
+        job = _find_job_at_root(root, job_id)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=f"Job {job_id!r} not found")
+    failed_platforms = _failed_publish_platforms(job)
+    if not failed_platforms:
+        raise HTTPException(status_code=400, detail=f"Job {job_id!r} has no failed publish platform")
+    command = [sys.executable, "main.py", "--publish-only", job_id, "--schedule"]
+    for platform in failed_platforms:
+        command.extend(["--publish-platform", platform])
     subprocess.Popen(
-        [sys.executable, "main.py", "--publish-only", job_id, "--schedule"],
+        command,
         cwd=str(root),
     )
     _write_work_event(
@@ -2754,9 +2847,9 @@ def retry_publish(job_id: str, request: Request, user: str = Depends(verify_auth
         "deploy_step",
         f"Retry publish requested for {job_id}",
         actor=user,
-        command="main.py --publish-only --schedule",
+        command="main.py --publish-only --schedule --publish-platform",
         result="subprocess started",
-        metadata={"job_id": job_id},
+        metadata={"job_id": job_id, "platforms": failed_platforms},
     )
     return RedirectResponse(f"/jobs/{job_id}", status_code=303)
 
@@ -2779,7 +2872,7 @@ def ops_retry_publish_failure(
         raise HTTPException(status_code=400, detail=f"{platform} is not failed for job {job_id}")
     error = _sanitize_ops_detail(platform_result.get("error") or platform_result.get("reason") or "failed")
     subprocess.Popen(
-        [sys.executable, "main.py", "--publish-only", job_id, "--schedule"],
+        [sys.executable, "main.py", "--publish-only", job_id, "--schedule", "--publish-platform", platform],
         cwd=str(root),
     )
     _write_work_event(
@@ -2787,7 +2880,7 @@ def ops_retry_publish_failure(
         "deploy_step",
         f"Ops retry requested for {platform} publish failure on {job_id}",
         actor=user,
-        command="main.py --publish-only --schedule",
+        command="main.py --publish-only --schedule --publish-platform",
         result=_publish_failure_category(platform, error),
         next_action="Watch publish failure triage for updated platform status.",
         metadata={"job_id": job_id, "platform": platform},
