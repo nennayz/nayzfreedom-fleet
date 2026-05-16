@@ -57,15 +57,20 @@ def test_healthz_does_not_require_auth(client):
 def test_meta_policy_pages_do_not_require_auth(client):
     privacy = client.get("/privacy")
     deletion = client.get("/data-deletion")
+    deletion_html = client.get("/data_deletion.html")
     privacy_head = client.head("/privacy")
     deletion_head = client.head("/data-deletion")
+    deletion_html_head = client.head("/data_deletion.html")
 
     assert privacy.status_code == 200
     assert "Privacy Policy" in privacy.text
     assert deletion.status_code == 200
     assert "Data Deletion" in deletion.text
+    assert deletion_html.status_code == 200
+    assert "Data Deletion" in deletion_html.text
     assert privacy_head.status_code == 200
     assert deletion_head.status_code == 200
+    assert deletion_html_head.status_code == 200
 
 
 @pytest.fixture

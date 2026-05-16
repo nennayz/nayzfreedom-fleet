@@ -139,6 +139,7 @@ def privacy_policy(request: Request):
 
 
 @app.api_route("/data-deletion", methods=["GET", "HEAD"], response_class=HTMLResponse)
+@app.api_route("/data_deletion.html", methods=["GET", "HEAD"], response_class=HTMLResponse)
 def data_deletion(request: Request):
     return templates.TemplateResponse(request, "data_deletion.html", {})
 
