@@ -251,6 +251,14 @@ WORKFLOW_STEPS = (
         action="builds the visual direction",
     ),
     MissionStep(
+        stage="video_package_ready",
+        label="Package the Motion",
+        crew_slug="video-producer",
+        owner_name="Vera Reel",
+        station="Reel Deck",
+        action="turns scene timing, prompts, and assets into a generation package",
+    ),
+    MissionStep(
         stage="nora_done",
         label="Inspect the Cargo",
         crew_slug="nora",

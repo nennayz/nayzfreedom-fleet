@@ -145,6 +145,9 @@
         <span>{{ package.acceptance_count }} checks</span>
         <span>{{ package.ticket_id }}</span>
       </div>
+      <form class="inline-form" method="post" action="{{ package.create_mission_url }}">
+        <button type="submit">Create mission</button>
+      </form>
     </article>
     {% endfor %}
   </div>

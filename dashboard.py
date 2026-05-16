@@ -41,7 +41,7 @@ from models.aurora_workflow import (
     VideoProductionPackage,
     StoryboardScene,
 )
-from models.content_job import ContentType
+from models.content_job import ContentJob, ContentType, JobStatus, QAResult
 from project_loader import (
     list_project_slugs,
     load_project,
@@ -942,11 +942,15 @@ def _mission_outputs(job, faq_content: str | None) -> list[dict[str, str]]:
     visual_ready = bool(job.visual_prompt or job.image_path or job.video_path)
     content_type = getattr(job.content_type, "value", job.content_type)
     visual_required = content_type != "article"
+    video_package = getattr(job, "video_package", None) or {}
+    generation_request = getattr(job, "generation_request", None) or {}
+    video_package_ready = bool(video_package)
+    generation_status = str(generation_request.get("status", "")) if isinstance(generation_request, dict) else ""
     growth_ready = job.growth_strategy is not None
     community_ready = bool(faq_content)
     publish_ready = job.publish_result is not None
 
-    return [
+    outputs = [
         {
             "label": "Content",
             "state": "Ready" if content_ready else "Waiting",
@@ -956,6 +960,16 @@ def _mission_outputs(job, faq_content: str | None) -> list[dict[str, str]]:
             "label": "Visual",
             "state": "Ready" if visual_ready else "Not needed" if not visual_required else "Waiting",
             "detail": "Visual direction is available." if visual_ready else "Article mission can skip visual direction." if not visual_required else "Waiting for visual direction.",
+        },
+        {
+            "label": "Video package",
+            "state": "Ready" if video_package_ready else "Not needed" if content_type != "video" else "Waiting",
+            "detail": "Scene timing, prompts, and assets are attached." if video_package_ready else "Non-video mission can skip the Video Producer package." if content_type != "video" else "Waiting for Video Producer package.",
+        },
+        {
+            "label": "Nora QA",
+            "state": "Ready" if generation_status == "ready_for_generation" else "Waiting" if video_package_ready else "Not needed",
+            "detail": "Nora approved the package for generation." if generation_status == "ready_for_generation" else "Waiting for Nora to mark ready for generation." if video_package_ready else "No video generation gate is needed yet.",
         },
         {
             "label": "Growth",
@@ -973,6 +987,7 @@ def _mission_outputs(job, faq_content: str | None) -> list[dict[str, str]]:
             "detail": "Publish result is recorded." if publish_ready else "Waiting for launch result.",
         },
     ]
+    return outputs
 
 
 def _readiness_checks(root: Path) -> list[dict[str, str]]:
@@ -1232,9 +1247,75 @@ def _video_package_rows(slate: CalendarSlate | None) -> list[dict[str, object]]:
                 "scenes": package.scenes,
                 "asset_checklist": package.asset_checklist,
                 "handoff_notes": package.handoff_notes,
+                "create_mission_url": f"/aurora/workflow/video-packages/{package.ticket_id}/create-mission",
             }
         )
     return packages
+
+
+def _find_video_ticket(slate: CalendarSlate | None, ticket_id: str) -> ProductionTicket | None:
+    if slate is None:
+        return None
+    for ticket in slate.tickets:
+        if ticket.ticket_id == ticket_id:
+            return ticket
+    return None
+
+
+def _video_package_payload(package: VideoProductionPackage) -> dict[str, object]:
+    return package.model_dump(mode="json")
+
+
+def _generation_request_for_package(package: VideoProductionPackage) -> dict[str, object]:
+    return {
+        "status": "nora_review",
+        "tool": "video_generation",
+        "tool_hint": "veo3",
+        "next_action": "Nora reviews scene timing, prompt package, and asset checklist before generation.",
+        "ready_action": "Mark ready for generation",
+        "scene_count": len(package.scenes),
+        "total_duration_seconds": package.total_duration_seconds,
+        "prompt_count": len(package.prompt_package),
+        "asset_count": len(package.asset_checklist),
+    }
+
+
+def _safe_job_suffix(value: str) -> str:
+    return "".join(char if char.isalnum() else "_" for char in value).strip("_").lower()
+
+
+def _save_job_at_root(root: Path, job: ContentJob) -> Path:
+    out_dir = root / "output" / job.pm.page_name / job.id
+    out_dir.mkdir(parents=True, exist_ok=True)
+    path = out_dir / "job.json"
+    path.write_text(job.model_dump_json(indent=2))
+    return path
+
+
+def _find_job_at_root(root: Path, job_id: str) -> ContentJob:
+    for path in (root / "output").rglob(f"{job_id}/job.json"):
+        return ContentJob.model_validate_json(path.read_text())
+    raise FileNotFoundError(f"Job ID '{job_id}' not found in {root / 'output'}")
+
+
+def _video_package_job(root: Path, ticket: ProductionTicket, package: VideoProductionPackage) -> ContentJob:
+    pm = load_project(ticket.project, root=root)
+    suffix = _safe_job_suffix(ticket.ticket_id)
+    job = ContentJob(
+        id=f"{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{suffix}",
+        project=ticket.project,
+        pm=pm,
+        brief=f"Video package mission: {ticket.title}",
+        platforms=ticket.platforms,
+        stage="video_package_ready",
+        status=JobStatus.RUNNING,
+        dry_run=True,
+        content_type=ContentType.VIDEO,
+        visual_prompt="\n".join(scene.prompt for scene in package.scenes),
+        video_package=_video_package_payload(package),
+        generation_request=_generation_request_for_package(package),
+    )
+    return job
 
 
 def _weekly_calendar(root: Path, project_slug: str) -> dict[str, dict[str, str]]:
@@ -1398,6 +1479,12 @@ def _qa_status(slate: CalendarSlate | None) -> list[dict[str, str]]:
         return [{"state": "Missing", "name": "Daily slate", "detail": "No slate is configured yet."}]
     long_tickets = [ticket for ticket in slate.tickets if ticket.ticket_type == ProductionTicketType.LONG_VIDEO]
     storyboard_ready = all(ticket.storyboard for ticket in long_tickets)
+    video_packages = [
+        _video_package_for_ticket(ticket)
+        for ticket in slate.tickets
+        if ticket.ticket_type in {ProductionTicketType.SHORT_VIDEO, ProductionTicketType.LONG_VIDEO}
+    ]
+    package_ready = bool(video_packages) and all(package is not None and package.scenes for package in video_packages)
     return [
         {
             "state": "Ready" if slate.satisfies_daily_minimum() else "Failed",
@@ -1410,9 +1497,9 @@ def _qa_status(slate: CalendarSlate | None) -> list[dict[str, str]]:
             "detail": f"{len(long_tickets)} long video ticket{'s' if len(long_tickets) != 1 else ''} checked.",
         },
         {
-            "state": "Missing",
+            "state": "Ready" if package_ready else "Missing",
             "name": "Nora QA gate",
-            "detail": "Tickets are planned; QA status starts after production output exists.",
+            "detail": "Video packages are ready for Nora to approve generation." if package_ready else "Tickets are planned; QA status starts after production output exists.",
         },
     ]
 
@@ -1552,6 +1639,21 @@ def aurora_overview(request: Request, _: str = Depends(verify_auth)):
 @app.get("/aurora/workflow", response_class=HTMLResponse)
 def aurora_workflow(request: Request, _: str = Depends(verify_auth)):
     return templates.TemplateResponse(request, "aurora_workflow.html", _aurora_workflow_snapshot(_root(request)))
+
+
+@app.post("/aurora/workflow/video-packages/{ticket_id}/create-mission")
+def create_video_package_mission(ticket_id: str, request: Request, _: str = Depends(verify_auth)):
+    root = _root(request)
+    slate = _calendar_slate(root)
+    ticket = _find_video_ticket(slate, ticket_id)
+    if ticket is None:
+        raise HTTPException(status_code=404, detail=f"Video package ticket {ticket_id!r} not found")
+    package = _video_package_for_ticket(ticket)
+    if package is None:
+        raise HTTPException(status_code=400, detail=f"Ticket {ticket_id!r} is not a video package")
+    job = _video_package_job(root, ticket, package)
+    _save_job_at_root(root, job)
+    return RedirectResponse(f"/jobs/{job.id}", status_code=303)
 
 
 @app.get("/aurora/crew", response_class=HTMLResponse)
@@ -1748,17 +1850,22 @@ def jobs_partial(request: Request, _: str = Depends(verify_auth)):
 
 @app.get("/jobs/{job_id}", response_class=HTMLResponse)
 def job_detail(job_id: str, request: Request, _: str = Depends(verify_auth)):
+    root = _root(request)
     try:
         job = find_job(job_id)
     except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Job {job_id!r} not found")
-    root = _root(request)
+        try:
+            job = _find_job_at_root(root, job_id)
+        except FileNotFoundError:
+            raise HTTPException(status_code=404, detail=f"Job {job_id!r} not found")
     faq_path = root / "output" / job.pm.page_name / job_id / "faq.md"
     faq_content = faq_path.read_text() if faq_path.exists() else None
     voyage_steps = _build_voyage_steps(job)
     completed_count = sum(1 for item in voyage_steps if item["state"] == "done")
     mission_command = _mission_command(job, voyage_steps, completed_count)
     mission_outputs = _mission_outputs(job, faq_content)
+    video_package = getattr(job, "video_package", None)
+    generation_request = getattr(job, "generation_request", None)
     return templates.TemplateResponse(
         request,
         "job_detail.html",
@@ -1770,8 +1877,36 @@ def job_detail(job_id: str, request: Request, _: str = Depends(verify_auth)):
             "total_stages": len(voyage_steps),
             "mission_command": mission_command,
             "mission_outputs": mission_outputs,
+            "video_package": video_package,
+            "generation_request": generation_request,
         },
     )
+
+
+@app.post("/jobs/{job_id}/ready-for-generation")
+def ready_for_generation(job_id: str, request: Request, _: str = Depends(verify_auth)):
+    root = _root(request)
+    try:
+        job = _find_job_at_root(root, job_id)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Job {job_id!r} not found")
+    if not getattr(job, "video_package", None):
+        raise HTTPException(status_code=400, detail="No video package is attached to this mission")
+    generation_request = dict(job.generation_request or {})
+    generation_request["status"] = "ready_for_generation"
+    generation_request["next_action"] = "Ready for the video generation tool to consume this package."
+    generation_request["approved_by"] = "Nora"
+    generation_request["approved_at"] = datetime.now(timezone.utc).isoformat()
+    job.generation_request = generation_request
+    job.qa_result = QAResult(
+        passed=True,
+        script_feedback="Scene timing and prompt package are ready for generation.",
+        visual_feedback="Asset checklist and visual direction are complete enough for generation.",
+    )
+    job.stage = "nora_done"
+    job.status = JobStatus.AWAITING_APPROVAL
+    _save_job_at_root(root, job)
+    return RedirectResponse(f"/jobs/{job_id}", status_code=303)
 
 
 @app.post("/jobs/{job_id}/retry-publish")
