@@ -28,16 +28,22 @@ sha256sum "$backup_dir/state.tgz" > "$backup_dir/state.tgz.sha256"
 chmod -R go-rwx "$backup_dir"
 
 if [ -n "$GOOGLE_DRIVE_BACKUP_FOLDER_ID" ]; then
+    drive_error=/tmp/nayzfreedom-drive-backup.err
     if "$INSTALL_DIR/.venv/bin/python" "$INSTALL_DIR/google_drive.py" \
         "$backup_dir/state.tgz" \
         --folder-id "$GOOGLE_DRIVE_BACKUP_FOLDER_ID" \
         --name "nayzfreedom-$stamp-state.tgz" \
-        --mime-type "application/gzip" >/tmp/nayzfreedom-drive-backup.json; then
+        --mime-type "application/gzip" >/tmp/nayzfreedom-drive-backup.json 2>"$drive_error"; then
         chmod 600 /tmp/nayzfreedom-drive-backup.json
+        rm -f "$drive_error"
         echo "drive_backup=uploaded"
     else
         rm -f /tmp/nayzfreedom-drive-backup.json
         echo "drive_backup=failed"
+        if [ -s "$drive_error" ]; then
+            chmod 600 "$drive_error"
+            tail -n 1 "$drive_error" | sed "s/^/drive_backup_error=/"
+        fi
     fi
 fi
 
