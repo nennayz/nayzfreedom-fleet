@@ -107,12 +107,37 @@
       <p class="eyebrow">Incident</p>
       <h2>Recent notes</h2>
     </div>
+    <div class="ops-action-result">
+      <span class="badge badge-ops-failed">Open {{ incident_summary.open }}</span>
+      <span class="badge badge-ops-missing">Investigating {{ incident_summary.investigating }}</span>
+      <span class="badge badge-ops-ready">Resolved {{ incident_summary.resolved }}</span>
+    </div>
     <div class="ops-list">
       {% for item in ops_incidents %}
       <div class="ops-row">
-        <span class="badge badge-ops-{{ 'failed' if item.severity == 'critical' else 'missing' if item.severity == 'warning' else 'ready' }}">{{ item.severity }}</span>
+        <span class="badge badge-ops-{{ 'ready' if item.status == 'resolved' else 'missing' if item.status == 'investigating' else 'failed' }}">{{ item.status }}</span>
         <strong>{{ item.title }}</strong>
-        <small>{{ item.timestamp }} - {{ item.user }} - {{ item.note }}</small>
+        <small>{{ item.severity }} - {{ item.timestamp }} - {{ item.user }} - {{ item.note }}</small>
+        <div class="inline-actions">
+          {% if item.status != "investigating" %}
+          <form class="inline-form" method="post" action="/ops/incidents/{{ item.id }}/status">
+            <input type="hidden" name="status" value="investigating">
+            <button type="submit">Investigating</button>
+          </form>
+          {% endif %}
+          {% if item.status != "resolved" %}
+          <form class="inline-form" method="post" action="/ops/incidents/{{ item.id }}/status">
+            <input type="hidden" name="status" value="resolved">
+            <button type="submit">Resolve</button>
+          </form>
+          {% endif %}
+          {% if item.status != "open" %}
+          <form class="inline-form" method="post" action="/ops/incidents/{{ item.id }}/status">
+            <input type="hidden" name="status" value="open">
+            <button type="submit">Reopen</button>
+          </form>
+          {% endif %}
+        </div>
       </div>
       {% else %}
       <p class="muted">No incident notes yet.</p>
