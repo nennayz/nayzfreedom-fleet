@@ -1,16 +1,23 @@
 import pytest
-from project_loader import load_project, ProjectNotFoundError, load_platform_specs
+from project_loader import (
+    list_project_slugs,
+    load_platform_specs,
+    load_project,
+    ProjectNotFoundError,
+    resolve_project_slug,
+)
 from models.content_job import PMProfile, ContentType
 
 
-def test_load_nayzfreedom_fleet():
-    pm = load_project("nayzfreedom_fleet")
+def test_load_slay_hack():
+    pm = load_project("slay_hack")
     assert isinstance(pm, PMProfile)
     assert pm.name == "Slay"
-    assert pm.page_name == "Slayhack"
-    assert "Quiet Luxury" in pm.persona
+    assert pm.page_name == "Slay Hack"
+    assert "male Project Manager" in pm.persona
+    assert "Format A" in pm.persona
     assert pm.brand.nora_max_retries == 2
-    assert "#D4AF37" in pm.brand.visual.colors
+    assert "#F06292" in pm.brand.visual.colors
 
 
 def test_load_missing_project_raises():
@@ -18,21 +25,35 @@ def test_load_missing_project_raises():
         load_project("nonexistent")
 
 
-def test_load_legacy_slay_hack_alias():
-    pm = load_project("slay_hack")
-    assert pm.name == "Slay"
-    assert pm.page_name == "Slayhack"
-
-
-def test_load_nayzfreedom_fleet_allowed_content_types():
+def test_load_legacy_nayzfreedom_fleet_alias():
     pm = load_project("nayzfreedom_fleet")
+    assert pm.name == "Slay"
+    assert pm.page_name == "Slay Hack"
+
+
+def test_list_project_slugs_hides_alias_sources():
+    assert "slay_hack" in list_project_slugs()
+    assert "nayzfreedom_fleet" not in list_project_slugs()
+
+
+def test_project_slug_alias_falls_back_when_legacy_folder_exists(tmp_path):
+    project_dir = tmp_path / "projects" / "nayzfreedom_fleet"
+    project_dir.mkdir(parents=True)
+    (project_dir / "pm_profile.yaml").write_text("page_name: Legacy\n")
+
+    assert resolve_project_slug("nayzfreedom_fleet", root=tmp_path) == "nayzfreedom_fleet"
+    assert list_project_slugs(tmp_path) == ["nayzfreedom_fleet"]
+
+
+def test_load_slay_hack_allowed_content_types():
+    pm = load_project("slay_hack")
     assert set(pm.brand.allowed_content_types) == {
         ContentType.VIDEO, ContentType.ARTICLE,
         ContentType.IMAGE, ContentType.INFOGRAPHIC,
     }
 
-def test_load_platform_specs_nayzfreedom_fleet():
-    specs = load_platform_specs("nayzfreedom_fleet")
+def test_load_platform_specs_slay_hack():
+    specs = load_platform_specs("slay_hack")
     assert "instagram" in specs
     assert "facebook" in specs
     assert "tiktok" in specs

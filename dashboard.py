@@ -8,10 +8,11 @@ import secrets
 import shutil
 import subprocess
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import requests
+import yaml
 from fastapi import Depends, FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
@@ -28,6 +29,17 @@ from dashboard_store import (
     summarize_jobs,
 )
 from job_store import find_job, save_job
+from models.aurora_workflow import (
+    CalendarSlate,
+    CrossTeamRequest,
+    MissionType,
+    PerformanceBucket,
+    PerformanceReview,
+    ProductionTicket,
+    ProductionTicketType,
+    StoryboardScene,
+)
+from models.content_job import ContentType
 from project_loader import (
     list_project_slugs,
     load_project,
@@ -1017,6 +1029,269 @@ def _readiness_checks(root: Path) -> list[dict[str, str]]:
     ]
 
 
+def _ticket_type_from_calendar_key(key: str) -> ProductionTicketType:
+    if key.startswith("article"):
+        return ProductionTicketType.ARTICLE
+    if key.startswith("infographic"):
+        return ProductionTicketType.INFOGRAPHIC
+    if key.startswith("long_video"):
+        return ProductionTicketType.LONG_VIDEO
+    if key.startswith("short_video"):
+        return ProductionTicketType.SHORT_VIDEO
+    return ProductionTicketType.COMMUNITY_POST
+
+
+def _content_type_for_ticket(ticket_type: ProductionTicketType) -> ContentType:
+    if ticket_type == ProductionTicketType.ARTICLE:
+        return ContentType.ARTICLE
+    if ticket_type == ProductionTicketType.INFOGRAPHIC:
+        return ContentType.INFOGRAPHIC
+    return ContentType.VIDEO if ticket_type in {ProductionTicketType.SHORT_VIDEO, ProductionTicketType.LONG_VIDEO} else ContentType.ARTICLE
+
+
+def _platforms_for_ticket(ticket_type: ProductionTicketType) -> list[str]:
+    if ticket_type == ProductionTicketType.ARTICLE:
+        return ["facebook"]
+    if ticket_type == ProductionTicketType.INFOGRAPHIC:
+        return ["instagram", "facebook"]
+    if ticket_type == ProductionTicketType.SHORT_VIDEO:
+        return ["tiktok", "instagram"]
+    if ticket_type == ProductionTicketType.LONG_VIDEO:
+        return ["youtube", "facebook", "tiktok"]
+    return ["facebook"]
+
+
+def _owner_for_ticket(ticket_type: ProductionTicketType, pm_name: str) -> str:
+    return {
+        ProductionTicketType.ARTICLE: "Bella",
+        ProductionTicketType.INFOGRAPHIC: "Lila",
+        ProductionTicketType.SHORT_VIDEO: "Lila",
+        ProductionTicketType.LONG_VIDEO: "Lila",
+        ProductionTicketType.COMMUNITY_POST: "Emma",
+        ProductionTicketType.DISTRIBUTION_PACK: "Roxy",
+    }.get(ticket_type, pm_name)
+
+
+def _storyboard_for_long_video(title: str) -> list[StoryboardScene]:
+    purposes = [
+        "hook",
+        "problem",
+        "setup",
+        "step one",
+        "step two",
+        "step three",
+        "proof",
+        "saveable recap",
+        "cta",
+    ]
+    return [
+        StoryboardScene(
+            number=index,
+            duration_seconds=8,
+            purpose=purpose,
+            visual_direction=f"{title} - {purpose}",
+            tool_hint="veo3",
+        )
+        for index, purpose in enumerate(purposes, start=1)
+    ]
+
+
+def _weekly_calendar(root: Path, project_slug: str) -> dict[str, dict[str, str]]:
+    resolved = resolve_project_slug(project_slug, root=root)
+    path = root / "projects" / resolved / "weekly_calendar.yaml"
+    if not path.exists():
+        return {}
+    try:
+        data = yaml.safe_load(path.read_text()) or {}
+    except yaml.YAMLError:
+        return {}
+    return {str(day): dict(items or {}) for day, items in data.items()}
+
+
+def _calendar_slate(root: Path, project_slug: str = "slay_hack") -> CalendarSlate | None:
+    try:
+        pm = load_project(project_slug, root=root)
+    except Exception:
+        return None
+    calendar = _weekly_calendar(root, project_slug)
+    day_key = datetime.now(timezone.utc).strftime("%A").lower()
+    day_items = calendar.get(day_key) or next(iter(calendar.values()), {})
+    tickets = []
+    for key, title in day_items.items():
+        ticket_type = _ticket_type_from_calendar_key(str(key))
+        storyboard = _storyboard_for_long_video(str(title)) if ticket_type == ProductionTicketType.LONG_VIDEO else []
+        tickets.append(
+            ProductionTicket(
+                ticket_id=f"{day_key}-{str(key).replace('_', '-')}",
+                project=resolve_project_slug(project_slug, root=root),
+                page_name=pm.page_name,
+                ticket_type=ticket_type,
+                content_type=_content_type_for_ticket(ticket_type),
+                title=str(title),
+                objective="daily content floor",
+                owner=_owner_for_ticket(ticket_type, pm.name),
+                platforms=_platforms_for_ticket(ticket_type),
+                due_date=date.today(),
+                format_name="Veo3 storyboard" if ticket_type == ProductionTicketType.LONG_VIDEO else None,
+                storyboard=storyboard,
+            )
+        )
+    return CalendarSlate(
+        project=resolve_project_slug(project_slug, root=root),
+        page_name=pm.page_name,
+        pm_name=pm.name,
+        slate_date=date.today(),
+        tickets=tickets,
+        notes=f"{pm.page_name} daily operating slate from weekly_calendar.yaml",
+    )
+
+
+def _mission_type_cards() -> list[dict[str, str]]:
+    return [
+        {
+            "key": MissionType.NEW_PROJECT_DISCOVERY.value,
+            "label": "New project discovery",
+            "detail": "Find page concepts with audience, monetization, and viral potential.",
+        },
+        {
+            "key": MissionType.CONTENT_CALENDAR_PLAN.value,
+            "label": "Content calendar plan",
+            "detail": "Turn PM goals and signals into a daily or weekly production slate.",
+        },
+        {
+            "key": MissionType.PRODUCTION_BATCH.value,
+            "label": "Production batch",
+            "detail": "Move article, infographic, short video, and long video tickets in parallel.",
+        },
+        {
+            "key": MissionType.PERFORMANCE_REVIEW.value,
+            "label": "Performance review",
+            "detail": "Bucket results into scale, repair, or lesson learned.",
+        },
+    ]
+
+
+def _ticket_rows(slate: CalendarSlate | None) -> list[dict[str, object]]:
+    if slate is None:
+        return []
+    return [
+        {
+            "ticket_id": ticket.ticket_id,
+            "ticket_type": ticket.ticket_type.value.replace("_", " "),
+            "title": ticket.title,
+            "owner": ticket.owner,
+            "status": ticket.status.value,
+            "platforms": ", ".join(ticket.platforms),
+            "storyboard_count": len(ticket.storyboard),
+        }
+        for ticket in slate.tickets
+    ]
+
+
+def _qa_status(slate: CalendarSlate | None) -> list[dict[str, str]]:
+    if slate is None:
+        return [{"state": "Missing", "name": "Daily slate", "detail": "No slate is configured yet."}]
+    long_tickets = [ticket for ticket in slate.tickets if ticket.ticket_type == ProductionTicketType.LONG_VIDEO]
+    storyboard_ready = all(ticket.storyboard for ticket in long_tickets)
+    return [
+        {
+            "state": "Ready" if slate.satisfies_daily_minimum() else "Failed",
+            "name": "Daily minimum",
+            "detail": "Articles, infographics, short video, and long video floor is covered.",
+        },
+        {
+            "state": "Ready" if storyboard_ready else "Failed",
+            "name": "Long video storyboard",
+            "detail": f"{len(long_tickets)} long video ticket{'s' if len(long_tickets) != 1 else ''} checked.",
+        },
+        {
+            "state": "Missing",
+            "name": "Nora QA gate",
+            "detail": "Tickets are planned; QA status starts after production output exists.",
+        },
+    ]
+
+
+def _performance_loop(jobs) -> list[dict[str, str]]:
+    completed = sum(getattr(job.status, "value", str(job.status)) == "completed" for job in jobs)
+    failed = sum(getattr(job.status, "value", str(job.status)) == "failed" for job in jobs)
+    reviewed = sum(1 for job in jobs if job.performance)
+    reviews = [
+        PerformanceReview(
+            ticket_id="scale-candidates",
+            project="slay_hack",
+            platform="all",
+            bucket=PerformanceBucket.SCALE,
+            summary=f"{completed} completed missions available for scale review.",
+            recommended_next_action="Repeat winning hooks and formats.",
+        ),
+        PerformanceReview(
+            ticket_id="repair-candidates",
+            project="slay_hack",
+            platform="all",
+            bucket=PerformanceBucket.REPAIR,
+            summary=f"{failed} failed missions need repair.",
+            recommended_next_action="Review failed publish and QA notes before relaunch.",
+        ),
+        PerformanceReview(
+            ticket_id="lesson-loop",
+            project="slay_hack",
+            platform="all",
+            bucket=PerformanceBucket.LESSON_LEARNED,
+            summary=f"{reviewed} missions have recorded engagement metrics.",
+            recommended_next_action="Turn repeated patterns into PM guidance.",
+        ),
+    ]
+    return [
+        {
+            "state": "Ready" if review.bucket == PerformanceBucket.SCALE else "Failed" if review.bucket == PerformanceBucket.REPAIR and failed else "Missing",
+            "bucket": review.bucket.value.replace("_", " "),
+            "summary": review.summary,
+            "next_action": review.recommended_next_action,
+        }
+        for review in reviews
+    ]
+
+
+def _cross_team_requests() -> list[CrossTeamRequest]:
+    return [
+        CrossTeamRequest(
+            request_id="central-market-scan",
+            project="slay_hack",
+            from_role="Slay",
+            to_role="Market Analyst",
+            question="Validate audience, competitor, monetization, and viral potential before scaling a new content pillar.",
+        ),
+        CrossTeamRequest(
+            request_id="archive-duplicate-check",
+            project="slay_hack",
+            from_role="Slay",
+            to_role="Archivist",
+            question="Check Drive, Notion, and prior output for duplicate topics before production starts.",
+        ),
+    ]
+
+
+def _aurora_workflow_snapshot(root: Path) -> dict[str, object]:
+    jobs = list_all_jobs(root)
+    slate = _calendar_slate(root)
+    counts = slate.counts_by_type() if slate else {}
+    return {
+        "mission_types": _mission_type_cards(),
+        "slate": slate,
+        "slate_counts": {
+            "articles": counts.get(ProductionTicketType.ARTICLE, 0),
+            "infographics": counts.get(ProductionTicketType.INFOGRAPHIC, 0),
+            "short_videos": counts.get(ProductionTicketType.SHORT_VIDEO, 0),
+            "long_videos": counts.get(ProductionTicketType.LONG_VIDEO, 0),
+        },
+        "tickets": _ticket_rows(slate),
+        "qa_status": _qa_status(slate),
+        "performance_loop": _performance_loop(jobs),
+        "cross_team_requests": _cross_team_requests(),
+    }
+
+
 @app.get("/", response_class=HTMLResponse)
 def captains_deck(request: Request, _: str = Depends(verify_auth)):
     jobs = list_all_jobs(_root(request))
@@ -1063,6 +1338,11 @@ def aurora_overview(request: Request, _: str = Depends(verify_auth)):
             "crew": CREW[:4],
         },
     )
+
+
+@app.get("/aurora/workflow", response_class=HTMLResponse)
+def aurora_workflow(request: Request, _: str = Depends(verify_auth)):
+    return templates.TemplateResponse(request, "aurora_workflow.html", _aurora_workflow_snapshot(_root(request)))
 
 
 @app.get("/aurora/crew", response_class=HTMLResponse)
@@ -1140,7 +1420,7 @@ def aurora_new_mission(request: Request, _: str = Depends(verify_auth)):
     projects = _project_options(root)
     selected_project = request.query_params.get("project")
     if selected_project:
-        selected_project = resolve_project_slug(selected_project)
+        selected_project = resolve_project_slug(selected_project, root=root)
     if selected_project not in project_slugs:
         selected_project = project_slugs[0] if project_slugs else None
     return templates.TemplateResponse(
@@ -1339,7 +1619,7 @@ def trigger_run(
 ):
     root = _root(request)
     valid = set(list_project_slugs(root))
-    project = resolve_project_slug(project)
+    project = resolve_project_slug(project, root=root)
     if project not in valid:
         raise HTTPException(status_code=400, detail="Unknown project")
     if content_type not in VALID_CONTENT_TYPES:

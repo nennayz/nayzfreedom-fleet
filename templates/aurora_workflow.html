@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-header ops-header">
+  <div>
+    <p class="eyebrow">Aurora v2</p>
+    <h1>Operating workflow</h1>
+  </div>
+  <div class="inline-actions">
+    <a class="button button-secondary" href="/aurora">Back to Aurora</a>
+    <a class="button" href="/aurora/new-mission">Launch mission</a>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="section-heading">
+    <p class="eyebrow">Mission type</p>
+    <h2>Select the operating lane</h2>
+  </div>
+  <div class="workflow-card-grid">
+    {% for item in mission_types %}
+    <article class="workflow-card">
+      <span>{{ item.key }}</span>
+      <strong>{{ item.label }}</strong>
+      <small>{{ item.detail }}</small>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="content-grid">
+  <article class="panel">
+    <div class="section-heading">
+      <p class="eyebrow">PM daily slate</p>
+      <h2>{{ slate.page_name if slate else "No slate" }}</h2>
+    </div>
+    {% if slate %}
+    <div class="ops-action-result">
+      <span class="badge badge-ops-ready">PM {{ slate.pm_name }}</span>
+      <span class="badge badge-ops-{{ 'ready' if slate.satisfies_daily_minimum() else 'failed' }}">
+        {{ 'Minimum met' if slate.satisfies_daily_minimum() else 'Minimum gap' }}
+      </span>
+      <span class="badge badge-ops-ready">{{ slate.slate_date }}</span>
+    </div>
+    <div class="stat-grid workflow-stats">
+      <article class="stat-card">
+        <span>Articles</span>
+        <strong>{{ slate_counts.articles }}</strong>
+      </article>
+      <article class="stat-card">
+        <span>Infographics</span>
+        <strong>{{ slate_counts.infographics }}</strong>
+      </article>
+      <article class="stat-card">
+        <span>Short videos</span>
+        <strong>{{ slate_counts.short_videos }}</strong>
+      </article>
+      <article class="stat-card">
+        <span>Long videos</span>
+        <strong>{{ slate_counts.long_videos }}</strong>
+      </article>
+    </div>
+    <p class="muted">{{ slate.notes }}</p>
+    {% else %}
+    <p class="muted">No weekly calendar found for the selected page.</p>
+    {% endif %}
+  </article>
+
+  <article class="panel">
+    <div class="section-heading">
+      <p class="eyebrow">QA</p>
+      <h2>Readiness gates</h2>
+    </div>
+    <div class="ops-list">
+      {% for item in qa_status %}
+      <div class="ops-row">
+        <span class="badge badge-ops-{{ item.state | lower }}">{{ item.state }}</span>
+        <strong>{{ item.name }}</strong>
+        <small>{{ item.detail }}</small>
+      </div>
+      {% endfor %}
+    </div>
+  </article>
+</section>
+
+<section class="panel">
+  <div class="section-heading">
+    <p class="eyebrow">Calendar</p>
+    <h2>Production tickets</h2>
+  </div>
+  <div class="ops-list">
+    {% for ticket in tickets %}
+    <div class="ops-row">
+      <span class="badge badge-ops-ready">{{ ticket.ticket_type }}</span>
+      <strong>{{ ticket.title }}</strong>
+      <small>{{ ticket.owner }} - {{ ticket.platforms }} - {{ ticket.status }}{% if ticket.storyboard_count %} - {{ ticket.storyboard_count }} storyboard scenes{% endif %}</small>
+    </div>
+    {% else %}
+    <p class="muted">No production tickets planned.</p>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="content-grid">
+  <article class="panel">
+    <div class="section-heading">
+      <p class="eyebrow">Learning loop</p>
+      <h2>Engagement review</h2>
+    </div>
+    <div class="ops-list">
+      {% for item in performance_loop %}
+      <div class="ops-row">
+        <span class="badge badge-ops-{{ item.state | lower }}">{{ item.bucket }}</span>
+        <strong>{{ item.summary }}</strong>
+        <small>{{ item.next_action }}</small>
+      </div>
+      {% endfor %}
+    </div>
+  </article>
+
+  <article class="panel">
+    <div class="section-heading">
+      <p class="eyebrow">Central crew</p>
+      <h2>Cross-team requests</h2>
+    </div>
+    <div class="ops-list">
+      {% for item in cross_team_requests %}
+      <div class="ops-row">
+        <span class="badge badge-ops-missing">{{ item.status.value }}</span>
+        <strong>{{ item.from_role }} to {{ item.to_role }}</strong>
+        <small>{{ item.question }}</small>
+      </div>
+      {% endfor %}
+    </div>
+  </article>
+</section>
+{% endblock %}

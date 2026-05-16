@@ -48,6 +48,29 @@ def _write_job(tmp_path: Path, job_id: str, brief: str = "test brief",
     (job_dir / "job.json").write_text(json.dumps(job))
 
 
+def _write_slay_hack_project(tmp_path: Path) -> None:
+    project_dir = tmp_path / "projects" / "slay_hack"
+    project_dir.mkdir(parents=True)
+    (project_dir / "pm_profile.yaml").write_text(
+        'name: "Slay"\npage_name: "Slay Hack"\npersona: "PM for Slay Hack"\n'
+    )
+    (project_dir / "brand.yaml").write_text(
+        'mission: "beauty content"\nvisual:\n  colors: ["#fff"]\n  style: "warm 3D"\n'
+        'platforms: ["instagram", "facebook", "tiktok", "youtube"]\ntone: "sassy"\n'
+        'target_audience: "Gen Z women"\nscript_style: "bestie"\n'
+        'allowed_content_types: ["video", "image", "infographic", "article"]\n'
+    )
+    (project_dir / "weekly_calendar.yaml").write_text(
+        'monday:\n'
+        '  short_video_1: "Quick hack"\n'
+        '  long_video: "Long story episode"\n'
+        '  article_1: "Guide one"\n'
+        '  article_2: "Guide two"\n'
+        '  infographic_1: "Save card one"\n'
+        '  infographic_2: "Save card two"\n'
+    )
+
+
 def test_healthz_does_not_require_auth(client):
     resp = client.get("/healthz")
     assert resp.status_code == 200
@@ -172,6 +195,28 @@ def test_aurora_overview_shows_projects(tmp_path, client):
     assert "active aurora" in resp.text
     assert "test" in resp.text
     assert "/aurora/islands/nayzfreedom_fleet" in resp.text
+    assert "Operating workflow" in resp.text
+
+
+def test_aurora_workflow_page_renders_daily_slate(tmp_path, client):
+    _write_slay_hack_project(tmp_path)
+    _write_job(tmp_path, "20260512_060000", brief="completed mission", status="completed", page="Slay Hack")
+    _write_job(tmp_path, "20260512_070000", brief="failed mission", status="failed", page="Slay Hack")
+
+    resp = client.get("/aurora/workflow", headers=_auth())
+
+    assert resp.status_code == 200
+    assert "Operating workflow" in resp.text
+    assert "New project discovery" in resp.text
+    assert "Content calendar plan" in resp.text
+    assert "PM daily slate" in resp.text
+    assert "Slay Hack" in resp.text
+    assert "Minimum met" in resp.text
+    assert "Production tickets" in resp.text
+    assert "Long story episode" in resp.text
+    assert "9 storyboard scenes" in resp.text
+    assert "Engagement review" in resp.text
+    assert "Cross-team requests" in resp.text
 
 
 def test_aurora_crew_pages_render(client):

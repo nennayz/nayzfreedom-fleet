@@ -57,13 +57,13 @@ def test_load_recent_performance_respects_limit(tmp_path, monkeypatch):
 
 def test_load_job_normalizes_legacy_project_identity(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    project_dir = tmp_path / "projects" / "nayzfreedom_fleet"
+    project_dir = tmp_path / "projects" / "slay_hack"
     project_dir.mkdir(parents=True)
-    (project_dir / "pm_profile.yaml").write_text('page_name: "Slayhack"\n')
+    (project_dir / "pm_profile.yaml").write_text('page_name: "Slay Hack"\n')
     job = make_job()
     job.id = "20260512_060000"
-    job.project = "slay_hack"
-    job.pm.page_name = "Slay Hack"
+    job.project = "nayzfreedom_fleet"
+    job.pm.page_name = "Slayhack"
     out_dir = tmp_path / "output" / "Slay Hack" / job.id
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "job.json").write_text(job.model_dump_json())
@@ -71,7 +71,7 @@ def test_load_job_normalizes_legacy_project_identity(tmp_path, monkeypatch):
     loaded = load_job(job.id, "Slay Hack")
     found = find_job(job.id)
 
-    assert loaded.project == "nayzfreedom_fleet"
-    assert loaded.pm.page_name == "Slayhack"
-    assert found.project == "nayzfreedom_fleet"
-    assert found.pm.page_name == "Slayhack"
+    assert loaded.project == "slay_hack"
+    assert loaded.pm.page_name == "Slay Hack"
+    assert found.project == "slay_hack"
+    assert found.pm.page_name == "Slay Hack"
