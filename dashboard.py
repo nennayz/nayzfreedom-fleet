@@ -55,6 +55,31 @@ def _status_label(value: object) -> str:
 templates.env.filters["status_label"] = _status_label
 
 
+def _publish_status_items(job) -> list[dict[str, str]]:
+    result = job.publish_result or {}
+    if not isinstance(result, dict):
+        return []
+    items = []
+    for platform in ("facebook", "instagram", "tiktok", "youtube"):
+        value = result.get(platform)
+        if not isinstance(value, dict):
+            continue
+        status = value.get("status", "unknown")
+        if platform == "facebook" and status == "scheduled":
+            label = "Facebook scheduled"
+        elif platform == "instagram" and status == "published":
+            label = "Instagram published"
+        elif platform == "instagram" and status == "pending_queue":
+            label = "Instagram pending queue"
+        else:
+            label = f"{platform.title()} {str(status).replace('_', ' ')}"
+        items.append({"platform": platform, "status": str(status), "label": label})
+    return items
+
+
+templates.env.globals["publish_status_items"] = _publish_status_items
+
+
 @app.get("/healthz")
 def healthz():
     return JSONResponse({"status": "ok", "service": "nayzfreedom-dashboard"})

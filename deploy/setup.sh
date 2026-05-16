@@ -92,6 +92,8 @@ for unit in \
     nayzfreedom-scheduler.timer \
     nayzfreedom-reporter.service \
     nayzfreedom-reporter.timer \
+    nayzfreedom-instagram-queue.service \
+    nayzfreedom-instagram-queue.timer \
     nayzfreedom-backup.service \
     nayzfreedom-backup.timer \
     nayzfreedom-healthcheck.service \
@@ -125,6 +127,7 @@ fi
 
 systemctl enable --now nayzfreedom-backup.timer
 systemctl enable --now nayzfreedom-healthcheck.timer
+systemctl enable --now nayzfreedom-instagram-queue.timer
 
 echo ""
 echo "=== Setup complete ==="
@@ -143,4 +146,5 @@ echo "  Scheduler: daily at 06:00 UTC"
 echo "  Reporter:  every Monday at 08:00 UTC"
 echo "  Backup:    daily at 03:30 UTC"
 echo "  Health:    every 5 minutes"
+echo "  IG queue:  every 5 minutes"
 echo "  Check with: systemctl list-timers | grep nayz"

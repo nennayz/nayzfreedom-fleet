@@ -35,12 +35,14 @@ def _make_pm_dict(page_name: str = "Slayhack") -> dict:
 
 def _write_job(tmp_path: Path, job_id: str, brief: str = "test brief",
                status: str = "completed", page: str = "Slayhack",
-               stage: str = "init") -> None:
+               stage: str = "init", publish_result: dict | None = None) -> None:
     job = {
         "id": job_id, "project": "nayzfreedom_fleet", "pm": _make_pm_dict(page),
         "brief": brief, "platforms": ["facebook"], "status": status,
         "stage": stage, "dry_run": False, "performance": [], "checkpoint_log": [],
     }
+    if publish_result is not None:
+        job["publish_result"] = publish_result
     job_dir = tmp_path / "output" / page / job_id
     job_dir.mkdir(parents=True, exist_ok=True)
     (job_dir / "job.json").write_text(json.dumps(job))
@@ -270,6 +272,21 @@ def test_jobs_partial_returns_fragment(tmp_path, client):
     assert "<tbody" in resp.text
     assert "Slayhack" in resp.text
     assert "nayzfreedom_fleet" not in resp.text
+
+
+def test_jobs_page_shows_publish_indicators(tmp_path, client):
+    _write_job(
+        tmp_path,
+        "20260512_060000",
+        publish_result={
+            "facebook": {"status": "scheduled"},
+            "instagram": {"status": "pending_queue"},
+        },
+    )
+    resp = client.get("/aurora/missions", headers=_auth())
+    assert resp.status_code == 200
+    assert "Facebook scheduled" in resp.text
+    assert "Instagram pending queue" in resp.text
 
 
 def test_dashboard_refuses_start_without_env():

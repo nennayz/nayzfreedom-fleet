@@ -7,6 +7,13 @@
   <td data-label="Brief">{{ job.brief[:60] }}{% if job.brief | length > 60 %}…{% endif %}</td>
   <td data-label="Content Type">{{ job.content_type.value if job.content_type else "" }}</td>
   <td data-label="Status"><span class="badge badge-{{ job.status.value }}">{{ job.status.value | status_label }}</span></td>
+  <td data-label="Publish">
+    {% for item in publish_status_items(job) %}
+    <span class="badge badge-publish-{{ item.status }}">{{ item.label }}</span>
+    {% else %}
+    <span class="muted">—</span>
+    {% endfor %}
+  </td>
   <td data-label="Stage">{{ job.stage }}</td>
 </tr>
 {% endfor %}

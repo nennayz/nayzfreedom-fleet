@@ -1,5 +1,6 @@
 from __future__ import annotations
 import logging
+import re
 import time
 import requests
 from pathlib import Path
@@ -16,6 +17,11 @@ _IG_CONTAINER_POLL_TIMEOUT = 300
 _YOUTUBE_UPLOAD_BASE = "https://www.googleapis.com/upload/youtube/v3"
 _YOUTUBE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 logger = logging.getLogger(__name__)
+_SECRET_PATTERNS = [
+    re.compile(r"(access_token=)[^&\s]+", re.IGNORECASE),
+    re.compile(r"(Authorization:\s*(?:Bearer|OAuth)\s+)[^\s,}]+", re.IGNORECASE),
+    re.compile(r"((?:Bearer|OAuth)\s+)[A-Za-z0-9._~+/=-]+", re.IGNORECASE),
+]
 
 
 def has_publish_failures(result: dict | None) -> bool:
@@ -23,6 +29,29 @@ def has_publish_failures(result: dict | None) -> bool:
         return False
     platform_results = [v for v in result.values() if isinstance(v, dict)]
     return any(item.get("status") == "failed" for item in platform_results)
+
+
+def sanitize_error_text(text: str, limit: int = 500) -> str:
+    redacted = text
+    for pattern in _SECRET_PATTERNS:
+        redacted = pattern.sub(r"\1<redacted>", redacted)
+    return redacted[:limit]
+
+
+def _raise_for_status_with_body(response: requests.Response, context: str) -> None:
+    try:
+        response.raise_for_status()
+    except Exception as exc:
+        body = ""
+        try:
+            body = response.text
+        except Exception:  # noqa: BLE001
+            body = ""
+        if body:
+            raise RuntimeError(
+                f"{context}: {exc}; body={sanitize_error_text(body)}"
+            ) from exc
+        raise
 
 
 class PublishAgent(BaseAgent):
@@ -56,12 +85,10 @@ class PublishAgent(BaseAgent):
                 if platform == "facebook":
                     post_result = self._post_facebook(job, caption, scheduled_time)
                 elif platform == "instagram":
-                    post_result = self._post_instagram(job, caption, None)
                     if scheduled_time:
-                        post_result["schedule_note"] = (
-                            "Instagram scheduling is not enabled for this Meta account; "
-                            "published immediately."
-                        )
+                        result[platform] = self._queue_instagram(job, caption, scheduled_time)
+                        continue
+                    post_result = self._post_instagram(job, caption, None)
                 elif platform == "tiktok":
                     post_result = self._post_tiktok(job, caption)
                     if post_result.get("status") == "skipped":
@@ -82,6 +109,16 @@ class PublishAgent(BaseAgent):
         job.publish_result = result
         job.stage = "publish_done"
         return job
+
+    def _queue_instagram(self, job: ContentJob, caption: str, scheduled_time: int) -> dict:
+        from datetime import datetime, timezone
+        return {
+            "status": "pending_queue",
+            "scheduled_publish_time": scheduled_time,
+            "due_at": datetime.fromtimestamp(scheduled_time, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "caption": caption,
+            "reason": "Instagram Graph scheduling is unavailable for this Meta account; queued for just-in-time publish.",
+        }
 
     def _build_caption(self, job: ContentJob) -> str:
         if job.growth_strategy is None:
@@ -267,7 +304,7 @@ class PublishAgent(BaseAgent):
                 data["scheduled_publish_time"] = str(scheduled_time)
                 data["published"] = "false"
             resp = requests.post(url, data=data, headers=headers)
-            resp.raise_for_status()
+            _raise_for_status_with_body(resp, "Facebook feed publish failed")
             return resp.json()
         media_path = job.image_path if job.content_type != ContentType.VIDEO else job.video_path
         if not media_path:
@@ -284,7 +321,7 @@ class PublishAgent(BaseAgent):
             data["published"] = "false"
         with open(media_path, "rb") as f:
             resp = requests.post(url, data=data, files={"source": f}, headers=headers)
-        resp.raise_for_status()
+        _raise_for_status_with_body(resp, "Facebook media publish failed")
         return resp.json()
 
     def _post_instagram(self, job: ContentJob, caption: str, scheduled_time: int | None) -> dict:
@@ -314,11 +351,11 @@ class PublishAgent(BaseAgent):
             data["scheduled_publish_time"] = str(scheduled_time)
         with open(job.image_path, "rb") as f:
             resp = requests.post(url, data=data, files={"source": f}, headers=headers)
-        resp.raise_for_status()
+        _raise_for_status_with_body(resp, "Instagram image container creation failed")
         container_id = resp.json()["id"]
         pub_url = f"{_META_GRAPH_BASE}/{ig_user_id}/media_publish"
         pub_resp = requests.post(pub_url, data={"creation_id": container_id}, headers=headers)
-        pub_resp.raise_for_status()
+        _raise_for_status_with_body(pub_resp, "Instagram image publish failed")
         return pub_resp.json()
 
     def _post_ig_reel(
@@ -346,7 +383,7 @@ class PublishAgent(BaseAgent):
             data=init_data,
             headers={**headers, "file_size": str(file_size), "file_type": "video/mp4"},
         )
-        init_resp.raise_for_status()
+        _raise_for_status_with_body(init_resp, "Instagram Reel container creation failed")
         init_json = init_resp.json()
         container_id = init_json["id"]
         upload_uri = init_json.get(
@@ -363,11 +400,11 @@ class PublishAgent(BaseAgent):
                 },
                 data=f,
             )
-        upload_resp.raise_for_status()
+        _raise_for_status_with_body(upload_resp, "Instagram Reel upload failed")
         self._wait_for_ig_container(container_id, token)
         pub_url = f"{_META_GRAPH_BASE}/{ig_user_id}/media_publish"
         pub_resp = requests.post(pub_url, data={"creation_id": container_id}, headers=headers)
-        pub_resp.raise_for_status()
+        _raise_for_status_with_body(pub_resp, "Instagram Reel publish failed")
         return pub_resp.json()
 
     def _wait_for_ig_container(self, container_id: str, token: str) -> None:
@@ -381,7 +418,7 @@ class PublishAgent(BaseAgent):
                 params={"fields": "status_code"},
                 headers=headers,
             )
-            resp.raise_for_status()
+            _raise_for_status_with_body(resp, "Instagram container status check failed")
             last_status = resp.json().get("status_code", "unknown")
             if last_status == "FINISHED":
                 return
