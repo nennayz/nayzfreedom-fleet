@@ -67,6 +67,44 @@ class StoryboardScene(BaseModel):
     tool_hint: Optional[str] = None
 
 
+class VideoPackageScene(BaseModel):
+    number: int = Field(ge=1)
+    start_second: int = Field(ge=0)
+    end_second: int = Field(gt=0)
+    purpose: str
+    visual_direction: str
+    prompt: str
+    tool_hint: str = "veo3"
+
+    @model_validator(mode="after")
+    def require_forward_timing(self) -> "VideoPackageScene":
+        if self.end_second <= self.start_second:
+            raise ValueError("end_second must be greater than start_second")
+        return self
+
+
+class VideoProductionPackage(BaseModel):
+    ticket_id: str
+    title: str
+    owner: str
+    platform_primary: Optional[str] = None
+    format_name: str
+    total_duration_seconds: int = Field(gt=0)
+    scenes: list[VideoPackageScene] = Field(default_factory=list)
+    prompt_package: list[str] = Field(default_factory=list)
+    asset_checklist: list[str] = Field(default_factory=list)
+    acceptance_criteria: list[str] = Field(default_factory=list)
+    handoff_notes: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def require_scenes_and_prompts(self) -> "VideoProductionPackage":
+        if not self.scenes:
+            raise ValueError("video production packages require at least one scene")
+        if not self.prompt_package:
+            raise ValueError("video production packages require at least one prompt")
+        return self
+
+
 class ProductionTicket(BaseModel):
     ticket_id: str
     project: str

@@ -14,6 +14,8 @@ from models.aurora_workflow import (
     ProductionTicketType,
     RequestStatus,
     StoryboardScene,
+    VideoPackageScene,
+    VideoProductionPackage,
 )
 from models.content_job import ContentType
 
@@ -78,6 +80,56 @@ def test_long_video_ticket_requires_storyboard():
             objective="retention",
             owner="Video Producer",
         )
+
+
+def test_video_package_requires_forward_scene_timing():
+    with pytest.raises(ValidationError, match="end_second must be greater"):
+        VideoPackageScene(
+            number=1,
+            start_second=10,
+            end_second=10,
+            purpose="hook",
+            visual_direction="Static opening",
+            prompt="Open with a static frame.",
+        )
+
+
+def test_video_package_records_scene_prompts_and_handoffs():
+    package = VideoProductionPackage(
+        ticket_id="saturday-long-video",
+        title="Compilation-ready short-form episode",
+        owner="Video Producer",
+        platform_primary="youtube",
+        format_name="Veo3 storyboard package",
+        total_duration_seconds=16,
+        scenes=[
+            VideoPackageScene(
+                number=1,
+                start_second=0,
+                end_second=8,
+                purpose="hook",
+                visual_direction="Sloane sees the hero object",
+                prompt="Open with Sloane seeing the hero object.",
+            ),
+            VideoPackageScene(
+                number=2,
+                start_second=8,
+                end_second=16,
+                purpose="payoff",
+                visual_direction="The routine resolves cleanly",
+                prompt="Resolve the routine with a clean loop.",
+            ),
+        ],
+        prompt_package=["Open with Sloane seeing the hero object."],
+        asset_checklist=["Hero object reference"],
+        handoff_notes=["Bella confirms the CTA."],
+    )
+
+    assert package.total_duration_seconds == 16
+    assert package.scenes[0].start_second == 0
+    assert package.scenes[1].end_second == 16
+    assert package.prompt_package
+    assert package.handoff_notes == ["Bella confirms the CTA."]
 
 
 def test_ticket_primary_platform_must_be_listed():

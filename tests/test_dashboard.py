@@ -223,6 +223,13 @@ def test_aurora_workflow_page_renders_daily_slate(tmp_path, client):
     assert "Video Producer owns production" in resp.text
     assert "Slay decides" in resp.text
     assert "primary youtube" in resp.text
+    assert "Mission packages" in resp.text
+    assert "Short-form Veo3 package" in resp.text
+    assert "Veo3 storyboard package" in resp.text
+    assert "Video Producer owns 3 scenes over 23 seconds for tiktok." in resp.text
+    assert "0-5s" in resp.text
+    assert "Keep pacing clear, character-led, and ready for generation." in resp.text
+    assert "Bella confirms the spoken hook and CTA before generation." in resp.text
     assert "9 storyboard scenes" in resp.text
     assert "2 acceptance checks" in resp.text
     assert "4 asset needs" in resp.text
