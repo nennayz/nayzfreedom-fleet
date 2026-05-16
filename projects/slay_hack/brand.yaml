@@ -1,0 +1,22 @@
+mission: "Character-driven beauty and lifestyle hacks for Gen Z women in the USA."
+visual:
+  colors:
+    - "#F06292"
+    - "#9C27B0"
+    - "#FFD54F"
+    - "#FFF8FB"
+  style: "warm 3D Pixar CGI, expressive beauty and lifestyle objects, soft left-side lighting, vertical 9:16, tiny tilted gold crown on every Slay Object"
+platforms:
+  - tiktok
+  - instagram
+  - facebook
+  - youtube
+tone: "sassy, smart, supportive, slightly smug, dry humor"
+target_audience: "Gen Z females, age 18-24, primarily in the USA"
+script_style: "English only, casual Gen Z bestie voice, punchy hook in the first three words, no corporate language"
+nora_max_retries: 2
+allowed_content_types:
+  - video
+  - image
+  - infographic
+  - article

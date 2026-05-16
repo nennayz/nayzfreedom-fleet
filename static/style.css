@@ -530,6 +530,39 @@ button[type="submit"]:hover { background: var(--navy-soft); }
 .readiness-planned { border-top: 5px solid var(--gold); }
 .readiness-missing { border-top: 5px solid #c94b55; }
 
+.workflow-card-grid {
+  display: grid;
+  gap: 0.85rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.workflow-card {
+  background: rgba(16,35,63,0.04);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  display: grid;
+  gap: 0.35rem;
+  min-height: 150px;
+  padding: 0.9rem;
+}
+.workflow-card span {
+  color: var(--gold);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.workflow-card strong {
+  color: var(--ink);
+  font-size: 1rem;
+}
+.workflow-card small {
+  color: var(--muted);
+  line-height: 1.45;
+}
+.workflow-stats {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 1rem 0;
+}
+
 .page-header { margin-bottom: 1rem; }
 .ops-header {
   align-items: center;

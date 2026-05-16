@@ -4,7 +4,7 @@ import yaml
 from models.content_job import BrandProfile, ContentJob, PMProfile, VisualIdentity
 
 _PROJECT_ALIASES = {
-    "slay_hack": "nayzfreedom_fleet",
+    "nayzfreedom_fleet": "slay_hack",
 }
 
 
@@ -12,21 +12,36 @@ class ProjectNotFoundError(Exception):
     pass
 
 
-def resolve_project_slug(project_slug: str) -> str:
-    return _PROJECT_ALIASES.get(project_slug, project_slug)
+def resolve_project_slug(project_slug: str, root: Path | None = None) -> str:
+    alias = _PROJECT_ALIASES.get(project_slug)
+    if alias is None:
+        return project_slug
+    base = (root or Path(".")) / "projects"
+    if (base / alias).exists():
+        return alias
+    if (base / project_slug).exists():
+        return project_slug
+    return project_slug
 
 
-def project_slug_matches(left: str, right: str) -> bool:
-    return resolve_project_slug(left) == resolve_project_slug(right)
+def project_slug_matches(left: str, right: str, root: Path | None = None) -> bool:
+    return resolve_project_slug(left, root=root) == resolve_project_slug(right, root=root)
 
 
 def list_project_slugs(root: Path | None = None) -> list[str]:
     base = (root or Path(".")) / "projects"
-    return sorted(p.parent.name for p in base.glob("*/pm_profile.yaml"))
+    aliases_with_targets = {
+        alias for alias, target in _PROJECT_ALIASES.items()
+        if (base / target).exists()
+    }
+    return sorted(
+        p.parent.name for p in base.glob("*/pm_profile.yaml")
+        if p.parent.name not in aliases_with_targets
+    )
 
 
 def load_project_page_name(project_slug: str, root: Path | None = None) -> str:
-    resolved_slug = resolve_project_slug(project_slug)
+    resolved_slug = resolve_project_slug(project_slug, root=root)
     base = (root or Path(".")) / "projects" / resolved_slug
     try:
         pm_data = yaml.safe_load((base / "pm_profile.yaml").read_text()) or {}
@@ -36,7 +51,7 @@ def load_project_page_name(project_slug: str, root: Path | None = None) -> str:
 
 
 def normalize_job_identity(job: ContentJob, root: Path | None = None) -> ContentJob:
-    resolved_slug = resolve_project_slug(job.project)
+    resolved_slug = resolve_project_slug(job.project, root=root)
     job.project = resolved_slug
 
     page_name = load_project_page_name(resolved_slug, root=root)
@@ -46,7 +61,7 @@ def normalize_job_identity(job: ContentJob, root: Path | None = None) -> Content
 
 
 def load_project(project_slug: str, root: Path | None = None) -> PMProfile:
-    resolved_slug = resolve_project_slug(project_slug)
+    resolved_slug = resolve_project_slug(project_slug, root=root)
     base = (root or Path(".")) / "projects" / resolved_slug
     if not base.exists():
         raise ProjectNotFoundError(f"Project '{project_slug}' not found in projects/")
@@ -82,7 +97,7 @@ def load_project(project_slug: str, root: Path | None = None) -> PMProfile:
 
 
 def load_platform_specs(project_slug: str, root: Path | None = None) -> dict[str, str]:
-    resolved_slug = resolve_project_slug(project_slug)
+    resolved_slug = resolve_project_slug(project_slug, root=root)
     base = (root or Path(".")) / "projects" / resolved_slug
     if not base.exists():
         raise ProjectNotFoundError(f"Project '{project_slug}' not found in projects/")
