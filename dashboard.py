@@ -37,6 +37,8 @@ from models.aurora_workflow import (
     PerformanceReview,
     ProductionTicket,
     ProductionTicketType,
+    VideoPackageScene,
+    VideoProductionPackage,
     StoryboardScene,
 )
 from models.content_job import ContentType
@@ -1139,6 +1141,102 @@ def _storyboard_for_long_video(title: str) -> list[StoryboardScene]:
     ]
 
 
+def _storyboard_for_short_video(title: str) -> list[StoryboardScene]:
+    scene_plan = [
+        (1, 5, "hook", "Open on the relatable problem with fast motion and a clean visual contrast."),
+        (2, 12, "payoff", "Show the fix in one clear sequence with the hero object centered."),
+        (3, 6, "cta", "Loop back to the starting frame and invite saves, shares, or comments."),
+    ]
+    return [
+        StoryboardScene(
+            number=number,
+            duration_seconds=duration,
+            purpose=purpose,
+            visual_direction=f"{title} - {direction}",
+            tool_hint="veo3",
+        )
+        for number, duration, purpose, direction in scene_plan
+    ]
+
+
+def _video_package_for_ticket(ticket: ProductionTicket) -> VideoProductionPackage | None:
+    if ticket.ticket_type not in {ProductionTicketType.SHORT_VIDEO, ProductionTicketType.LONG_VIDEO}:
+        return None
+    storyboard = ticket.storyboard or _storyboard_for_short_video(ticket.title)
+    scenes = []
+    cursor = 0
+    for scene in storyboard:
+        end_second = cursor + scene.duration_seconds
+        prompt = (
+            f"{ticket.title}: {scene.purpose}. "
+            f"Visual direction: {scene.visual_direction}. "
+            f"Primary platform: {ticket.platform_primary or 'platform TBD'}. "
+            "Keep pacing clear, character-led, and ready for generation."
+        )
+        scenes.append(
+            VideoPackageScene(
+                number=scene.number,
+                start_second=cursor,
+                end_second=end_second,
+                purpose=scene.purpose,
+                visual_direction=scene.visual_direction,
+                prompt=prompt,
+                tool_hint=scene.tool_hint or "veo3",
+            )
+        )
+        cursor = end_second
+    format_name = ticket.format_name or (
+        "Short-form Veo3 package"
+        if ticket.ticket_type == ProductionTicketType.SHORT_VIDEO
+        else "Veo3 storyboard package"
+    )
+    asset_checklist = ticket.asset_requirements or _asset_requirements_for_ticket(ticket.ticket_type)
+    return VideoProductionPackage(
+        ticket_id=ticket.ticket_id,
+        title=ticket.title,
+        owner=ticket.owner,
+        platform_primary=ticket.platform_primary,
+        format_name=format_name,
+        total_duration_seconds=cursor,
+        scenes=scenes,
+        prompt_package=[scene.prompt for scene in scenes],
+        asset_checklist=asset_checklist,
+        acceptance_criteria=ticket.acceptance_criteria,
+        handoff_notes=[
+            "Bella confirms the spoken hook and CTA before generation.",
+            "Lila confirms the hero object, frame language, and visual references.",
+            "Nora checks timing, platform fit, and asset completeness before publish packaging.",
+        ],
+    )
+
+
+def _video_package_rows(slate: CalendarSlate | None) -> list[dict[str, object]]:
+    if slate is None:
+        return []
+    packages = []
+    for ticket in slate.tickets:
+        package = _video_package_for_ticket(ticket)
+        if package is None:
+            continue
+        packages.append(
+            {
+                "ticket_id": package.ticket_id,
+                "title": package.title,
+                "owner": package.owner,
+                "platform_primary": package.platform_primary,
+                "format_name": package.format_name,
+                "total_duration_seconds": package.total_duration_seconds,
+                "scene_count": len(package.scenes),
+                "asset_count": len(package.asset_checklist),
+                "acceptance_count": len(package.acceptance_criteria),
+                "scenes": package.scenes,
+                "asset_checklist": package.asset_checklist,
+                "handoff_notes": package.handoff_notes,
+            }
+        )
+    return packages
+
+
 def _weekly_calendar(root: Path, project_slug: str) -> dict[str, dict[str, str]]:
     resolved = resolve_project_slug(project_slug, root=root)
     path = root / "projects" / resolved / "weekly_calendar.yaml"
@@ -1163,11 +1261,12 @@ def _calendar_slate(root: Path, project_slug: str = "slay_hack") -> CalendarSlat
     for key, title in day_items.items():
         ticket_type = _ticket_type_from_calendar_key(str(key))
         platforms = _platforms_for_ticket(ticket_type)
-        storyboard = (
-            _storyboard_for_long_video(str(title))
-            if ticket_type == ProductionTicketType.LONG_VIDEO
-            else []
-        )
+        if ticket_type == ProductionTicketType.LONG_VIDEO:
+            storyboard = _storyboard_for_long_video(str(title))
+        elif ticket_type == ProductionTicketType.SHORT_VIDEO:
+            storyboard = _storyboard_for_short_video(str(title))
+        else:
+            storyboard = []
         tickets.append(
             ProductionTicket(
                 ticket_id=f"{day_key}-{str(key).replace('_', '-')}",
@@ -1382,6 +1481,7 @@ def _aurora_workflow_snapshot(root: Path) -> dict[str, object]:
     jobs = list_all_jobs(root)
     slate = _calendar_slate(root)
     counts = slate.counts_by_type() if slate else {}
+    video_packages = _video_package_rows(slate)
     return {
         "mission_types": _mission_type_cards(),
         "workflow_lanes": _workflow_lanes(),
@@ -1393,6 +1493,8 @@ def _aurora_workflow_snapshot(root: Path) -> dict[str, object]:
             "long_videos": counts.get(ProductionTicketType.LONG_VIDEO, 0),
         },
         "tickets": _ticket_rows(slate),
+        "video_packages": video_packages,
+        "featured_video_package": video_packages[0] if video_packages else None,
         "qa_status": _qa_status(slate),
         "performance_loop": _performance_loop(jobs),
         "cross_team_requests": _cross_team_requests(),

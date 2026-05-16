@@ -126,6 +126,55 @@
   </div>
 </section>
 
+<section class="panel">
+  <div class="section-heading">
+    <p class="eyebrow">Video Producer</p>
+    <h2>Mission packages</h2>
+  </div>
+  {% if video_packages %}
+  <div class="video-package-grid">
+    {% for package in video_packages %}
+    <article class="video-package-card">
+      <div>
+        <span class="badge badge-ops-ready">{{ package.format_name }}</span>
+        <h3>{{ package.title }}</h3>
+        <p>{{ package.owner }} owns {{ package.scene_count }} scenes over {{ package.total_duration_seconds }} seconds for {{ package.platform_primary }}.</p>
+      </div>
+      <div class="package-meta">
+        <span>{{ package.asset_count }} assets</span>
+        <span>{{ package.acceptance_count }} checks</span>
+        <span>{{ package.ticket_id }}</span>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  {% if featured_video_package %}
+  <article class="video-package-feature">
+    <div class="section-heading">
+      <p class="eyebrow">Scene timing</p>
+      <h3>{{ featured_video_package.title }}</h3>
+    </div>
+    <div class="scene-timeline">
+      {% for scene in featured_video_package.scenes %}
+      <div class="scene-row">
+        <span>{{ scene.start_second }}-{{ scene.end_second }}s</span>
+        <strong>{{ scene.purpose }}</strong>
+        <small>{{ scene.prompt }}</small>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="package-handoff">
+      {% for note in featured_video_package.handoff_notes %}
+      <small>{{ note }}</small>
+      {% endfor %}
+    </div>
+  </article>
+  {% endif %}
+  {% else %}
+  <p class="muted">No video tickets are ready for packaging yet.</p>
+  {% endif %}
+</section>
+
 <section class="content-grid">
   <article class="panel">
     <div class="section-heading">
