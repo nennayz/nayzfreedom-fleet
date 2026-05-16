@@ -163,11 +163,16 @@ def _filter_jobs(jobs, selected: str):
         return [job for job in jobs if getattr(job.status, "value", str(job.status)) == "running"]
     if selected == "failed":
         return [job for job in jobs if getattr(job.status, "value", str(job.status)) == "failed"]
+    if selected == "ready_to_publish":
+        return [job for job in jobs if _publish_execution_status(job) == "ready_to_publish"]
+    if selected == "publish_failed":
+        return [job for job in jobs if _publish_execution_status(job) == "failed"]
     if selected in {"scheduled", "queued", "published"}:
         targets = {"scheduled": {"scheduled"}, "queued": {"pending_queue", "retrying"}, "published": {"published"}}[selected]
         return [
             job for job in jobs
             if any(item["status"] in targets for item in _publish_status_items(job))
+            or (selected == "scheduled" and _publish_execution_status(job) == "scheduled")
         ]
     return jobs
 
@@ -177,9 +182,11 @@ def _mission_filters(jobs, selected: str) -> list[dict[str, object]]:
         ("all", "All"),
         ("running", "Running"),
         ("failed", "Failed"),
+        ("ready_to_publish", "Ready to publish"),
         ("scheduled", "Scheduled"),
         ("queued", "Queued"),
         ("published", "Published"),
+        ("publish_failed", "Publish failed"),
     ]
     return [
         {
@@ -1335,6 +1342,35 @@ def _publish_package_completed(job: ContentJob) -> bool:
     return isinstance(package, dict) and package.get("status") == "completed"
 
 
+def _publish_execution_status(job: ContentJob) -> str:
+    execution = getattr(job, "publish_execution", None)
+    if isinstance(execution, dict):
+        return str(execution.get("status", ""))
+    return ""
+
+
+def _publish_execution_label(job: ContentJob) -> str:
+    status = _publish_execution_status(job)
+    labels = {
+        "ready_to_publish": "Ready to publish",
+        "scheduled": "Scheduled publish",
+        "published": "Published",
+        "failed": "Publish failed",
+    }
+    return labels.get(status, "Create publish job" if _publish_package_completed(job) else "Not ready")
+
+
+def _publish_execution_state(job: ContentJob) -> str:
+    status = _publish_execution_status(job)
+    if status in {"scheduled", "published"}:
+        return "ready"
+    if status == "ready_to_publish":
+        return "missing"
+    if status == "failed":
+        return "failed"
+    return "unavailable"
+
+
 def _clean_generation_text(value: str | None, field: str, max_length: int = 500) -> str:
     cleaned = (value or "").strip()
     if not cleaned:
@@ -1370,6 +1406,16 @@ def _publish_packaging_state(job: ContentJob) -> str:
     return "unavailable"
 
 
+def _publish_execution_summary(job: ContentJob) -> dict[str, object]:
+    return {
+        "status": _publish_execution_status(job),
+        "label": _publish_execution_label(job),
+        "state": _publish_execution_state(job),
+        "can_create": _publish_package_completed(job),
+        "can_schedule": _publish_execution_status(job) == "ready_to_publish",
+    }
+
+
 def _generation_queue(root: Path) -> list[dict[str, object]]:
     rows = []
     for job in list_all_jobs(root):
@@ -1396,6 +1442,7 @@ def _generation_queue(root: Path) -> list[dict[str, object]]:
                 "can_package": _real_generation_completed(job),
                 "packaging_label": _publish_packaging_label(job),
                 "packaging_state": _publish_packaging_state(job),
+                "publish_execution": _publish_execution_summary(job),
             }
         )
     order = {"ready_for_generation": 0, "dry_run_completed": 1, "failed": 2, "nora_review": 3, "completed": 4}
@@ -1523,6 +1570,58 @@ def _record_publish_package(
         "next_action": "Publish package is ready for scheduling or manual publish.",
     }
     job.stage = "publish_packaged"
+    job.status = JobStatus.AWAITING_APPROVAL
+    _save_job_at_root(root, job)
+    return job
+
+
+def _create_publish_execution(root: Path, job: ContentJob) -> ContentJob:
+    if not _publish_package_completed(job):
+        raise ValueError("Publish package must be complete before creating a publish job")
+    package = job.publish_package or {}
+    created_at = datetime.now(timezone.utc).isoformat()
+    job.publish_execution = {
+        "status": "ready_to_publish",
+        "owners": ["Roxy", "Emma"],
+        "platforms": list(job.platforms),
+        "caption": package.get("caption"),
+        "hashtags": package.get("hashtags", []),
+        "faq_path": package.get("faq_path"),
+        "video_path": job.video_path,
+        "created_at": created_at,
+        "next_action": "Captain can schedule publish when platform readiness is confirmed.",
+    }
+    job.stage = "ready_to_publish"
+    job.status = JobStatus.AWAITING_APPROVAL
+    _save_job_at_root(root, job)
+    return job
+
+
+def _schedule_publish_execution(root: Path, job: ContentJob) -> ContentJob:
+    execution = dict(job.publish_execution or {})
+    if execution.get("status") != "ready_to_publish":
+        raise ValueError("Publish job must be ready before scheduling")
+    scheduled_at = datetime.now(timezone.utc).isoformat()
+    execution.update(
+        {
+            "status": "scheduled",
+            "scheduled_at": scheduled_at,
+            "next_action": "Publish package is scheduled. Use platform publisher controls for live posting.",
+        }
+    )
+    job.publish_execution = execution
+    platform_result = {
+        str(platform): {
+            "status": "scheduled",
+            "source": "publish_execution_lane",
+            "scheduled_at": scheduled_at,
+            "dry_run": True,
+            "reason": "Dashboard schedule handoff only; no external platform API was called.",
+        }
+        for platform in job.platforms
+    }
+    job.publish_result = platform_result
+    job.stage = "publish_scheduled"
     job.status = JobStatus.AWAITING_APPROVAL
     _save_job_at_root(root, job)
     return job
@@ -1955,6 +2054,8 @@ def aurora_generation(request: Request, _: str = Depends(verify_auth)):
             "dry_run_count": sum(1 for item in rows if item["status"] == "dry_run_completed"),
             "completed_count": sum(1 for item in rows if item["status"] == "completed"),
             "waiting_real_count": sum(1 for item in rows if item["waiting_for_real_video"]),
+            "ready_publish_count": sum(1 for item in rows if item["publish_execution"]["status"] == "ready_to_publish"),
+            "scheduled_publish_count": sum(1 for item in rows if item["publish_execution"]["status"] == "scheduled"),
             "failed_count": sum(1 for item in rows if item["status"] == "failed"),
         },
     )
@@ -2187,6 +2288,7 @@ def job_detail(job_id: str, request: Request, _: str = Depends(verify_auth)):
     generation_request = getattr(job, "generation_request", None)
     generation_result = getattr(job, "generation_result", None)
     publish_package = getattr(job, "publish_package", None)
+    publish_execution = getattr(job, "publish_execution", None)
     return templates.TemplateResponse(
         request,
         "job_detail.html",
@@ -2202,7 +2304,9 @@ def job_detail(job_id: str, request: Request, _: str = Depends(verify_auth)):
             "generation_request": generation_request,
             "generation_result": generation_result,
             "publish_package": publish_package,
+            "publish_execution": publish_execution,
             "can_record_publish_package": _real_generation_completed(job),
+            "publish_execution_summary": _publish_execution_summary(job),
         },
     )
 
@@ -2286,6 +2390,34 @@ def record_publish_package(
         raise HTTPException(status_code=404, detail=f"Job {job_id!r} not found")
     try:
         _record_publish_package(root, job, caption, hashtags, faq, publish_notes)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return RedirectResponse(f"/jobs/{job_id}", status_code=303)
+
+
+@app.post("/jobs/{job_id}/create-publish-job")
+def create_publish_job(job_id: str, request: Request, _: str = Depends(verify_auth)):
+    root = _root(request)
+    try:
+        job = _find_job_at_root(root, job_id)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Job {job_id!r} not found")
+    try:
+        _create_publish_execution(root, job)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return RedirectResponse(f"/jobs/{job_id}", status_code=303)
+
+
+@app.post("/jobs/{job_id}/schedule-publish")
+def schedule_publish(job_id: str, request: Request, _: str = Depends(verify_auth)):
+    root = _root(request)
+    try:
+        job = _find_job_at_root(root, job_id)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Job {job_id!r} not found")
+    try:
+        _schedule_publish_execution(root, job)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     return RedirectResponse(f"/jobs/{job_id}", status_code=303)

@@ -29,6 +29,14 @@
     <strong>{{ completed_count }}</strong>
   </div>
   <div class="stat-card">
+    <span>Ready publish</span>
+    <strong>{{ ready_publish_count }}</strong>
+  </div>
+  <div class="stat-card">
+    <span>Scheduled</span>
+    <strong>{{ scheduled_publish_count }}</strong>
+  </div>
+  <div class="stat-card">
     <span>Failed</span>
     <strong>{{ failed_count }}</strong>
   </div>
@@ -55,6 +63,7 @@
         {% if item.waiting_for_real_video %} · waiting real video{% endif %}
       </small>
       <span class="badge badge-ops-{{ item.packaging_state }}">{{ item.packaging_label }}</span>
+      <span class="badge badge-ops-{{ item.publish_execution.state }}">{{ item.publish_execution.label }}</span>
       <small class="generation-action">{{ item.next_action }}</small>
       {% if item.can_run %}
       <form class="inline-form" method="post" action="/jobs/{{ item.job.id }}/run-generation-dry-run">
@@ -66,6 +75,9 @@
       {% endif %}
       {% if item.can_package %}
       <a class="button button-secondary generation-action" href="/jobs/{{ item.job.id }}">Open publish packaging</a>
+      {% endif %}
+      {% if item.publish_execution.can_create and item.publish_execution.status != "scheduled" %}
+      <a class="button button-secondary generation-action" href="/jobs/{{ item.job.id }}">{{ "Schedule publish" if item.publish_execution.can_schedule else "Create publish job" }}</a>
       {% endif %}
     </div>
     {% endfor %}

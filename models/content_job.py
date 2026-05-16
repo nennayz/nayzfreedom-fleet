@@ -145,6 +145,7 @@ class ContentJob(BaseModel):
     growth_strategy: Optional[GrowthStrategy] = None
     community_faq_path: Optional[str] = None
     publish_package: Optional[dict] = None
+    publish_execution: Optional[dict] = None
     publish_result: Optional[dict] = None
     checkpoint_log: list[CheckpointDecision] = Field(default_factory=list)
     performance: list[PostPerformance] = Field(default_factory=list)

@@ -522,6 +522,97 @@ def test_record_publish_package_saves_roxy_and_emma_handoff(tmp_path, client):
     assert "Publish package complete" in queue.text
 
 
+def test_create_publish_job_and_schedule_publish_from_package(tmp_path, client):
+    _write_slay_hack_project(tmp_path)
+    short_video_ticket_id = _slay_hack_ticket_id(tmp_path, "short-video-1")
+    created = client.post(
+        f"/aurora/workflow/video-packages/{short_video_ticket_id}/create-mission",
+        headers=_auth(),
+        follow_redirects=False,
+    )
+    job_id = created.headers["location"].split("/")[-1]
+    client.post(f"/jobs/{job_id}/ready-for-generation", headers=_auth(), follow_redirects=False)
+    client.post(f"/jobs/{job_id}/run-generation-dry-run", headers=_auth(), follow_redirects=False)
+    client.post(
+        f"/jobs/{job_id}/record-generation-result",
+        headers=_auth(),
+        data={
+            "video_path": "output/Slay Hack/final-video.mp4",
+            "provider": "manual_upload",
+            "provider_request_id": "req-123",
+        },
+        follow_redirects=False,
+    )
+    client.post(
+        f"/jobs/{job_id}/record-publish-package",
+        headers=_auth(),
+        data={
+            "caption": "The fastest Slay Hack fix for a chaotic routine.",
+            "hashtags": "#slayhack, beautyhack",
+            "faq": "Q: Where should this publish?\nA: Start with TikTok, then adapt to Instagram.",
+            "publish_notes": "Schedule after final thumbnail check.",
+        },
+        follow_redirects=False,
+    )
+
+    created_publish = client.post(f"/jobs/{job_id}/create-publish-job", headers=_auth(), follow_redirects=False)
+
+    assert created_publish.status_code == 303
+    job_path = next((tmp_path / "output" / "Slay Hack").glob("*/job.json"))
+    data = json.loads(job_path.read_text())
+    assert data["stage"] == "ready_to_publish"
+    assert data["publish_execution"]["status"] == "ready_to_publish"
+    assert data["publish_execution"]["caption"] == "The fastest Slay Hack fix for a chaotic routine."
+    assert data["publish_execution"]["video_path"] == "output/Slay Hack/final-video.mp4"
+
+    detail = client.get(f"/jobs/{job_id}", headers=_auth())
+    ready_filter = client.get("/aurora/missions?filter=ready_to_publish", headers=_auth())
+
+    assert detail.status_code == 200
+    assert "Ready to publish" in detail.text
+    assert "Schedule publish" in detail.text
+    assert ready_filter.status_code == 200
+    assert "Video package mission: Quick hack" in ready_filter.text
+
+    scheduled = client.post(f"/jobs/{job_id}/schedule-publish", headers=_auth(), follow_redirects=False)
+
+    assert scheduled.status_code == 303
+    data = json.loads(job_path.read_text())
+    assert data["stage"] == "publish_scheduled"
+    assert data["publish_execution"]["status"] == "scheduled"
+    assert data["publish_result"]["tiktok"]["status"] == "scheduled"
+    assert data["publish_result"]["instagram"]["status"] == "scheduled"
+    assert data["publish_result"]["tiktok"]["dry_run"] is True
+
+    scheduled_detail = client.get(f"/jobs/{job_id}", headers=_auth())
+    scheduled_filter = client.get("/aurora/missions?filter=scheduled", headers=_auth())
+    queue = client.get("/aurora/generation", headers=_auth())
+
+    assert scheduled_detail.status_code == 200
+    assert "Scheduled publish" in scheduled_detail.text
+    assert "Create publish job" not in scheduled_detail.text
+    assert scheduled_filter.status_code == 200
+    assert "Video package mission: Quick hack" in scheduled_filter.text
+    assert queue.status_code == 200
+    assert "Scheduled publish" in queue.text
+
+
+def test_create_publish_job_requires_publish_package(tmp_path, client):
+    _write_slay_hack_project(tmp_path)
+    short_video_ticket_id = _slay_hack_ticket_id(tmp_path, "short-video-1")
+    created = client.post(
+        f"/aurora/workflow/video-packages/{short_video_ticket_id}/create-mission",
+        headers=_auth(),
+        follow_redirects=False,
+    )
+    job_id = created.headers["location"].split("/")[-1]
+
+    resp = client.post(f"/jobs/{job_id}/create-publish-job", headers=_auth(), follow_redirects=False)
+
+    assert resp.status_code == 400
+    assert "Publish package must be complete" in resp.text
+
+
 def test_record_publish_package_requires_real_generation(tmp_path, client):
     _write_slay_hack_project(tmp_path)
     short_video_ticket_id = _slay_hack_ticket_id(tmp_path, "short-video-1")

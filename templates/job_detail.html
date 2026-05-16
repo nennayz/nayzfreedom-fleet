@@ -200,6 +200,31 @@
         <button type="submit">{{ "Update publish package" if publish_package and publish_package.status == "completed" else "Record publish package" }}</button>
       </form>
       {% endif %}
+      {% if publish_package and publish_package.status == "completed" %}
+      <div class="generation-result publish-execution-result">
+        <span class="badge badge-ops-{{ publish_execution_summary.state }}">{{ publish_execution_summary.label }}</span>
+        {% if publish_execution %}
+        <p>{{ publish_execution.next_action }}</p>
+        <small>
+          {{ publish_execution.platforms | join(", ") }}
+          {% if publish_execution.scheduled_at %} · scheduled {{ publish_execution.scheduled_at }}{% endif %}
+        </small>
+        {% else %}
+        <p>Package is ready to become a publish job for scheduling.</p>
+        {% endif %}
+      </div>
+      {% if publish_execution_summary.status != "scheduled" %}
+        {% if publish_execution_summary.status == "ready_to_publish" %}
+        <form class="inline-form" method="post" action="/jobs/{{ job.id }}/schedule-publish">
+          <button type="submit">Schedule publish</button>
+        </form>
+        {% else %}
+        <form class="inline-form" method="post" action="/jobs/{{ job.id }}/create-publish-job">
+          <button type="submit">Create publish job</button>
+        </form>
+        {% endif %}
+      {% endif %}
+      {% endif %}
     </article>
     <article>
       <h3>Asset checklist</h3>
