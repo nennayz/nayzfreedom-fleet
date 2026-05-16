@@ -58,6 +58,39 @@
     </p>
     {% endif %}
   </article>
+  {% if job.publish_result %}
+  <article class="panel">
+    <div class="section-heading">
+      <p class="eyebrow">Publish control</p>
+      <h2>Platform status</h2>
+    </div>
+    <div class="publish-history">
+      {% for item in publish_history_items(job) %}
+      <div>
+        <span class="badge badge-publish-{{ item.status }}">{{ item.label }}</span>
+        {% if item.detail %}<small>{{ item.detail }}</small>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% set publish_items = publish_status_items(job) %}
+    {% set failed_publish = publish_items | selectattr("status", "equalto", "failed") | list %}
+    {% set queued_ig = publish_items | selectattr("platform", "equalto", "instagram") | selectattr("status", "equalto", "pending_queue") | list %}
+    {% if failed_publish or queued_ig %}
+    <div class="inline-actions">
+      {% if failed_publish %}
+      <form class="inline-form" method="post" action="/jobs/{{ job.id }}/retry-publish">
+        <button type="submit">Retry publish</button>
+      </form>
+      {% endif %}
+      {% if queued_ig %}
+      <form class="inline-form" method="post" action="/jobs/{{ job.id }}/publish-instagram-now">
+        <button type="submit">Publish Instagram now</button>
+      </form>
+      {% endif %}
+    </div>
+    {% endif %}
+  </article>
+  {% endif %}
   <article class="panel">
     <div class="section-heading">
       <p class="eyebrow">Voyage route</p>
