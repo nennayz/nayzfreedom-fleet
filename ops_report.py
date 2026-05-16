@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 from collections import Counter
+from datetime import datetime, timezone
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -65,6 +66,20 @@ def build_ops_report(root: Path) -> str:
     return "\n".join(lines)
 
 
+def write_ops_report_log(root: Path, report: str) -> None:
+    path = root / "logs" / "ops_reports.jsonl"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lines = report.splitlines()
+    record = {
+        "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "title": lines[0] if lines else "Slayhack weekly Ops report",
+        "line_count": len(lines),
+        "report": report,
+    }
+    with path.open("a") as fh:
+        fh.write(json.dumps(record, sort_keys=True) + "\n")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Send a weekly Slayhack Ops report.")
     parser.add_argument("--root", default=None)
@@ -73,7 +88,10 @@ def main() -> None:
 
     root = Path(args.root).resolve() if args.root else Path(__file__).resolve().parent
     load_dotenv(root / ".env")
-    send_weekly_report(build_ops_report(root).splitlines(), dry_run=args.dry_run)
+    report = build_ops_report(root)
+    send_weekly_report(report.splitlines(), dry_run=args.dry_run)
+    if not args.dry_run:
+        write_ops_report_log(root, report)
 
 
 if __name__ == "__main__":

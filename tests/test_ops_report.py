@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from ops_report import build_ops_report
+from ops_report import build_ops_report, write_ops_report_log
 
 
 def _write_job(tmp_path: Path, job_id: str, status: str = "completed") -> None:
@@ -61,3 +61,16 @@ def test_build_ops_report_counts_actions_incidents_and_jobs(tmp_path):
     assert "critical=1" in report
     assert "jobs total=2 failed=1 latest=20260516_070000" in report
     assert "recent_failed_jobs=20260516_070000" in report
+
+
+def test_write_ops_report_log_appends_history(tmp_path):
+    report = "Slayhack weekly Ops report\njobs total=1 failed=0 latest=20260516_070000"
+
+    write_ops_report_log(tmp_path, report)
+
+    path = tmp_path / "logs" / "ops_reports.jsonl"
+    record = json.loads(path.read_text().splitlines()[-1])
+    assert record["title"] == "Slayhack weekly Ops report"
+    assert record["line_count"] == 2
+    assert record["report"] == report
+    assert record["timestamp"]

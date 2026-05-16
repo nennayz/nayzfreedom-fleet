@@ -293,6 +293,14 @@ def test_ops_page_renders_status_and_errors(tmp_path, client, monkeypatch):
         status="failed",
         publish_result={"facebook": {"status": "failed", "error": "bad token"}},
     )
+    logs = tmp_path / "logs"
+    logs.mkdir(exist_ok=True)
+    (logs / "ops_reports.jsonl").write_text(json.dumps({
+        "timestamp": "2026-05-16T05:30:00Z",
+        "title": "Slayhack weekly Ops report",
+        "line_count": 3,
+        "report": "Slayhack weekly Ops report\njobs total=1 failed=1 latest=20260512_060000",
+    }) + "\n")
     monkeypatch.setattr(
         _dm,
         "_ops_unit_status",
@@ -318,6 +326,9 @@ def test_ops_page_renders_status_and_errors(tmp_path, client, monkeypatch):
     assert "ops_actions.jsonl" in resp.text
     assert "Add Ops note" in resp.text
     assert "Recent notes" in resp.text
+    assert "Weekly Ops history" in resp.text
+    assert "Slayhack weekly Ops report" in resp.text
+    assert "jobs total=1 failed=1 latest=20260512_060000" in resp.text
 
 
 def test_ops_smoke_test_renders_results(tmp_path, client, monkeypatch):
@@ -542,6 +553,34 @@ def test_ops_incident_sanitizes_secret(tmp_path, monkeypatch):
     rows = _dm._recent_ops_incidents(tmp_path)
     assert rows[0]["title"] == "Secret check"
     assert "<redacted>" in rows[0]["note"]
+
+
+def test_recent_ops_reports_reads_latest_and_sanitizes(tmp_path, monkeypatch):
+    monkeypatch.setenv("DASHBOARD_PASSWORD", "secret-value")
+    log_dir = tmp_path / "logs"
+    log_dir.mkdir()
+    (log_dir / "ops_reports.jsonl").write_text(
+        json.dumps({
+            "timestamp": "2026-05-16T05:00:00Z",
+            "title": "Older",
+            "line_count": 1,
+            "report": "old",
+        }) + "\n"
+        + json.dumps({
+            "timestamp": "2026-05-16T06:00:00Z",
+            "title": "Slayhack weekly Ops report",
+            "line_count": 2,
+            "report": "contains secret-value",
+        }) + "\n"
+    )
+
+    rows = _dm._recent_ops_reports(tmp_path, limit=1)
+
+    assert rows[0]["title"] == "Slayhack weekly Ops report"
+    assert rows[0]["line_count"] == "2"
+    assert rows[0]["timestamp"] == "2026-05-16T06:00:00Z"
+    assert "secret-value" not in rows[0]["report"]
+    assert "<redacted>" in rows[0]["report"]
 
 
 def test_latest_backup_status_handles_permission_denied(monkeypatch, tmp_path):

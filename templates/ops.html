@@ -169,6 +169,25 @@
   </div>
 </section>
 
+<section class="panel">
+  <div class="section-heading">
+    <p class="eyebrow">Report</p>
+    <h2>Weekly Ops history</h2>
+  </div>
+  <div class="ops-list">
+    {% for item in ops_reports %}
+    <div class="ops-row">
+      <span class="badge badge-ops-ready">{{ item.line_count }} lines</span>
+      <strong>{{ item.title }}</strong>
+      <small>{{ item.timestamp }}</small>
+      <small>{{ item.report }}</small>
+    </div>
+    {% else %}
+    <p class="muted">No weekly Ops reports logged yet.</p>
+    {% endfor %}
+  </div>
+</section>
+
 <section class="content-grid">
   <article class="panel">
     <div class="section-heading">
