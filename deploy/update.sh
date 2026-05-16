@@ -28,13 +28,16 @@ if [ -f "$INSTALL_DIR/deploy/nayzfreedom-ops.sudoers" ]; then
 fi
 for unit in \
     nayzfreedom-log-retention.service \
-    nayzfreedom-log-retention.timer; do
+    nayzfreedom-log-retention.timer \
+    nayzfreedom-ops-report.service \
+    nayzfreedom-ops-report.timer; do
     cp "$INSTALL_DIR/deploy/$unit" "/etc/systemd/system/$unit"
 done
 
 echo "[3/3] Restarting services..."
 systemctl daemon-reload
 systemctl enable --now nayzfreedom-log-retention.timer
+systemctl enable --now nayzfreedom-ops-report.timer
 systemctl restart nayzfreedom-dashboard.service
 systemctl status nayzfreedom-dashboard.service --no-pager
 systemctl restart nayzfreedom-bot.service

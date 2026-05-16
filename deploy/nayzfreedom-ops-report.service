@@ -1,0 +1,13 @@
+[Unit]
+Description=NayzFreedom weekly Ops report (one-shot)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=nayzfreedom
+WorkingDirectory=/opt/nayzfreedom
+EnvironmentFile=/opt/nayzfreedom/.env
+ExecStart=/opt/nayzfreedom/.venv/bin/python /opt/nayzfreedom/ops_report.py
+StandardOutput=journal
+StandardError=journal

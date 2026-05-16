@@ -1,0 +1,11 @@
+[Unit]
+Description=NayzFreedom weekly Ops report - Monday 00:45 UTC
+Requires=nayzfreedom-ops-report.service
+
+[Timer]
+OnCalendar=Mon *-*-* 00:45:00 UTC
+Persistent=true
+Unit=nayzfreedom-ops-report.service
+
+[Install]
+WantedBy=timers.target

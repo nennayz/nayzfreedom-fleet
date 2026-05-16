@@ -57,6 +57,7 @@ OPS_UNITS = [
     "nayzfreedom-healthcheck.timer",
     "nayzfreedom-production-summary.timer",
     "nayzfreedom-log-retention.timer",
+    "nayzfreedom-ops-report.timer",
 ]
 OPS_ACTIONS = {
     "backup": {
@@ -72,6 +73,11 @@ OPS_ACTIONS = {
     "production_summary": {
         "label": "Run production summary now",
         "unit": "nayzfreedom-production-summary.service",
+        "verb": "start",
+    },
+    "ops_report": {
+        "label": "Send Ops report now",
+        "unit": "nayzfreedom-ops-report.service",
         "verb": "start",
     },
     "restart_dashboard": {

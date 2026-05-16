@@ -40,6 +40,17 @@ def test_log_retention_systemd_units_exist():
     assert "nayzfreedom-log-retention.timer" in (root / "deploy" / "healthcheck.sh").read_text()
 
 
+def test_ops_report_systemd_units_exist():
+    root = Path(__file__).resolve().parents[1]
+    service = root / "deploy" / "nayzfreedom-ops-report.service"
+    timer = root / "deploy" / "nayzfreedom-ops-report.timer"
+    assert service.exists()
+    assert timer.exists()
+    assert "ops_report.py" in service.read_text()
+    assert "00:45:00 UTC" in timer.read_text()
+    assert "nayzfreedom-ops-report.timer" in (root / "deploy" / "healthcheck.sh").read_text()
+
+
 def test_ops_sudoers_limits_allowed_commands():
     root = Path(__file__).resolve().parents[1]
     sudoers = root / "deploy" / "nayzfreedom-ops.sudoers"
@@ -49,6 +60,7 @@ def test_ops_sudoers_limits_allowed_commands():
     assert "nayzfreedom-backup.service" in text
     assert "nayzfreedom-instagram-queue.service" in text
     assert "nayzfreedom-production-summary.service" in text
+    assert "nayzfreedom-ops-report.service" in text
     assert "nayzfreedom-dashboard.service" in text
     assert "NOPASSWD: ALL" not in text
     assert "/etc/sudoers.d/nayzfreedom-ops" in setup.read_text()
