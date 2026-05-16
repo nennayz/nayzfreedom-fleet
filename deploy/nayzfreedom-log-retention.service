@@ -1,0 +1,11 @@
+[Unit]
+Description=NayzFreedom Ops log retention (one-shot)
+
+[Service]
+Type=oneshot
+User=nayzfreedom
+WorkingDirectory=/opt/nayzfreedom
+EnvironmentFile=/opt/nayzfreedom/.env
+ExecStart=/opt/nayzfreedom/.venv/bin/python /opt/nayzfreedom/ops_retention.py
+StandardOutput=journal
+StandardError=journal

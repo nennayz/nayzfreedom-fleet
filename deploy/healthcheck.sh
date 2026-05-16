@@ -50,6 +50,7 @@ check_unit nayzfreedom-scheduler.timer
 check_unit nayzfreedom-reporter.timer
 check_unit nayzfreedom-instagram-queue.timer
 check_unit nayzfreedom-production-summary.timer
+check_unit nayzfreedom-log-retention.timer
 
 disk_used="$(df -P "$DISK_PATH" | awk 'NR == 2 {gsub("%", "", $5); print $5}')"
 if [ "$disk_used" -ge "$DISK_LIMIT" ]; then
@@ -73,6 +74,7 @@ for unit in \
     nayzfreedom-scheduler.service \
     nayzfreedom-instagram-queue.service \
     nayzfreedom-production-summary.service \
+    nayzfreedom-log-retention.service \
     nayzfreedom-reporter.service; do
     hits="$(journalctl -u "$unit" --since "$ERROR_WINDOW" --no-pager 2>/dev/null | { grep -E "Traceback|ERROR|CRITICAL" || true; } | wc -l | tr -d " ")"
     if [ "$hits" != "0" ]; then

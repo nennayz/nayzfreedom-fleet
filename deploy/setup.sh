@@ -96,6 +96,8 @@ for unit in \
     nayzfreedom-instagram-queue.timer \
     nayzfreedom-production-summary.service \
     nayzfreedom-production-summary.timer \
+    nayzfreedom-log-retention.service \
+    nayzfreedom-log-retention.timer \
     nayzfreedom-backup.service \
     nayzfreedom-backup.timer \
     nayzfreedom-healthcheck.service \
@@ -135,6 +137,7 @@ systemctl enable --now nayzfreedom-backup.timer
 systemctl enable --now nayzfreedom-healthcheck.timer
 systemctl enable --now nayzfreedom-instagram-queue.timer
 systemctl enable --now nayzfreedom-production-summary.timer
+systemctl enable --now nayzfreedom-log-retention.timer
 
 echo ""
 echo "=== Setup complete ==="
@@ -155,4 +158,5 @@ echo "  Backup:    daily at 03:30 UTC"
 echo "  Health:    every 5 minutes"
 echo "  IG queue:  every 5 minutes"
 echo "  Summary:   daily at 00:15 UTC"
+echo "  Logs:      daily at 00:30 UTC"
 echo "  Check with: systemctl list-timers | grep nayz"

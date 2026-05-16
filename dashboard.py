@@ -56,6 +56,7 @@ OPS_UNITS = [
     "nayzfreedom-backup.timer",
     "nayzfreedom-healthcheck.timer",
     "nayzfreedom-production-summary.timer",
+    "nayzfreedom-log-retention.timer",
 ]
 OPS_ACTIONS = {
     "backup": {
@@ -241,6 +242,33 @@ def _recent_ops_audit(root: Path, limit: int = 8) -> list[dict[str, str]]:
     return list(reversed(rows))
 
 
+def _ops_log_status(root: Path) -> dict[str, object]:
+    path = _ops_log_path(root)
+    archive_dir = root / "logs" / "archive"
+    if not path.exists():
+        return {
+            "state": "Missing",
+            "detail": "ops_actions.jsonl not created yet",
+            "size_bytes": 0,
+            "line_count": 0,
+            "archive_count": len(list(archive_dir.glob("ops_actions-*.jsonl"))) if archive_dir.exists() else 0,
+        }
+    try:
+        line_count = len(path.read_text().splitlines())
+        archive_count = len(list(archive_dir.glob("ops_actions-*.jsonl"))) if archive_dir.exists() else 0
+        size = path.stat().st_size
+    except OSError as exc:
+        return {"state": "Failed", "detail": str(exc), "size_bytes": 0, "line_count": 0, "archive_count": 0}
+    size_kb = size / 1024
+    return {
+        "state": "Ready",
+        "detail": f"{line_count} entries - {size_kb:.1f} KB - {archive_count} archives",
+        "size_bytes": size,
+        "line_count": line_count,
+        "archive_count": archive_count,
+    }
+
+
 def _systemctl_args(verb: str, unit: str) -> list[str]:
     return ["sudo", "-n", "systemctl", verb, unit]
 
@@ -396,6 +424,7 @@ def _ops_snapshot(root: Path, smoke_results: list[dict[str, str]] | None = None)
         "action_buttons": _ops_action_buttons(),
         "action_result": None,
         "ops_audit": _recent_ops_audit(root),
+        "ops_log": _ops_log_status(root),
     }
 
 

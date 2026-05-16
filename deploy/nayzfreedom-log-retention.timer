@@ -1,0 +1,11 @@
+[Unit]
+Description=NayzFreedom Ops log retention - daily 00:30 UTC
+Requires=nayzfreedom-log-retention.service
+
+[Timer]
+OnCalendar=*-*-* 00:30:00 UTC
+Persistent=true
+Unit=nayzfreedom-log-retention.service
+
+[Install]
+WantedBy=timers.target
