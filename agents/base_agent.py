@@ -41,7 +41,12 @@ class BaseAgent(ABC):
 
     def _parse_json(self, raw: str) -> dict | list:
         import json
+        import re
+        candidate = raw.strip()
+        fence = re.fullmatch(r"```(?:json)?\s*(.*?)\s*```", candidate, re.DOTALL | re.IGNORECASE)
+        if fence:
+            candidate = fence.group(1).strip()
         try:
-            return json.loads(raw)
+            return json.loads(candidate)
         except json.JSONDecodeError as e:
             raise ValueError(f"Agent received invalid JSON from Claude: {e}\nRaw: {raw[:200]}")

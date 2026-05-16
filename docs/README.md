@@ -8,6 +8,7 @@ This folder is the project knowledge layer for durable design, architecture, and
 - `nayzfreedom_dashboard_blueprint_v1.md` — dashboard information architecture and staged product plan
 - `nayzfreedom_phase1_implementation_plan.md` — first implementation plan for Fleet Foundation
 - `production_vps_readiness_plan.md` — online/VPS readiness plan
+- `PRODUCTION.md` — current production deploy, rollback, smoke test, and health-check runbook
 - `command_router_design.md` — shared command path for Dashboard, Telegram, Discord, and schedulers
 - `logging_and_memory_strategy.md` — logs, docs, decisions, and vault strategy
 
@@ -26,4 +27,3 @@ docs/decisions/
 ```
 
 Use these to preserve why a decision was made, not just what changed.
-

@@ -32,7 +32,7 @@ def test_mia_live_calls_brave_search(mocker):
         "web": {"results": [{"title": "Glossy lips trend", "description": "trending now"}]}
     }
     mock_get.return_value.raise_for_status = MagicMock()
-    mocker.patch.object(MiaAgent, "_call_claude", return_value='{"trends": ["Glossy lips"], "trending_sounds": ["Espresso"]}')
+    mocker.patch.object(MiaAgent, "_call_claude", return_value='```json\n{"trends": ["Glossy lips"], "trending_sounds": ["Espresso"]}\n```')
 
     agent = MiaAgent(make_config())
     job = agent.run(make_job(dry_run=False))
