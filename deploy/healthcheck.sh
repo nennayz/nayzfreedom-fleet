@@ -7,6 +7,33 @@ HEALTH_URL="${HEALTH_URL:-https://fleet.nayzfreedom.cloud/healthz}"
 DISK_PATH="${DISK_PATH:-/opt/nayzfreedom}"
 DISK_LIMIT="${DISK_LIMIT:-85}"
 ERROR_WINDOW="${ERROR_WINDOW:-5 minutes ago}"
+ENV_FILE="${ENV_FILE:-/opt/nayzfreedom/.env}"
+META_GRAPH_BASE="${META_GRAPH_BASE:-https://graph.facebook.com/v25.0}"
+
+if [ -f "$ENV_FILE" ]; then
+    set -a
+    # shellcheck disable=SC1090
+    . "$ENV_FILE"
+    set +a
+fi
+
+notify_failure() {
+    local status="$?"
+    local line="${1:-unknown}"
+    if [ "$status" -eq 0 ]; then
+        return
+    fi
+    HEALTHCHECK_ALERT_MESSAGE="NayzFreedom health check failed on $(hostname) at line $line (exit $status)." \
+        python3 - <<'PY' || true
+import os
+from notifier import send_healthcheck_alert
+
+send_healthcheck_alert(os.environ["HEALTHCHECK_ALERT_MESSAGE"])
+PY
+    exit "$status"
+}
+
+trap 'notify_failure "$LINENO"' ERR
 
 check_unit() {
     local unit="$1"
@@ -28,6 +55,15 @@ if [ "$disk_used" -ge "$DISK_LIMIT" ]; then
     exit 1
 fi
 echo "disk_ok_percent=$disk_used"
+
+if [ -n "${META_ACCESS_TOKEN:-}" ]; then
+    curl -fsS --get "$META_GRAPH_BASE/me" \
+        --data-urlencode "fields=id,name" \
+        --data-urlencode "access_token=$META_ACCESS_TOKEN" >/dev/null
+    echo "meta_token_ok=$META_GRAPH_BASE/me"
+else
+    echo "meta_token_skipped=missing_META_ACCESS_TOKEN"
+fi
 
 for unit in \
     nayzfreedom-dashboard.service \

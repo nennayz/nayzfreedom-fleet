@@ -60,6 +60,16 @@ def healthz():
     return JSONResponse({"status": "ok", "service": "nayzfreedom-dashboard"})
 
 
+@app.get("/privacy", response_class=HTMLResponse)
+def privacy_policy(request: Request):
+    return templates.TemplateResponse(request, "privacy.html", {})
+
+
+@app.get("/data-deletion", response_class=HTMLResponse)
+def data_deletion(request: Request):
+    return templates.TemplateResponse(request, "data_deletion.html", {})
+
+
 def verify_auth(credentials: HTTPBasicCredentials = Depends(security)) -> str:
     correct_user = secrets.compare_digest(credentials.username, DASHBOARD_USER)
     correct_pass = secrets.compare_digest(credentials.password, DASHBOARD_PASSWORD)
