@@ -43,6 +43,9 @@ def test_build_ops_report_counts_actions_incidents_and_jobs(tmp_path):
         json.dumps({"action": "smoke_test"}) + "\n"
         + json.dumps({"action": "production_summary"}) + "\n"
     )
+    (logs / "work_activity.jsonl").write_text(
+        json.dumps({"event_type": "test_result", "summary": "310 passed"}) + "\n"
+    )
     (logs / "ops_incidents.jsonl").write_text(
         json.dumps({"title": "Queue issue", "status": "open", "severity": "critical"}) + "\n"
         + json.dumps({"title": "Backup checked", "status": "resolved", "severity": "info"}) + "\n"
@@ -54,6 +57,7 @@ def test_build_ops_report_counts_actions_incidents_and_jobs(tmp_path):
 
     assert "Slayhack weekly Ops report" in report
     assert "ops_actions_total=2" in report
+    assert "work_activity_total=1 latest_work=310 passed" in report
     assert "smoke_test=1" in report
     assert "production_summary=1" in report
     assert "open=1" in report

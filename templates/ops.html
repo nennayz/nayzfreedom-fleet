@@ -267,6 +267,33 @@
 
 <section class="panel">
   <div class="section-heading">
+    <p class="eyebrow">Work Activity</p>
+    <h2>Recent Terminal and design work</h2>
+  </div>
+  <div class="ops-action-result">
+    <span class="badge badge-ops-{{ work_activity_log.state | lower }}">{{ work_activity_log.state }}</span>
+    <strong>work_activity.jsonl</strong>
+    <small>{{ work_activity_log.detail }}</small>
+  </div>
+  <div class="ops-list">
+    {% for item in work_activity %}
+    <div class="ops-row">
+      <span class="badge badge-ops-ready">{{ item.event_type | replace("_", " ") }}</span>
+      <strong>{{ item.summary }}</strong>
+      <small>
+        {{ item.timestamp }} - {{ item.actor }}
+        {% if item.result %} - {{ item.result }}{% endif %}
+        {% if item.command %} - {{ item.command }}{% endif %}
+      </small>
+    </div>
+    {% else %}
+    <p class="muted">No work activity logged yet.</p>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="panel">
+  <div class="section-heading">
     <p class="eyebrow">Report</p>
     <h2>Weekly Ops history</h2>
   </div>
