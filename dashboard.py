@@ -9,6 +9,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import requests
 from fastapi import Depends, FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
@@ -44,6 +45,17 @@ _ROOT = Path(__file__).resolve().parent
 
 VALID_CONTENT_TYPES = {"video", "article", "image", "infographic"}
 MAX_BRIEF_LEN = 2000
+OPS_PUBLIC_BASE_URL = os.environ.get("OPS_PUBLIC_BASE_URL", "https://fleet.nayzfreedom.cloud").rstrip("/")
+OPS_UNITS = [
+    "nayzfreedom-dashboard.service",
+    "nayzfreedom-bot.service",
+    "nayzfreedom-scheduler.timer",
+    "nayzfreedom-reporter.timer",
+    "nayzfreedom-instagram-queue.timer",
+    "nayzfreedom-backup.timer",
+    "nayzfreedom-healthcheck.timer",
+    "nayzfreedom-production-summary.timer",
+]
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory=str(_ROOT / "static")), name="static")
@@ -130,6 +142,138 @@ def _mission_filters(jobs, selected: str) -> list[dict[str, object]]:
         }
         for key, label in filters
     ]
+
+
+def _run_command(args: list[str], timeout: int = 8) -> dict[str, str]:
+    try:
+        result = subprocess.run(
+            args,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=False,
+        )
+    except FileNotFoundError:
+        return {"state": "unavailable", "detail": f"{args[0]} is not installed here."}
+    except subprocess.TimeoutExpired:
+        return {"state": "failed", "detail": f"{args[0]} timed out."}
+    output = (result.stdout or result.stderr or "").strip()
+    return {
+        "state": "ok" if result.returncode == 0 else "failed",
+        "detail": output[:500] if output else f"exit={result.returncode}",
+    }
+
+
+def _ops_unit_status() -> list[dict[str, str]]:
+    rows = []
+    for unit in OPS_UNITS:
+        result = _run_command(["systemctl", "is-active", unit], timeout=4)
+        active = result["state"] == "ok" and result["detail"] == "active"
+        rows.append({
+            "name": unit,
+            "state": "Ready" if active else "Missing" if result["state"] == "unavailable" else "Failed",
+            "detail": result["detail"],
+        })
+    return rows
+
+
+def _latest_backup_status() -> dict[str, str]:
+    backup_root = Path(os.environ.get("BACKUP_ROOT", "/opt/nayzfreedom-backups"))
+    if not backup_root.exists():
+        return {"state": "Missing", "detail": f"{backup_root} not found"}
+    backups = sorted([path for path in backup_root.iterdir() if path.is_dir()], reverse=True)
+    if not backups:
+        return {"state": "Missing", "detail": "No backup folders found."}
+    latest = backups[0]
+    archive = latest / "state.tgz"
+    checksum = latest / "state.tgz.sha256"
+    if archive.exists() and checksum.exists():
+        size_mb = archive.stat().st_size / (1024 * 1024)
+        return {"state": "Ready", "detail": f"{latest.name} - {size_mb:.1f} MB"}
+    return {"state": "Failed", "detail": f"{latest.name} is missing archive or checksum."}
+
+
+def _ops_publish_errors(jobs, limit: int = 6) -> list[dict[str, str]]:
+    rows = []
+    for job in jobs:
+        for platform, value in (job.publish_result or {}).items():
+            if not isinstance(value, dict) or value.get("status") != "failed":
+                continue
+            error = str(value.get("error") or value.get("reason") or "failed")
+            meta_token = os.environ.get("META_ACCESS_TOKEN", "")
+            if meta_token:
+                error = error.replace(meta_token, "<redacted>")
+            rows.append({
+                "job_id": job.id,
+                "platform": str(platform),
+                "detail": error[:220],
+            })
+    return rows[:limit]
+
+
+def _signed_request_for_smoke() -> str:
+    payload = base64.urlsafe_b64encode(json.dumps({"user_id": "ops-smoke"}).encode()).decode().rstrip("=")
+    app_secret = os.environ.get("META_APP_SECRET", "")
+    if not app_secret:
+        return f"unused.{payload}"
+    sig = hmac.new(app_secret.encode("utf-8"), msg=payload.encode("utf-8"), digestmod=hashlib.sha256).digest()
+    encoded_sig = base64.urlsafe_b64encode(sig).decode().rstrip("=")
+    return f"{encoded_sig}.{payload}"
+
+
+def _http_smoke(name: str, method: str, url: str, **kwargs) -> dict[str, str]:
+    try:
+        response = requests.request(method, url, timeout=8, **kwargs)
+    except Exception as exc:  # noqa: BLE001
+        return {"name": name, "state": "Failed", "detail": str(exc)[:240]}
+    ok = 200 <= response.status_code < 300
+    detail = f"HTTP {response.status_code}"
+    if name == "Data deletion callback" and ok:
+        try:
+            detail = f"confirmation={response.json().get('confirmation_code', 'missing')}"
+        except ValueError:
+            detail = "JSON parse failed"
+            ok = False
+    return {"name": name, "state": "Ready" if ok else "Failed", "detail": detail}
+
+
+def _ops_smoke_results(root: Path) -> list[dict[str, str]]:
+    signed_request = _signed_request_for_smoke()
+    results = [
+        _http_smoke("Health URL", "GET", f"{OPS_PUBLIC_BASE_URL}/healthz"),
+        _http_smoke("Privacy HEAD", "HEAD", f"{OPS_PUBLIC_BASE_URL}/privacy"),
+        _http_smoke("Data deletion HTML", "GET", f"{OPS_PUBLIC_BASE_URL}/data_deletion.html"),
+        _http_smoke(
+            "Data deletion callback",
+            "POST",
+            f"{OPS_PUBLIC_BASE_URL}/data-deletion-callback",
+            data={"signed_request": signed_request},
+        ),
+    ]
+    restore_script = root / "deploy" / "restore_smoke.sh"
+    if restore_script.exists():
+        restore = _run_command([str(restore_script)], timeout=20)
+        results.append({
+            "name": "Backup restore smoke",
+            "state": "Ready" if restore["state"] == "ok" else "Failed",
+            "detail": restore["detail"],
+        })
+    else:
+        results.append({"name": "Backup restore smoke", "state": "Missing", "detail": "restore_smoke.sh not found"})
+    return results
+
+
+def _ops_snapshot(root: Path, smoke_results: list[dict[str, str]] | None = None) -> dict[str, object]:
+    jobs = list_all_jobs(root)
+    summary = summarize_jobs(jobs)
+    return {
+        "units": _ops_unit_status(),
+        "backup": _latest_backup_status(),
+        "summary": summary,
+        "latest_jobs": jobs[:5],
+        "publish_errors": _ops_publish_errors(jobs),
+        "smoke_results": smoke_results,
+    }
 
 
 @app.get("/healthz")
@@ -506,6 +650,19 @@ def lyra_overview(request: Request, _: str = Depends(verify_auth)):
 def readiness(request: Request, _: str = Depends(verify_auth)):
     checks = _readiness_checks(_root(request))
     return templates.TemplateResponse(request, "readiness.html", {"checks": checks})
+
+
+@app.get("/ops", response_class=HTMLResponse)
+def ops_dashboard(request: Request, _: str = Depends(verify_auth)):
+    snapshot = _ops_snapshot(_root(request))
+    return templates.TemplateResponse(request, "ops.html", snapshot)
+
+
+@app.post("/ops/smoke-test", response_class=HTMLResponse)
+def ops_smoke_test(request: Request, _: str = Depends(verify_auth)):
+    root = _root(request)
+    snapshot = _ops_snapshot(root, smoke_results=_ops_smoke_results(root))
+    return templates.TemplateResponse(request, "ops.html", snapshot)
 
 
 @app.get("/jobs", response_class=HTMLResponse)
