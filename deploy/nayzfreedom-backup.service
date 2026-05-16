@@ -1,0 +1,10 @@
+[Unit]
+Description=NayzFreedom production backup (one-shot)
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/opt/nayzfreedom
+ExecStart=/opt/nayzfreedom/deploy/backup.sh
+StandardOutput=journal
+StandardError=journal

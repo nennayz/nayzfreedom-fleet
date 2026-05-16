@@ -16,6 +16,7 @@
 #   6. Installs systemd units for dashboard, scheduler, reporter
 #   7. Creates dashboard auth defaults if missing
 #   8. Enables and starts dashboard, then conditionally enables bot/timers
+#   9. Enables production backup and health-check timers
 
 set -euo pipefail
 
@@ -90,9 +91,15 @@ for unit in \
     nayzfreedom-scheduler.service \
     nayzfreedom-scheduler.timer \
     nayzfreedom-reporter.service \
-    nayzfreedom-reporter.timer; do
+    nayzfreedom-reporter.timer \
+    nayzfreedom-backup.service \
+    nayzfreedom-backup.timer \
+    nayzfreedom-healthcheck.service \
+    nayzfreedom-healthcheck.timer; do
     cp "$DEPLOY_DIR/$unit" "/etc/systemd/system/$unit"
 done
+
+chmod +x "$INSTALL_DIR/deploy/backup.sh" "$INSTALL_DIR/deploy/healthcheck.sh"
 
 systemctl daemon-reload
 
@@ -116,6 +123,9 @@ else
     echo "  Scheduler/reporter timers not started: ANTHROPIC_API_KEY is empty."
 fi
 
+systemctl enable --now nayzfreedom-backup.timer
+systemctl enable --now nayzfreedom-healthcheck.timer
+
 echo ""
 echo "=== Setup complete ==="
 echo ""
@@ -131,4 +141,6 @@ echo ""
 echo "Timers scheduled:"
 echo "  Scheduler: daily at 06:00 UTC"
 echo "  Reporter:  every Monday at 08:00 UTC"
+echo "  Backup:    daily at 03:30 UTC"
+echo "  Health:    every 5 minutes"
 echo "  Check with: systemctl list-timers | grep nayz"

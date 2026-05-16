@@ -1,0 +1,11 @@
+[Unit]
+Description=NayzFreedom production health check (one-shot)
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/opt/nayzfreedom
+ExecStart=/opt/nayzfreedom/deploy/healthcheck.sh
+StandardOutput=journal
+StandardError=journal
