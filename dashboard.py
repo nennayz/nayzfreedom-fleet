@@ -383,9 +383,18 @@ def _recent_ops_reports(root: Path, limit: int = 5) -> list[dict[str, str]]:
             "timestamp": str(item.get("timestamp", "")),
             "title": _sanitize_ops_detail(item.get("title", "Slayhack weekly Ops report")),
             "line_count": str(item.get("line_count", "")),
-            "report": _sanitize_ops_detail(item.get("report", "")),
+            "report": _sanitize_ops_report_summary(item.get("report", "")),
         })
     return list(reversed(rows))
+
+
+def _sanitize_ops_report_summary(report: object) -> str:
+    lines = []
+    for line in _sanitize_ops_detail(report).splitlines():
+        if line.startswith("recent_failed_jobs="):
+            continue
+        lines.append(line)
+    return "\n".join(lines[:6])
 
 
 def _incident_summary(root: Path) -> dict[str, int]:
@@ -793,6 +802,7 @@ def _retry_recommendation(
 def _ops_publish_failure_triage(root: Path, jobs, limit: int = 12) -> dict[str, object]:
     rows: list[dict[str, str]] = []
     groups: dict[str, dict[str, object]] = {}
+    safe_instagram_retry_rows: list[dict[str, str]] = []
     for job in jobs:
         result = job.publish_result or {}
         if not isinstance(result, dict):
@@ -825,25 +835,36 @@ def _ops_publish_failure_triage(root: Path, jobs, limit: int = 12) -> dict[str, 
                 },
             )
             group["count"] = int(group["count"]) + 1
-            rows.append(
-                {
-                    "job_id": job.id,
-                    "platform": str(platform),
-                    "category": category,
-                    "detail": error[:240],
-                    "meta_error": meta_error_detail[:300],
-                    "media": media,
-                    "caption": caption,
-                    "public_url": public_url,
-                    "recommendation": _retry_recommendation(job, str(platform), category, media, caption, public_url),
-                    "retry_path": f"/ops/publish-failures/{job.id}/{platform}/retry",
-                }
-            )
+            row = {
+                "job_id": job.id,
+                "platform": str(platform),
+                "category": category,
+                "detail": error[:240],
+                "meta_error": meta_error_detail[:300],
+                "media": media,
+                "caption": caption,
+                "public_url": public_url,
+                "recommendation": _retry_recommendation(job, str(platform), category, media, caption, public_url),
+                "retry_path": f"/ops/publish-failures/{job.id}/{platform}/retry",
+            }
+            rows.append(row)
+            if (
+                str(platform) == "instagram"
+                and media["state"] == "Ready"
+                and caption["state"] == "Ready"
+                and public_url["state"] == "Ready"
+            ):
+                safe_instagram_retry_rows.append(row)
     sorted_groups = sorted(
         groups.values(),
         key=lambda item: (str(item["platform"]), str(item["category"])),
     )
-    return {"rows": rows[:limit], "groups": sorted_groups}
+    return {
+        "rows": rows[:limit],
+        "groups": sorted_groups,
+        "safe_instagram_retry_rows": safe_instagram_retry_rows,
+        "safe_instagram_retry_count": len(safe_instagram_retry_rows),
+    }
 
 
 def _ops_publish_summary(jobs) -> dict[str, object]:
@@ -2884,6 +2905,46 @@ def ops_retry_publish_failure(
         result=_publish_failure_category(platform, error),
         next_action="Watch publish failure triage for updated platform status.",
         metadata={"job_id": job_id, "platform": platform},
+    )
+    return RedirectResponse("/ops", status_code=303)
+
+
+@app.post("/ops/publish-failures/retry-safe-instagram", response_class=HTMLResponse)
+def ops_retry_safe_instagram_failures(request: Request, user: str = Depends(verify_auth)):
+    root = _root(request)
+    jobs = list_all_jobs(root)
+    triage = _ops_publish_failure_triage(root, jobs, limit=1000)
+    rows = triage["safe_instagram_retry_rows"]
+    if not rows:
+        snapshot = _ops_snapshot(root)
+        snapshot["action_result"] = {
+            "name": "Retry safe Instagram failures",
+            "state": "Ready",
+            "detail": "No safe Instagram failures found.",
+        }
+        return templates.TemplateResponse(request, "ops.html", snapshot)
+    for row in rows:
+        subprocess.Popen(
+            [
+                sys.executable,
+                "main.py",
+                "--publish-only",
+                row["job_id"],
+                "--schedule",
+                "--publish-platform",
+                "instagram",
+            ],
+            cwd=str(root),
+        )
+    _write_work_event(
+        root,
+        "deploy_step",
+        "Retry all safe Instagram publish failures",
+        actor=user,
+        command="main.py --publish-only --schedule --publish-platform instagram",
+        result=f"subprocesses started: {len(rows)}",
+        next_action="Refresh Ops after publish retries finish.",
+        metadata={"job_ids": [row["job_id"] for row in rows], "platform": "instagram"},
     )
     return RedirectResponse("/ops", status_code=303)
 
