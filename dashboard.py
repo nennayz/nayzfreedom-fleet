@@ -1,4 +1,8 @@
 from __future__ import annotations
+import base64
+import hashlib
+import hmac
+import json
 import os
 import secrets
 import subprocess
@@ -142,6 +146,46 @@ def privacy_policy(request: Request):
 @app.api_route("/data_deletion.html", methods=["GET", "HEAD"], response_class=HTMLResponse)
 def data_deletion(request: Request):
     return templates.TemplateResponse(request, "data_deletion.html", {})
+
+
+def _decode_meta_signed_request(signed_request: str) -> dict:
+    if "." not in signed_request:
+        raise ValueError("signed_request must contain a signature and payload")
+
+    encoded_sig, encoded_payload = signed_request.split(".", 1)
+    app_secret = os.environ.get("META_APP_SECRET", "")
+    if app_secret:
+        expected_sig = hmac.new(
+            app_secret.encode("utf-8"),
+            msg=encoded_payload.encode("utf-8"),
+            digestmod=hashlib.sha256,
+        ).digest()
+        actual_sig = base64.urlsafe_b64decode(encoded_sig + "=" * (-len(encoded_sig) % 4))
+        if not hmac.compare_digest(actual_sig, expected_sig):
+            raise ValueError("signed_request signature mismatch")
+
+    payload = base64.urlsafe_b64decode(
+        encoded_payload + "=" * (-len(encoded_payload) % 4)
+    )
+    return json.loads(payload.decode("utf-8"))
+
+
+@app.post("/data-deletion-callback")
+async def data_deletion_callback(signed_request: str = Form(...)):
+    try:
+        payload = _decode_meta_signed_request(signed_request)
+    except (ValueError, json.JSONDecodeError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    user_id = str(payload.get("user_id") or payload.get("user", {}).get("id") or "unknown")
+    confirmation_hash = hashlib.sha256(user_id.encode("utf-8")).hexdigest()[:12]
+    confirmation_code = f"slayhack-delete-{confirmation_hash}"
+    return JSONResponse(
+        {
+            "url": "https://fleet.nayzfreedom.cloud/data-deletion",
+            "confirmation_code": confirmation_code,
+        }
+    )
 
 
 def verify_auth(credentials: HTTPBasicCredentials = Depends(security)) -> str:
