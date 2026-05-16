@@ -5,6 +5,7 @@ import hmac
 import json
 import os
 import secrets
+import shutil
 import subprocess
 import sys
 from datetime import datetime, timedelta, timezone
@@ -489,6 +490,81 @@ def _backup_history(limit: int = 5) -> list[dict[str, str]]:
     return rows
 
 
+def _restore_smoke_history(root: Path, limit: int = 5) -> list[dict[str, str]]:
+    path = root / "logs" / "restore_smoke.jsonl"
+    if not path.exists():
+        return []
+    rows = []
+    for line in path.read_text().splitlines()[-limit:]:
+        try:
+            item = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        rows.append({
+            "state": str(item.get("state", "Missing")),
+            "name": str(item.get("archive", "restore smoke")),
+            "detail": str(item.get("timestamp", "")),
+        })
+    return list(reversed(rows))
+
+
+def _system_resources(root: Path) -> list[dict[str, str]]:
+    usage = shutil.disk_usage(root)
+    disk_percent = int((usage.used / usage.total) * 100) if usage.total else 0
+    rows = [{
+        "state": "Failed" if disk_percent >= 85 else "Missing" if disk_percent >= 75 else "Ready",
+        "name": "Disk",
+        "detail": f"{disk_percent}% used at {root}",
+    }]
+    try:
+        load_1, load_5, load_15 = os.getloadavg()
+        rows.append({
+            "state": "Ready",
+            "name": "Load average",
+            "detail": f"{load_1:.2f} / {load_5:.2f} / {load_15:.2f}",
+        })
+    except OSError:
+        rows.append({"state": "Missing", "name": "Load average", "detail": "Not available on this host."})
+
+    meminfo = Path("/proc/meminfo")
+    if meminfo.exists():
+        values: dict[str, int] = {}
+        for line in meminfo.read_text().splitlines():
+            parts = line.split()
+            if len(parts) >= 2 and parts[0].rstrip(":") in {"MemTotal", "MemAvailable"}:
+                values[parts[0].rstrip(":")] = int(parts[1])
+        total = values.get("MemTotal", 0)
+        available = values.get("MemAvailable", 0)
+        used_percent = int(((total - available) / total) * 100) if total else 0
+        rows.append({
+            "state": "Failed" if used_percent >= 90 else "Missing" if used_percent >= 80 else "Ready",
+            "name": "Memory",
+            "detail": f"{used_percent}% used",
+        })
+    else:
+        rows.append({"state": "Missing", "name": "Memory", "detail": "Linux meminfo not available here."})
+    return rows
+
+
+def _service_event_history(limit: int = 8) -> list[dict[str, str]]:
+    units = [
+        "nayzfreedom-dashboard.service",
+        "nayzfreedom-bot.service",
+        "nayzfreedom-instagram-queue.service",
+        "nayzfreedom-healthcheck.service",
+    ]
+    events = []
+    for unit in units:
+        result = _run_command(["journalctl", "-u", unit, "--since", "24 hours ago", "-n", "20", "--no-pager"], timeout=6)
+        if result["state"] != "ok":
+            continue
+        for line in result["detail"].splitlines():
+            if any(marker in line for marker in ("Started ", "Stopped ", "Failed ", "Traceback", "ERROR", "CRITICAL")):
+                state = "Failed" if any(marker in line for marker in ("Failed ", "Traceback", "ERROR", "CRITICAL")) else "Ready"
+                events.append({"state": state, "name": unit, "detail": _sanitize_ops_detail(line)})
+    return list(reversed(events[-limit:]))
+
+
 def _ops_publish_errors(jobs, limit: int = 6) -> list[dict[str, str]]:
     rows = []
     for job in jobs:
@@ -692,6 +768,9 @@ def _ops_snapshot(root: Path, smoke_results: list[dict[str, str]] | None = None)
         "units": units,
         "backup": backup,
         "backup_history": _backup_history(),
+        "restore_smoke_history": _restore_smoke_history(root),
+        "system_resources": _system_resources(root),
+        "service_events": _service_event_history(),
         "summary": summary,
         "latest_jobs": jobs[:5],
         "publish_errors": _ops_publish_errors(jobs),

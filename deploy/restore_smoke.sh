@@ -4,6 +4,7 @@
 set -euo pipefail
 
 BACKUP_ROOT="${BACKUP_ROOT:-/opt/nayzfreedom-backups}"
+INSTALL_DIR="${INSTALL_DIR:-/opt/nayzfreedom}"
 
 latest_dir="$(find "$BACKUP_ROOT" -mindepth 1 -maxdepth 1 -type d | sort | tail -n 1)"
 if [ -z "$latest_dir" ]; then
@@ -30,5 +31,10 @@ grep -q '^\.env$' "$listing"
 grep -q '^projects/' "$listing"
 grep -q '^output/' "$listing"
 grep -q '^logs/' "$listing"
+
+mkdir -p "$INSTALL_DIR/logs"
+printf '{"timestamp":"%s","state":"Ready","archive":"%s"}\n' \
+    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+    "$archive" >> "$INSTALL_DIR/logs/restore_smoke.jsonl"
 
 echo "restore_smoke=ok archive=$archive"

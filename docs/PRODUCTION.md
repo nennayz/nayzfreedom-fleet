@@ -154,6 +154,26 @@ Verify the latest local backup archive:
 /opt/nayzfreedom/deploy/restore_smoke.sh
 ```
 
+The restore smoke command appends successful checks to
+`/opt/nayzfreedom/logs/restore_smoke.jsonl`, which is shown on `/ops`.
+
+## Restore Drill
+
+Use this drill when validating a backup without replacing production:
+
+```bash
+ssh root@2.24.88.63
+latest="$(find /opt/nayzfreedom-backups -mindepth 1 -maxdepth 1 -type d | sort | tail -n 1)"
+mkdir -p /tmp/nayzfreedom-restore-drill
+tar -xzf "$latest/state.tgz" -C /tmp/nayzfreedom-restore-drill
+ls -la /tmp/nayzfreedom-restore-drill
+/opt/nayzfreedom/deploy/restore_smoke.sh
+```
+
+Do not overwrite `/opt/nayzfreedom` during a drill. For a real restore, stop
+services first, copy the verified state into place, fix ownership, then restart
+dashboard and bot services.
+
 ## Alerts
 
 Scheduler failure alerts, weekly reports, daily production summaries, and health-check failures use
@@ -190,3 +210,14 @@ journalctl -u nayzfreedom-healthcheck.service -n 50 --no-pager
 - Revoke old GitHub tokens after replacing token-based remotes.
 - Keep local VPS-only files in `.git/info/exclude`, not in repo `.gitignore`.
 - Do not commit production secrets, generated logs, or runtime caches.
+
+## Token Rotation Checklist
+
+Run this after a suspected leak, staff/device change, or scheduled maintenance:
+
+- GitHub: revoke unused classic/fine-grained tokens, then confirm the VPS remote does not contain a token.
+- Meta: rotate the long-lived access token and run `deploy/healthcheck.sh`.
+- Google Drive: rotate service-account or OAuth JSON, then run backup and restore smoke.
+- Telegram: rotate bot token, update `/opt/nayzfreedom/.env`, restart bot and healthcheck timers.
+- Dashboard: rotate `DASHBOARD_PASSWORD`, restart dashboard, and confirm Basic Auth still works.
+- After any rotation, run `/opt/nayzfreedom/deploy/healthcheck.sh` and inspect `/ops`.

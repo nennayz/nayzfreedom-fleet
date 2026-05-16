@@ -9,6 +9,13 @@ def test_backup_and_healthcheck_scripts_parse():
         assert result.returncode == 0
 
 
+def test_restore_smoke_logs_history():
+    root = Path(__file__).resolve().parents[1]
+    text = (root / "deploy" / "restore_smoke.sh").read_text()
+    assert "logs/restore_smoke.jsonl" in text
+    assert '"state":"Ready"' in text
+
+
 def test_instagram_queue_systemd_units_exist():
     root = Path(__file__).resolve().parents[1]
     service = root / "deploy" / "nayzfreedom-instagram-queue.service"

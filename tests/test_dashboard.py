@@ -334,6 +334,9 @@ def test_ops_page_renders_status_and_errors(tmp_path, client, monkeypatch):
     assert "Queue state" in resp.text
     assert "Crew ownership" in resp.text
     assert "Hygiene checks" in resp.text
+    assert "System resources" in resp.text
+    assert "Service events" in resp.text
+    assert "Restore smoke history" in resp.text
 
 
 def test_ops_smoke_test_renders_results(tmp_path, client, monkeypatch):
@@ -631,6 +634,32 @@ def test_backup_history_reports_recent_archives(tmp_path, monkeypatch):
     assert rows[0]["state"] == "Ready"
     assert rows[0]["name"] == "20260516T000000Z"
     assert "age" in rows[0]["detail"]
+
+
+def test_restore_smoke_history_reads_latest(tmp_path):
+    log_dir = tmp_path / "logs"
+    log_dir.mkdir()
+    (log_dir / "restore_smoke.jsonl").write_text(
+        json.dumps({
+            "timestamp": "2026-05-16T06:00:00Z",
+            "state": "Ready",
+            "archive": "/opt/nayzfreedom-backups/20260516/state.tgz",
+        }) + "\n"
+    )
+
+    rows = _dm._restore_smoke_history(tmp_path)
+
+    assert rows[0]["state"] == "Ready"
+    assert rows[0]["name"] == "/opt/nayzfreedom-backups/20260516/state.tgz"
+    assert rows[0]["detail"] == "2026-05-16T06:00:00Z"
+
+
+def test_system_resources_reports_disk(tmp_path):
+    rows = _dm._system_resources(tmp_path)
+
+    assert rows[0]["name"] == "Disk"
+    assert rows[0]["state"] in {"Ready", "Missing", "Failed"}
+    assert "used" in rows[0]["detail"]
 
 
 def test_latest_backup_status_handles_permission_denied(monkeypatch, tmp_path):
