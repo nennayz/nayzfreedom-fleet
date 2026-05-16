@@ -110,6 +110,50 @@
   </article>
 </section>
 
+<section class="content-grid">
+  <article class="panel">
+    <div class="section-heading">
+      <p class="eyebrow">Publish</p>
+      <h2>Failure triage</h2>
+    </div>
+    <div class="ops-list">
+      {% for item in publish_failure_triage.groups %}
+      <div class="ops-row">
+        <span class="badge badge-ops-{{ item.state | lower }}">{{ item.count }}</span>
+        <strong>{{ item.platform }} - {{ item.category }}</strong>
+        <small>{{ item.sample }}</small>
+      </div>
+      {% else %}
+      <p class="muted">No publish failure groups.</p>
+      {% endfor %}
+    </div>
+  </article>
+
+  <article class="panel">
+    <div class="section-heading">
+      <p class="eyebrow">Publish</p>
+      <h2>Retry lane</h2>
+    </div>
+    <div class="ops-list">
+      {% for item in publish_failure_triage.rows %}
+      <div class="ops-row">
+        <span class="badge badge-publish-failed">{{ item.platform }}</span>
+        <strong>{{ item.job_id }}</strong>
+        <small>{{ item.category }} - {{ item.detail }}</small>
+        <div class="inline-actions">
+          <a class="button button-secondary" href="/jobs/{{ item.job_id }}">Open job</a>
+          <form class="inline-form" method="post" action="{{ item.retry_path }}">
+            <button type="submit">Retry publish</button>
+          </form>
+        </div>
+      </div>
+      {% else %}
+      <p class="muted">No failed publish items to retry.</p>
+      {% endfor %}
+    </div>
+  </article>
+</section>
+
 {% if smoke_results %}
 <section class="panel">
   <div class="section-heading">

@@ -637,6 +637,59 @@ def _ops_publish_errors(jobs, limit: int = 6) -> list[dict[str, str]]:
     return rows[:limit]
 
 
+def _publish_failure_category(platform: str, error: str) -> str:
+    text = f"{platform} {error}".lower()
+    if "media file not found" in text or "no media file" in text or "video_path is none" in text:
+        return "media missing"
+    if "access token" in text or "token" in text or "oauth" in text or "permission" in text or "unauthorized" in text:
+        return "auth or permission"
+    if "quota" in text or "rate limit" in text or "too many requests" in text:
+        return "quota or rate limit"
+    if "400 client error" in text or "bad request" in text or "graph.facebook.com" in text:
+        return "meta bad request"
+    return "unknown"
+
+
+def _ops_publish_failure_triage(jobs, limit: int = 12) -> dict[str, object]:
+    rows: list[dict[str, str]] = []
+    groups: dict[str, dict[str, object]] = {}
+    for job in jobs:
+        result = job.publish_result or {}
+        if not isinstance(result, dict):
+            continue
+        for platform, value in result.items():
+            if not isinstance(value, dict) or value.get("status") != "failed":
+                continue
+            error = _sanitize_ops_detail(value.get("error") or value.get("reason") or "failed")
+            category = _publish_failure_category(str(platform), error)
+            key = f"{platform}:{category}"
+            group = groups.setdefault(
+                key,
+                {
+                    "platform": str(platform),
+                    "category": category,
+                    "count": 0,
+                    "state": "Failed",
+                    "sample": error[:160],
+                },
+            )
+            group["count"] = int(group["count"]) + 1
+            rows.append(
+                {
+                    "job_id": job.id,
+                    "platform": str(platform),
+                    "category": category,
+                    "detail": error[:240],
+                    "retry_path": f"/ops/publish-failures/{job.id}/{platform}/retry",
+                }
+            )
+    sorted_groups = sorted(
+        groups.values(),
+        key=lambda item: (str(item["platform"]), str(item["category"])),
+    )
+    return {"rows": rows[:limit], "groups": sorted_groups}
+
+
 def _ops_publish_summary(jobs) -> dict[str, object]:
     counts = {
         "facebook_scheduled": 0,
@@ -828,6 +881,7 @@ def _ops_snapshot(root: Path, smoke_results: list[dict[str, str]] | None = None)
         "summary": summary,
         "latest_jobs": jobs[:5],
         "publish_errors": _ops_publish_errors(jobs),
+        "publish_failure_triage": _ops_publish_failure_triage(jobs),
         "publish_summary": publish_summary,
         "smoke_results": smoke_results,
         "action_buttons": _ops_action_buttons(),
@@ -2610,12 +2664,12 @@ def schedule_publish(job_id: str, request: Request, user: str = Depends(verify_a
 def retry_publish(job_id: str, request: Request, user: str = Depends(verify_auth)):
     root = _root(request)
     try:
-        find_job(job_id)
+        _find_job_at_root(root, job_id)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=f"Job {job_id!r} not found")
     subprocess.Popen(
         [sys.executable, "main.py", "--publish-only", job_id, "--schedule"],
-        cwd=str(_ROOT),
+        cwd=str(root),
     )
     _write_work_event(
         root,
@@ -2627,6 +2681,40 @@ def retry_publish(job_id: str, request: Request, user: str = Depends(verify_auth
         metadata={"job_id": job_id},
     )
     return RedirectResponse(f"/jobs/{job_id}", status_code=303)
+
+
+@app.post("/ops/publish-failures/{job_id}/{platform}/retry", response_class=HTMLResponse)
+def ops_retry_publish_failure(
+    job_id: str,
+    platform: str,
+    request: Request,
+    user: str = Depends(verify_auth),
+):
+    root = _root(request)
+    try:
+        job = _find_job_at_root(root, job_id)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Job {job_id!r} not found")
+    result = job.publish_result or {}
+    platform_result = result.get(platform) if isinstance(result, dict) else None
+    if not isinstance(platform_result, dict) or platform_result.get("status") != "failed":
+        raise HTTPException(status_code=400, detail=f"{platform} is not failed for job {job_id}")
+    error = _sanitize_ops_detail(platform_result.get("error") or platform_result.get("reason") or "failed")
+    subprocess.Popen(
+        [sys.executable, "main.py", "--publish-only", job_id, "--schedule"],
+        cwd=str(root),
+    )
+    _write_work_event(
+        root,
+        "deploy_step",
+        f"Ops retry requested for {platform} publish failure on {job_id}",
+        actor=user,
+        command="main.py --publish-only --schedule",
+        result=_publish_failure_category(platform, error),
+        next_action="Watch publish failure triage for updated platform status.",
+        metadata={"job_id": job_id, "platform": platform},
+    )
+    return RedirectResponse("/ops", status_code=303)
 
 
 @app.post("/jobs/{job_id}/publish-instagram-now")

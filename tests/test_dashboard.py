@@ -835,6 +835,10 @@ def test_ops_page_renders_status_and_errors(tmp_path, client, monkeypatch):
     assert "Ops summary" in resp.text
     assert "Mission attention" in resp.text
     assert "Queue state" in resp.text
+    assert "Failure triage" in resp.text
+    assert "Retry lane" in resp.text
+    assert "facebook - auth or permission" in resp.text
+    assert "/ops/publish-failures/20260512_060000/facebook/retry" in resp.text
     assert "Crew ownership" in resp.text
     assert "Hygiene checks" in resp.text
     assert "System resources" in resp.text
@@ -1362,6 +1366,46 @@ def test_retry_publish_spawns_publish_only(tmp_path, client, monkeypatch):
     assert resp.headers["location"] == "/jobs/20260512_060000"
     cmd = mock_popen.call_args.args[0]
     assert cmd[1:] == ["main.py", "--publish-only", "20260512_060000", "--schedule"]
+
+
+def test_ops_retry_publish_failure_validates_and_logs(tmp_path, client, monkeypatch):
+    _write_job(
+        tmp_path,
+        "20260512_060000",
+        status="failed",
+        stage="publish_done",
+        publish_result={"instagram": {"status": "failed", "error": "400 Client Error: Bad Request"}},
+    )
+    mock_popen = MagicMock()
+    with patch("dashboard.subprocess.Popen", mock_popen):
+        resp = client.post(
+            "/ops/publish-failures/20260512_060000/instagram/retry",
+            headers=_auth(),
+            follow_redirects=False,
+        )
+
+    assert resp.status_code == 303
+    assert resp.headers["location"] == "/ops"
+    cmd = mock_popen.call_args.args[0]
+    assert cmd[1:] == ["main.py", "--publish-only", "20260512_060000", "--schedule"]
+    work_activity = (tmp_path / "logs" / "work_activity.jsonl").read_text()
+    assert "Ops retry requested for instagram publish failure on 20260512_060000" in work_activity
+    assert "meta bad request" in work_activity
+
+
+def test_ops_retry_publish_failure_rejects_non_failed_platform(tmp_path, client):
+    _write_job(
+        tmp_path,
+        "20260512_060000",
+        publish_result={"instagram": {"status": "pending_queue"}},
+    )
+
+    resp = client.post(
+        "/ops/publish-failures/20260512_060000/instagram/retry",
+        headers=_auth(),
+    )
+
+    assert resp.status_code == 400
 
 
 def test_publish_instagram_now_marks_due_and_runs_queue(tmp_path, client, monkeypatch):
