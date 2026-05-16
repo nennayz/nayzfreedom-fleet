@@ -60,12 +60,12 @@ def healthz():
     return JSONResponse({"status": "ok", "service": "nayzfreedom-dashboard"})
 
 
-@app.get("/privacy", response_class=HTMLResponse)
+@app.api_route("/privacy", methods=["GET", "HEAD"], response_class=HTMLResponse)
 def privacy_policy(request: Request):
     return templates.TemplateResponse(request, "privacy.html", {})
 
 
-@app.get("/data-deletion", response_class=HTMLResponse)
+@app.api_route("/data-deletion", methods=["GET", "HEAD"], response_class=HTMLResponse)
 def data_deletion(request: Request):
     return templates.TemplateResponse(request, "data_deletion.html", {})
 
