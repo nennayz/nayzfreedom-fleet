@@ -216,6 +216,10 @@ def _ops_incident_path(root: Path) -> Path:
     return root / "logs" / "ops_incidents.jsonl"
 
 
+def _ops_report_path(root: Path) -> Path:
+    return root / "logs" / "ops_reports.jsonl"
+
+
 def _write_ops_audit(root: Path, user: str, action: str, result: dict[str, str]) -> None:
     path = _ops_log_path(root)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -304,6 +308,25 @@ def _load_ops_incidents(root: Path) -> list[dict[str, str]]:
 
 def _recent_ops_incidents(root: Path, limit: int = 6) -> list[dict[str, str]]:
     rows = _load_ops_incidents(root)[-limit:]
+    return list(reversed(rows))
+
+
+def _recent_ops_reports(root: Path, limit: int = 5) -> list[dict[str, str]]:
+    path = _ops_report_path(root)
+    if not path.exists():
+        return []
+    rows = []
+    for line in path.read_text().splitlines()[-limit:]:
+        try:
+            item = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        rows.append({
+            "timestamp": str(item.get("timestamp", "")),
+            "title": _sanitize_ops_detail(item.get("title", "Slayhack weekly Ops report")),
+            "line_count": str(item.get("line_count", "")),
+            "report": _sanitize_ops_detail(item.get("report", "")),
+        })
     return list(reversed(rows))
 
 
@@ -522,6 +545,7 @@ def _ops_snapshot(root: Path, smoke_results: list[dict[str, str]] | None = None)
         "ops_audit": _recent_ops_audit(root),
         "ops_log": _ops_log_status(root),
         "ops_incidents": _recent_ops_incidents(root),
+        "ops_reports": _recent_ops_reports(root),
         "incident_summary": _incident_summary(root),
         "incident_result": None,
     }
