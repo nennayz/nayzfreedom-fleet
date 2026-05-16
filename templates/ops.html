@@ -31,6 +31,22 @@
   {% endif %}
 </section>
 
+<section class="panel">
+  <div class="section-heading">
+    <p class="eyebrow">Daily</p>
+    <h2>Ops summary</h2>
+  </div>
+  <div class="ops-list">
+    {% for item in ops_daily_summary %}
+    <div class="ops-row">
+      <span class="badge badge-ops-{{ item.state | lower }}">{{ item.state }}</span>
+      <strong>{{ item.name }}</strong>
+      <small>{{ item.detail }}</small>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
 <section class="stat-grid wide">
   <article class="stat-card">
     <span>Total jobs</span>
@@ -47,6 +63,50 @@
   <article class="stat-card">
     <span>Running</span>
     <strong>{{ summary.running }}</strong>
+  </article>
+</section>
+
+<section class="content-grid">
+  <article class="panel">
+    <div class="section-heading">
+      <p class="eyebrow">Publish</p>
+      <h2>Queue state</h2>
+    </div>
+    <div class="ops-action-result">
+      <span class="badge badge-ops-ready">FB scheduled {{ publish_summary.counts.facebook_scheduled }}</span>
+      <span class="badge badge-ops-ready">IG pending {{ publish_summary.counts.instagram_pending }}</span>
+      <span class="badge badge-ops-missing">IG retrying {{ publish_summary.counts.instagram_retrying }}</span>
+      <span class="badge badge-ops-failed">IG failed {{ publish_summary.counts.instagram_failed }}</span>
+    </div>
+    <div class="ops-list spacious">
+      {% for item in publish_summary.queue %}
+      <a class="ops-row" href="/jobs/{{ item.job_id }}">
+        <span class="badge badge-ops-{{ item.state | lower }}">{{ item.status }}</span>
+        <strong>{{ item.job_id }}</strong>
+        <small>{{ item.detail }}</small>
+      </a>
+      {% else %}
+      <p class="muted">No Instagram queue items need attention.</p>
+      {% endfor %}
+    </div>
+  </article>
+
+  <article class="panel">
+    <div class="section-heading">
+      <p class="eyebrow">Workflow</p>
+      <h2>Crew ownership</h2>
+    </div>
+    <div class="ops-list">
+      {% for item in workflow_owners %}
+      <a class="ops-row" href="/jobs/{{ item.job_id }}">
+        <span class="badge badge-ops-{{ item.state | lower }}">{{ item.stage }}</span>
+        <strong>{{ item.owner }}</strong>
+        <small>{{ item.detail }}</small>
+      </a>
+      {% else %}
+      <p class="muted">No active mission ownership yet.</p>
+      {% endfor %}
+    </div>
   </article>
 </section>
 
@@ -215,7 +275,34 @@
       <strong>Backup archive</strong>
       <small>{{ backup.detail }}</small>
     </div>
+    <div class="ops-list spacious">
+      {% for item in backup_history %}
+      <div class="ops-row">
+        <span class="badge badge-ops-{{ item.state | lower }}">{{ item.state }}</span>
+        <strong>{{ item.name }}</strong>
+        <small>{{ item.detail }}</small>
+      </div>
+      {% else %}
+      <p class="muted">No backup history found.</p>
+      {% endfor %}
+    </div>
   </article>
+</section>
+
+<section class="panel">
+  <div class="section-heading">
+    <p class="eyebrow">Security</p>
+    <h2>Hygiene checks</h2>
+  </div>
+  <div class="ops-list">
+    {% for item in security_hygiene %}
+    <div class="ops-row">
+      <span class="badge badge-ops-{{ item.state | lower }}">{{ item.state }}</span>
+      <strong>{{ item.name }}</strong>
+      <small>{{ item.detail }}</small>
+    </div>
+    {% endfor %}
+  </div>
 </section>
 
 <section class="content-grid">

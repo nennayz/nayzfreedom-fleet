@@ -36,6 +36,7 @@ def build_summary(root: Path) -> str:
             f"facebook_scheduled={publish_counts['facebook:scheduled']} "
             f"instagram_published={publish_counts['instagram:published']} "
             f"instagram_pending_queue={publish_counts['instagram:pending_queue']} "
+            f"instagram_retrying={publish_counts['instagram:retrying']} "
             f"failed={sum(count for key, count in publish_counts.items() if key.endswith(':failed'))}"
         ),
     ]

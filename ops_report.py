@@ -32,6 +32,11 @@ def build_ops_report(root: Path) -> str:
     action_counts = Counter(str(item.get("action", "unknown")) for item in actions)
     incident_status = Counter(str(item.get("status", "open")) for item in incidents)
     incident_severity = Counter(str(item.get("severity", "info")) for item in incidents)
+    publish_counts: Counter[str] = Counter()
+    for job in jobs:
+        for platform, value in (job.publish_result or {}).items():
+            if isinstance(value, dict):
+                publish_counts[f"{platform}:{value.get('status', 'unknown')}"] += 1
     failed_jobs = [
         job for job in jobs
         if getattr(job.status, "value", str(job.status)) == "failed"
@@ -60,6 +65,13 @@ def build_ops_report(root: Path) -> str:
             f"latest={latest_incident}"
         ),
         f"jobs total={len(jobs)} failed={len(failed_jobs)} latest={jobs[0].id if jobs else 'none'}",
+        (
+            "publish "
+            f"facebook_scheduled={publish_counts['facebook:scheduled']} "
+            f"instagram_pending_queue={publish_counts['instagram:pending_queue']} "
+            f"instagram_retrying={publish_counts['instagram:retrying']} "
+            f"instagram_failed={publish_counts['instagram:failed']}"
+        ),
     ]
     if failed_jobs:
         lines.append("recent_failed_jobs=" + ",".join(job.id for job in failed_jobs[:5]))
