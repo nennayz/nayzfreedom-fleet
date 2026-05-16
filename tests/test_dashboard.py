@@ -310,6 +310,10 @@ def test_ops_page_renders_status_and_errors(tmp_path, client, monkeypatch):
     assert "publish failed" in resp.text
     assert "bad token" in resp.text
     assert "Run smoke test" in resp.text
+    assert "Run backup now" in resp.text
+    assert "Run Instagram queue now" in resp.text
+    assert "Run production summary now" in resp.text
+    assert "Restart dashboard" in resp.text
 
 
 def test_ops_smoke_test_renders_results(tmp_path, client, monkeypatch):
@@ -331,6 +335,51 @@ def test_ops_smoke_test_renders_results(tmp_path, client, monkeypatch):
     assert "Latest smoke test" in resp.text
     assert "Health URL" in resp.text
     assert "HTTP 200" in resp.text
+
+
+def test_ops_action_runs_selected_command(tmp_path, client, monkeypatch):
+    monkeypatch.setattr(
+        _dm,
+        "_ops_unit_status",
+        lambda: [{"name": "nayzfreedom-dashboard.service", "state": "Ready", "detail": "active"}],
+    )
+    monkeypatch.setattr(_dm, "_latest_backup_status", lambda: {"state": "Ready", "detail": "backup-ok"})
+    calls = []
+
+    def fake_run_action(action):
+        calls.append(action)
+        return {"name": "Run Instagram queue now", "state": "Ready", "detail": "started"}
+
+    monkeypatch.setattr(_dm, "_run_ops_action", fake_run_action)
+
+    resp = client.post("/ops/actions/instagram_queue", headers=_auth())
+
+    assert resp.status_code == 200
+    assert calls == ["instagram_queue"]
+    assert "Run Instagram queue now" in resp.text
+    assert "started" in resp.text
+
+
+def test_run_ops_action_rejects_unknown_action():
+    result = _dm._run_ops_action("unknown")
+
+    assert result["state"] == "Failed"
+    assert "Unknown Ops action" in result["detail"]
+
+
+def test_run_ops_action_uses_sudo_systemctl(monkeypatch):
+    calls = []
+
+    def fake_run_command(args, timeout=8):
+        calls.append((args, timeout))
+        return {"state": "ok", "detail": ""}
+
+    monkeypatch.setattr(_dm, "_run_command", fake_run_command)
+
+    result = _dm._run_ops_action("backup")
+
+    assert result["state"] == "Ready"
+    assert calls == [(["sudo", "-n", "systemctl", "start", "nayzfreedom-backup.service"], 30)]
 
 
 def test_latest_backup_status_handles_permission_denied(monkeypatch, tmp_path):

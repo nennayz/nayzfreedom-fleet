@@ -56,6 +56,29 @@ OPS_UNITS = [
     "nayzfreedom-healthcheck.timer",
     "nayzfreedom-production-summary.timer",
 ]
+OPS_ACTIONS = {
+    "backup": {
+        "label": "Run backup now",
+        "unit": "nayzfreedom-backup.service",
+        "verb": "start",
+    },
+    "instagram_queue": {
+        "label": "Run Instagram queue now",
+        "unit": "nayzfreedom-instagram-queue.service",
+        "verb": "start",
+    },
+    "production_summary": {
+        "label": "Run production summary now",
+        "unit": "nayzfreedom-production-summary.service",
+        "verb": "start",
+    },
+    "restart_dashboard": {
+        "label": "Restart dashboard",
+        "unit": "nayzfreedom-dashboard.service",
+        "verb": "restart",
+        "delayed": True,
+    },
+}
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory=str(_ROOT / "static")), name="static")
@@ -162,6 +185,46 @@ def _run_command(args: list[str], timeout: int = 8) -> dict[str, str]:
         "state": "ok" if result.returncode == 0 else "failed",
         "detail": output[:500] if output else f"exit={result.returncode}",
     }
+
+
+def _systemctl_args(verb: str, unit: str) -> list[str]:
+    return ["sudo", "-n", "systemctl", verb, unit]
+
+
+def _ops_action_buttons() -> list[dict[str, str]]:
+    return [
+        {"key": key, "label": str(config["label"])}
+        for key, config in OPS_ACTIONS.items()
+    ]
+
+
+def _run_ops_action(action: str) -> dict[str, str]:
+    config = OPS_ACTIONS.get(action)
+    if config is None:
+        return {"name": action, "state": "Failed", "detail": "Unknown Ops action."}
+
+    label = str(config["label"])
+    unit = str(config["unit"])
+    verb = str(config["verb"])
+
+    if config.get("delayed"):
+        code = (
+            "import subprocess,time;"
+            "time.sleep(1);"
+            f"subprocess.run({json.dumps(_systemctl_args(verb, unit))})"
+        )
+        try:
+            subprocess.Popen([sys.executable, "-c", code], cwd=str(_ROOT))
+        except Exception as exc:  # noqa: BLE001
+            return {"name": label, "state": "Failed", "detail": str(exc)[:300]}
+        return {"name": label, "state": "Ready", "detail": f"Queued {verb} for {unit}."}
+
+    result = _run_command(_systemctl_args(verb, unit), timeout=30)
+    state = "Ready" if result["state"] == "ok" else "Failed"
+    detail = result["detail"]
+    if result["state"] == "failed" and "password" in detail.lower():
+        detail = "sudo permission missing for this Ops action."
+    return {"name": label, "state": state, "detail": detail}
 
 
 def _ops_unit_status() -> list[dict[str, str]]:
@@ -276,6 +339,8 @@ def _ops_snapshot(root: Path, smoke_results: list[dict[str, str]] | None = None)
         "latest_jobs": jobs[:5],
         "publish_errors": _ops_publish_errors(jobs),
         "smoke_results": smoke_results,
+        "action_buttons": _ops_action_buttons(),
+        "action_result": None,
     }
 
 
@@ -665,6 +730,15 @@ def ops_dashboard(request: Request, _: str = Depends(verify_auth)):
 def ops_smoke_test(request: Request, _: str = Depends(verify_auth)):
     root = _root(request)
     snapshot = _ops_snapshot(root, smoke_results=_ops_smoke_results(root))
+    return templates.TemplateResponse(request, "ops.html", snapshot)
+
+
+@app.post("/ops/actions/{action}", response_class=HTMLResponse)
+def ops_action(action: str, request: Request, _: str = Depends(verify_auth)):
+    root = _root(request)
+    action_result = _run_ops_action(action)
+    snapshot = _ops_snapshot(root)
+    snapshot["action_result"] = action_result
     return templates.TemplateResponse(request, "ops.html", snapshot)
 
 

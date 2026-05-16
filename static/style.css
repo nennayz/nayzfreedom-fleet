@@ -556,6 +556,19 @@ button[type="submit"]:hover { background: var(--navy-soft); }
   color: var(--muted);
   overflow-wrap: anywhere;
 }
+.ops-action-result {
+  align-items: center;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+}
+.ops-action-result small {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
 .badge-ops-ready { background: #d9f2e4; color: #17603e; }
 .badge-ops-failed { background: #f8d7da; color: #842029; }
 .badge-ops-missing,

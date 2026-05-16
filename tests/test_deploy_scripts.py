@@ -27,3 +27,14 @@ def test_production_summary_systemd_units_exist():
     assert timer.exists()
     assert "production_summary.py" in service.read_text()
     assert "00:15:00 UTC" in timer.read_text()
+
+
+def test_ops_sudoers_limits_allowed_commands():
+    root = Path(__file__).resolve().parents[1]
+    sudoers = root / "deploy" / "nayzfreedom-ops.sudoers"
+    text = sudoers.read_text()
+    assert "nayzfreedom-backup.service" in text
+    assert "nayzfreedom-instagram-queue.service" in text
+    assert "nayzfreedom-production-summary.service" in text
+    assert "nayzfreedom-dashboard.service" in text
+    assert "NOPASSWD: ALL" not in text

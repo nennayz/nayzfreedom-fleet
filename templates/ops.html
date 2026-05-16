@@ -10,6 +10,27 @@
   </form>
 </section>
 
+<section class="panel">
+  <div class="section-heading">
+    <p class="eyebrow">Actions</p>
+    <h2>Production controls</h2>
+  </div>
+  <div class="inline-actions">
+    {% for action in action_buttons %}
+    <form class="inline-form" method="post" action="/ops/actions/{{ action.key }}">
+      <button type="submit"{% if action.key == "restart_dashboard" %} onclick="return confirm('Restart the dashboard service now?')"{% endif %}>{{ action.label }}</button>
+    </form>
+    {% endfor %}
+  </div>
+  {% if action_result %}
+  <div class="ops-action-result">
+    <span class="badge badge-ops-{{ action_result.state | lower }}">{{ action_result.state }}</span>
+    <strong>{{ action_result.name }}</strong>
+    <small>{{ action_result.detail }}</small>
+  </div>
+  {% endif %}
+</section>
+
 <section class="stat-grid wide">
   <article class="stat-card">
     <span>Total jobs</span>

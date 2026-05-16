@@ -1,0 +1,4 @@
+nayzfreedom ALL=(root) NOPASSWD: /usr/bin/systemctl start nayzfreedom-backup.service
+nayzfreedom ALL=(root) NOPASSWD: /usr/bin/systemctl start nayzfreedom-instagram-queue.service
+nayzfreedom ALL=(root) NOPASSWD: /usr/bin/systemctl start nayzfreedom-production-summary.service
+nayzfreedom ALL=(root) NOPASSWD: /usr/bin/systemctl restart nayzfreedom-dashboard.service
