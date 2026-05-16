@@ -206,6 +206,42 @@
   </article>
 </section>
 
+<section class="content-grid">
+  <article class="panel">
+    <div class="section-heading">
+      <p class="eyebrow">Monitor</p>
+      <h2>System resources</h2>
+    </div>
+    <div class="ops-list">
+      {% for item in system_resources %}
+      <div class="ops-row">
+        <span class="badge badge-ops-{{ item.state | lower }}">{{ item.state }}</span>
+        <strong>{{ item.name }}</strong>
+        <small>{{ item.detail }}</small>
+      </div>
+      {% endfor %}
+    </div>
+  </article>
+
+  <article class="panel">
+    <div class="section-heading">
+      <p class="eyebrow">Monitor</p>
+      <h2>Service events</h2>
+    </div>
+    <div class="ops-list">
+      {% for item in service_events %}
+      <div class="ops-row">
+        <span class="badge badge-ops-{{ item.state | lower }}">{{ item.state }}</span>
+        <strong>{{ item.name }}</strong>
+        <small>{{ item.detail }}</small>
+      </div>
+      {% else %}
+      <p class="muted">No recent service events found.</p>
+      {% endfor %}
+    </div>
+  </article>
+</section>
+
 <section class="panel">
   <div class="section-heading">
     <p class="eyebrow">Audit</p>
@@ -284,6 +320,21 @@
       </div>
       {% else %}
       <p class="muted">No backup history found.</p>
+      {% endfor %}
+    </div>
+    <div class="section-heading spacious">
+      <p class="eyebrow">Recovery</p>
+      <h2>Restore smoke history</h2>
+    </div>
+    <div class="ops-list">
+      {% for item in restore_smoke_history %}
+      <div class="ops-row">
+        <span class="badge badge-ops-{{ item.state | lower }}">{{ item.state }}</span>
+        <strong>{{ item.name }}</strong>
+        <small>{{ item.detail }}</small>
+      </div>
+      {% else %}
+      <p class="muted">No restore smoke history logged yet.</p>
       {% endfor %}
     </div>
   </article>
