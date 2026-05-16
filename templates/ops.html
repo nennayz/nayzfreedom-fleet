@@ -134,6 +134,18 @@
       <p class="eyebrow">Publish</p>
       <h2>Retry lane</h2>
     </div>
+    <div class="ops-action-result">
+      <span class="badge badge-ops-{{ 'ready' if publish_failure_triage.safe_instagram_retry_count else 'missing' }}">
+        Safe IG {{ publish_failure_triage.safe_instagram_retry_count }}
+      </span>
+      {% if publish_failure_triage.safe_instagram_retry_count %}
+      <form class="inline-form" method="post" action="/ops/publish-failures/retry-safe-instagram">
+        <button type="submit">Retry safe IG failures</button>
+      </form>
+      {% else %}
+      <small>No safe Instagram failures are ready for bulk retry.</small>
+      {% endif %}
+    </div>
     <div class="ops-list">
       {% for item in publish_failure_triage.rows %}
       <div class="ops-row">
@@ -353,8 +365,9 @@
 <section class="panel">
   <div class="section-heading">
     <p class="eyebrow">Report</p>
-    <h2>Weekly Ops history</h2>
+    <h2>Historical Ops snapshots</h2>
   </div>
+  <p class="muted">Current Ops state is shown above. These rows are archived report snapshots.</p>
   <div class="ops-list">
     {% for item in ops_reports %}
     <div class="ops-row">

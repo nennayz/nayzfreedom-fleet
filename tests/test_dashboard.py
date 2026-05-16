@@ -856,7 +856,8 @@ def test_ops_page_renders_status_and_errors(tmp_path, client, monkeypatch):
     assert "ops_actions.jsonl" in resp.text
     assert "Add Ops note" in resp.text
     assert "Recent notes" in resp.text
-    assert "Weekly Ops history" in resp.text
+    assert "Historical Ops snapshots" in resp.text
+    assert "Current Ops state is shown above" in resp.text
     assert "Slayhack weekly Ops report" in resp.text
     assert "jobs total=1 failed=1 latest=20260512_060000" in resp.text
     assert "Ops summary" in resp.text
@@ -864,6 +865,7 @@ def test_ops_page_renders_status_and_errors(tmp_path, client, monkeypatch):
     assert "Queue state" in resp.text
     assert "Failure triage" in resp.text
     assert "Retry lane" in resp.text
+    assert "Safe IG 0" in resp.text
     assert "facebook - auth or permission" in resp.text
     assert "/ops/publish-failures/20260512_060000/facebook/retry" in resp.text
     assert "Meta code=190 error_subcode=460 type=OAuthException message=bad token" in resp.text
@@ -912,6 +914,8 @@ def test_ops_publish_failure_triage_shows_media_and_caption_readiness(tmp_path, 
     assert "Media ready" in resp.text
     assert "Caption ready" in resp.text
     assert "Public URL ready" in resp.text
+    assert "Safe IG 1" in resp.text
+    assert "Retry safe IG failures" in resp.text
     assert "https://fleet.nayzfreedom.cloud/media/public/20260512_070000/image.png" in resp.text
     assert "retry can use public image_url fallback" in resp.text
 
@@ -1178,7 +1182,7 @@ def test_recent_ops_reports_reads_latest_and_sanitizes(tmp_path, monkeypatch):
             "timestamp": "2026-05-16T06:00:00Z",
             "title": "Slayhack weekly Ops report",
             "line_count": 2,
-            "report": "contains secret-value",
+            "report": "contains secret-value\nrecent_failed_jobs=old1,old2",
         }) + "\n"
     )
 
@@ -1188,6 +1192,7 @@ def test_recent_ops_reports_reads_latest_and_sanitizes(tmp_path, monkeypatch):
     assert rows[0]["line_count"] == "2"
     assert rows[0]["timestamp"] == "2026-05-16T06:00:00Z"
     assert "secret-value" not in rows[0]["report"]
+    assert "recent_failed_jobs" not in rows[0]["report"]
     assert "<redacted>" in rows[0]["report"]
 
 
@@ -1465,6 +1470,46 @@ def test_ops_retry_publish_failure_validates_and_logs(tmp_path, client, monkeypa
     work_activity = (tmp_path / "logs" / "work_activity.jsonl").read_text()
     assert "Ops retry requested for instagram publish failure on 20260512_060000" in work_activity
     assert "meta bad request" in work_activity
+
+
+def test_ops_retry_safe_instagram_failures_runs_ready_rows(tmp_path, client, monkeypatch):
+    media_path = tmp_path / "output" / "Slayhack" / "20260512_060000" / "image.png"
+    _write_job(
+        tmp_path,
+        "20260512_060000",
+        status="failed",
+        stage="publish_done",
+        publish_result={"instagram": {"status": "failed", "error": "400 Client Error: Bad Request"}},
+    )
+    media_path.write_bytes(b"PNG")
+    job_path = tmp_path / "output" / "Slayhack" / "20260512_060000" / "job.json"
+    data = json.loads(job_path.read_text())
+    data["content_type"] = "infographic"
+    data["image_path"] = "output/Slayhack/20260512_060000/image.png"
+    data["growth_strategy"] = {
+        "hashtags": ["#slayhack"],
+        "caption": "Ready caption",
+        "best_post_time_utc": "14:00",
+        "best_post_time_thai": "21:00",
+        "editorial_guidance": {},
+    }
+    job_path.write_text(json.dumps(data))
+    mock_popen = MagicMock()
+    with patch("dashboard.subprocess.Popen", mock_popen):
+        resp = client.post(
+            "/ops/publish-failures/retry-safe-instagram",
+            headers=_auth(),
+            follow_redirects=False,
+        )
+
+    assert resp.status_code == 303
+    assert resp.headers["location"] == "/ops"
+    cmd = mock_popen.call_args.args[0]
+    assert cmd[1:] == [
+        "main.py", "--publish-only", "20260512_060000", "--schedule", "--publish-platform", "instagram",
+    ]
+    work_activity = (tmp_path / "logs" / "work_activity.jsonl").read_text()
+    assert "Retry all safe Instagram publish failures" in work_activity
 
 
 def test_ops_retry_publish_failure_rejects_non_failed_platform(tmp_path, client):
