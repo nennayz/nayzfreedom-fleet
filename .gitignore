@@ -21,6 +21,8 @@ logs/
 htmlcov/
 .env.local
 .env.*.local
+.env.bak-*
+secrets/
 
 # Private personal knowledge bases should not be committed.
 # Use vault-template/ as the shareable starter structure instead.
