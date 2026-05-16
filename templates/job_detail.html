@@ -176,6 +176,30 @@
         <button type="submit">Record real generation result</button>
       </form>
       {% endif %}
+      {% if can_record_publish_package %}
+      <div class="generation-result publish-package-result">
+        <span class="badge badge-ops-{{ 'ready' if publish_package and publish_package.status == 'completed' else 'missing' }}">
+          {{ 'Publish package complete' if publish_package and publish_package.status == 'completed' else 'Ready for publish packaging' }}
+        </span>
+        {% if publish_package and publish_package.status == "completed" %}
+        <p><strong>Roxy caption:</strong> {{ publish_package.caption }}</p>
+        <small>{{ publish_package.hashtags | join(", ") }}</small>
+        <p><strong>Emma FAQ:</strong> {{ publish_package.faq_path }}</p>
+        {% if publish_package.publish_notes %}<p>{{ publish_package.publish_notes }}</p>{% endif %}
+        {% endif %}
+      </div>
+      <form class="inline-form generation-intake-form publish-package-form" method="post" action="/jobs/{{ job.id }}/record-publish-package">
+        <label for="caption_{{ job.id }}">Roxy caption</label>
+        <textarea id="caption_{{ job.id }}" name="caption" rows="3" required>{{ publish_package.caption if publish_package and publish_package.caption else '' }}</textarea>
+        <label for="hashtags_{{ job.id }}">Roxy hashtags</label>
+        <input id="hashtags_{{ job.id }}" name="hashtags" type="text" value="{{ publish_package.hashtags | join(', ') if publish_package and publish_package.hashtags else '' }}" placeholder="#slayhack, #beautyhack" required>
+        <label for="faq_{{ job.id }}">Emma FAQ</label>
+        <textarea id="faq_{{ job.id }}" name="faq" rows="4" required>{{ faq_content if faq_content else '' }}</textarea>
+        <label for="publish_notes_{{ job.id }}">Publish notes</label>
+        <textarea id="publish_notes_{{ job.id }}" name="publish_notes" rows="2">{{ publish_package.publish_notes if publish_package and publish_package.publish_notes else '' }}</textarea>
+        <button type="submit">{{ "Update publish package" if publish_package and publish_package.status == "completed" else "Record publish package" }}</button>
+      </form>
+      {% endif %}
     </article>
     <article>
       <h3>Asset checklist</h3>

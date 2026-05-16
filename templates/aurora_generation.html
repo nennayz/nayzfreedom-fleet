@@ -54,6 +54,7 @@
         {% if item.result %} · {{ item.result.output_path }}{% endif %}
         {% if item.waiting_for_real_video %} · waiting real video{% endif %}
       </small>
+      <span class="badge badge-ops-{{ item.packaging_state }}">{{ item.packaging_label }}</span>
       <small class="generation-action">{{ item.next_action }}</small>
       {% if item.can_run %}
       <form class="inline-form" method="post" action="/jobs/{{ item.job.id }}/run-generation-dry-run">
@@ -62,6 +63,9 @@
       {% endif %}
       {% if item.can_record %}
       <a class="button button-secondary generation-action" href="/jobs/{{ item.job.id }}">Record real generation result</a>
+      {% endif %}
+      {% if item.can_package %}
+      <a class="button button-secondary generation-action" href="/jobs/{{ item.job.id }}">Open publish packaging</a>
       {% endif %}
     </div>
     {% endfor %}
